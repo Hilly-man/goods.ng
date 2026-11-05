@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+backend/media/
+backend/private/
+# Node
+node_modules/
+.next/
+next-env.d.ts
+test-results/
+playwright-report/
+# Env & secrets
+.env
+.env.local
+.env.*.local
+# OS
+.DS_Store

@@ -1,0 +1,391 @@
+"""Goods Flex (BNPL). Goods.ng facilitates; the licensed lending partner decides and lends.
+
+Flow: apply (order created & stock reserved, partner decides) -> buyer reviews partner terms ->
+accepts -> pays down payment -> partner disburses financed amount to the escrow partner -> order is
+funded and proceeds through the normal protected-checkout lifecycle. Instalments are collected on
+behalf of the lending partner.
+"""
+
+from datetime import date, timedelta
+from decimal import Decimal
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.core.errors import AppError, Forbidden, InvalidState, NotFound
+from app.core.time import utcnow
+from app.integrations.bnpl import get_financing_provider
+from app.models import (
+    BnplApplication,
+    FinancingAgreement,
+    Installment,
+    Order,
+    Payment,
+    Product,
+    Repayment,
+    SellerProfile,
+    User,
+)
+from app.models.enums import BnplStatus, InstallmentStatus, PaymentMethod, PaymentPurpose
+from app.modules.notifications.service import notify
+from app.modules.orders import escrow
+from app.modules.orders import service as orders
+from app.modules.payments import service as payments
+
+
+def eligibility(db: Session, user: User) -> dict:
+    from app.modules.bnpl import flex
+
+    return flex_status(db, user, flex)
+
+
+def flex_status(db: Session, user: User, flex) -> dict:
+    info = flex.credit_limit(db, user)
+    running = flex.running_plan(db, user.id)
+    a = info["assessment"]
+    prof = flex.profile(db, user)
+    g = flex.active_guarantor(db, user.id)
+    p = get_financing_provider()
+    r = flex.rules(db)
+    db.commit()
+    return {
+        "credit_limit": f"{info['limit']:.2f}",
+        "available_to_spend": "0.00" if running else f"{info['limit']:.2f}",
+        "binding_cap": info["binding_cap"],
+        "caps": {k: f"{v:.2f}" for k, v in info["caps"].items()},
+        "tips": info["tips"],
+        "steps": info["steps"],
+        "completed_plans": info["completed_plans"],
+        "running_plan": {"application_id": str(running.id), "status": running.status,
+                         "order_id": str(running.order_id) if running.order_id else None} if running else None,
+        "can_apply": running is None and info["limit"] > 0,
+        "profile": {
+            "bvn_last4": prof.bvn_last4, "bvn_verified_at": prof.bvn_verified_at, "bvn_phone_match": prof.bvn_phone_match,
+            "employment_type": prof.employment_type, "employer_name": prof.employer_name, "job_title": prof.job_title,
+            "work_email": prof.work_email, "cac_number": prof.cac_number,
+            "employment_verified_at": prof.employment_verified_at, "employment_method": prof.employment_method,
+            "employment_pending": bool(prof.employment_type and not prof.employment_verified_at),
+        },
+        "guarantor": {"full_name": g.full_name, "phone": f"••••{g.phone[-4:]}", "relationship": g.relationship_to_user,
+                      "status": g.status, "consented_at": g.consented_at,
+                      "amount_guaranteed": f"{flex.guaranteed_amount(db, user):.2f}"} if g else None,
+        "assessment": {
+            "id": str(a.id), "created_at": a.created_at, "expires_at": a.expires_at, "months_analysed": a.months_analysed,
+            "monthly_income": f"{a.monthly_income:.2f}", "income_source": a.income_source,
+            "monthly_debt": f"{a.monthly_debt:.2f}", "affordable_instalment": f"{a.affordable_instalment:.2f}",
+            "statement_limit": f"{a.statement_limit:.2f}", "score": a.score,
+            "reasons": a.metrics.get("reasons", []), "monthly_inflows": a.metrics.get("monthly_inflows", []),
+            "bank": {"name": a.bank_connection.bank_name, "account_last4": a.bank_connection.account_number_last4},
+        } if a else None,
+        "rules": {"tier1_max": str(r["tier1_max"]), "tier2_max": str(r["tier2_max"]), "lender_max": str(r["lender_max"]),
+                  "max_dti": str(r["max_dti"])},
+        "min_amount": f"{p.min_amount:.2f}", "tenors": list(p.tenors), "provider": p.name,
+        "disclosure": "Goods Flex financing is provided by a licensed lending partner, subject to approval. "
+                      "Your limit is calculated from your bank statement and verification; charges are shown before you accept.",
+    }
+
+
+def _has_overdue(db, user) -> bool:
+    return db.scalar(select(Installment.id).join(FinancingAgreement).join(BnplApplication).where(
+        BnplApplication.user_id == user.id, Installment.status == InstallmentStatus.OVERDUE).limit(1)) is not None
+
+
+def quote(db: Session, product: Product, amount: Decimal) -> list[dict]:
+    if not product.bnpl_enabled:
+        return []
+    return [o.as_dict() for o in get_financing_provider().quote(amount, date.today())]
+
+
+def apply(db: Session, user: User, *, product_id, quantity, negotiation_id, delivery_index, address, note,
+          tenor_months: int, idempotency_key: str | None) -> BnplApplication:
+    from sqlalchemy.exc import IntegrityError
+
+    from app.modules.bnpl import flex
+
+    # Idempotent retry of the same checkout attempt → return the existing application.
+    if idempotency_key:
+        prev = db.scalars(select(BnplApplication).join(Order, Order.id == BnplApplication.order_id).where(
+            Order.buyer_id == user.id, Order.idempotency_key == idempotency_key)).first()
+        if prev:
+            return prev
+    if _has_overdue(db, user):
+        raise AppError("Please clear overdue Goods Flex instalments before applying again", code="bnpl_overdue")
+    product = db.get(Product, product_id)
+    if not product:
+        from app.core.errors import NotFound
+
+        raise NotFound("Listing not found")
+    if not product.bnpl_enabled:
+        raise AppError("Goods Flex is not available for this listing", code="bnpl_unavailable")
+    q = orders.price_checkout(db, user, product, quantity, negotiation_id, delivery_index)
+    info = flex.ensure_can_apply(db, user, q["total"])  # one running plan + credit limit
+    assessment = info["assessment"]
+    order, _ = orders.create_checkout(db, user, product_id=product_id, quantity=quantity,
+                                      negotiation_id=negotiation_id, delivery_index=delivery_index, address=address,
+                                      note=note, idempotency_key=idempotency_key, payment_method=PaymentMethod.BNPL)
+    prof = flex.profile(db, user)
+    provider = get_financing_provider()
+    decision = provider.apply(
+        applicant={"user_id": str(user.id), "email": user.email, "phone": user.phone,
+                   "phone_verified": user.phone_verified, "bvn_verified": prof.bvn_verified_at is not None,
+                   "monthly_income": str(assessment.monthly_income), "monthly_debt": str(assessment.monthly_debt),
+                   "income_source": assessment.income_source, "goodsng_credit_limit": str(info["limit"]),
+                   "goodsng_score": assessment.score, "employment_type": prof.employment_type,
+                   "employment_verified": prof.employment_verified_at is not None},
+        amount=order.total, tenor_months=tenor_months, start=date.today(),
+    )
+    app_ = BnplApplication(
+        user_id=user.id, product_id=product_id, order_id=order.id, negotiation_id=negotiation_id,
+        provider=provider.name, provider_application_ref=decision.application_ref,
+        credit_decision_ref=decision.decision_ref, purchase_amount=order.total, tenor_months=tenor_months,
+        monthly_income_declared=prof.monthly_income_declared, employment_status=prof.employment_type,
+        status=BnplStatus.APPROVED if decision.approved else BnplStatus.DECLINED,
+        decline_reason=decision.reason, offer_terms=decision.option.as_dict() if decision.option else {},
+        offer_expires_at=utcnow() + timedelta(hours=24) if decision.approved else None,
+        assessment_id=assessment.id, credit_limit_at_application=info["limit"],
+    )
+    db.add(app_)
+    if not decision.approved:
+        o, esc = escrow.lock(db, order.id)
+        orders.cancel_unpaid(db, o, esc, reason="Goods Flex application declined")
+    notify(db, user.id, "bnpl_decision", "Goods Flex decision",
+           "Your Goods Flex application was approved. Review and accept the terms to continue."
+           if decision.approved else f"Your Goods Flex application was not approved: {decision.reason}",
+           link=f"/flex/applications/{app_.id}" if decision.approved else None)
+    try:
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        if flex.is_running_conflict(e):
+            raise AppError("You already have a Goods Flex plan running.", code="bnpl_plan_running", status_code=409) from e
+        raise
+    return app_
+
+
+def release_application(db: Session, a: BnplApplication, reason: str) -> None:
+    """Cancel an approved/accepted application that never got funded, and its unpaid order (frees the plan slot)."""
+    if a.status not in (BnplStatus.APPROVED, BnplStatus.ACCEPTED):
+        return
+    order = db.get(Order, a.order_id) if a.order_id else None
+    if order and order.status == "pending_payment":
+        o, esc = escrow.lock(db, order.id)
+        orders.cancel_unpaid(db, o, esc, reason=reason)
+    if order:
+        cancel_financing_for_order(db, order, reason)
+    a.status = BnplStatus.CANCELLED
+    db.flush()
+
+
+def withdraw(db: Session, user: User, application_id) -> BnplApplication:
+    a = db.query(BnplApplication).filter_by(id=application_id).with_for_update().one_or_none()
+    if not a or a.user_id != user.id:
+        from app.core.errors import NotFound
+
+        raise NotFound("Application not found")
+    if a.status not in (BnplStatus.APPROVED, BnplStatus.ACCEPTED):
+        raise AppError("Only applications that haven't been paid for can be withdrawn", code="cannot_withdraw")
+    release_application(db, a, "Withdrawn by customer")
+    db.commit()
+    return a
+
+
+def get_owned(db: Session, user: User, application_id) -> BnplApplication:
+    a = db.get(BnplApplication, application_id)
+    if not a or a.user_id != user.id:
+        raise NotFound("Application not found")
+    return a
+
+
+def accept(db: Session, user: User, application_id, ip: str) -> Payment:
+    a = db.query(BnplApplication).filter_by(id=application_id).with_for_update().one_or_none()
+    if not a or a.user_id != user.id:
+        raise NotFound("Application not found")
+    if a.status == BnplStatus.ACCEPTED:
+        pay = db.scalars(select(Payment).where(Payment.bnpl_application_id == a.id,
+                                               Payment.purpose == PaymentPurpose.BNPL_DOWN_PAYMENT)
+                         .order_by(Payment.created_at.desc())).first()
+        if pay and pay.status == "initialized":
+            return pay
+    if a.status != BnplStatus.APPROVED:
+        raise InvalidState("This application cannot be accepted", code="bnpl_not_approved")
+    if a.offer_expires_at and a.offer_expires_at < utcnow():
+        raise InvalidState("This financing offer has expired", code="bnpl_offer_expired")
+    order = db.get(Order, a.order_id)
+    if order.status != "pending_payment":
+        raise InvalidState("The order for this application is no longer open")
+    t = a.offer_terms
+    agreement_ref = get_financing_provider().accept(application_ref=a.provider_application_ref)
+    down = Decimal(t["down_payment"])
+    ag = FinancingAgreement(
+        application_id=a.id, provider_agreement_ref=agreement_ref, purchase_amount=a.purchase_amount,
+        down_payment=down, financed_amount=Decimal(t["financed_amount"]), financing_charge=Decimal(t["financing_charge"]),
+        total_payable=Decimal(t["total_payable"]), tenor_months=a.tenor_months, terms_snapshot=t, accepted_at=utcnow(),
+        accepted_ip=ip, outstanding_balance=Decimal(t["financed_amount"]) + Decimal(t["financing_charge"]),
+        status=BnplStatus.ACCEPTED,
+    )
+    db.add(ag)
+    db.flush()
+    for s in t["schedule"]:
+        db.add(Installment(agreement_id=ag.id, sequence=s["sequence"], due_date=date.fromisoformat(s["due_date"]),
+                           amount=Decimal(s["amount"])))
+    a.status = BnplStatus.ACCEPTED
+    pay = payments.create_payment(db, user=user, purpose=PaymentPurpose.BNPL_DOWN_PAYMENT, amount=down,
+                                  order_id=order.id, bnpl_application_id=a.id,
+                                  callback_path=f"/orders/{order.id}/payment", metadata={"order": order.order_number})
+    db.commit()
+    return pay
+
+
+@payments.on_success(PaymentPurpose.BNPL_DOWN_PAYMENT)
+def _down_paid(db: Session, payment: Payment) -> None:
+    a = db.query(BnplApplication).filter_by(id=payment.bnpl_application_id).with_for_update().one()
+    if a.status != BnplStatus.ACCEPTED:
+        return
+    ag = a.agreement
+    # Partner disburses the financed amount to the escrow partner (mock: immediate).
+    a.status = ag.status = BnplStatus.ACTIVE
+    order, esc = escrow.lock(db, a.order_id)
+    orders.on_order_funded(db, order, esc, payment)
+    seller = db.get(SellerProfile, order.seller_id)
+    notify(db, seller.user_id, "new_order", "Goods Flex order funded",
+           f"Order {order.order_number} is fully funded via Goods Flex.", link=f"/seller/orders/{order.id}")
+
+
+def pay_installment(db: Session, user: User, installment_id) -> Payment:
+    inst = db.query(Installment).filter_by(id=installment_id).with_for_update().one_or_none()
+    if not inst:
+        raise NotFound("Instalment not found")
+    ag = db.get(FinancingAgreement, inst.agreement_id)
+    if ag.application.user_id != user.id:
+        raise NotFound("Instalment not found")
+    if inst.status not in (InstallmentStatus.SCHEDULED, InstallmentStatus.OVERDUE, InstallmentStatus.FAILED):
+        raise InvalidState("This instalment is not payable")
+    if ag.status != BnplStatus.ACTIVE:
+        raise InvalidState("This plan is not active")
+    pay = payments.create_payment(db, user=user, purpose=PaymentPurpose.BNPL_INSTALLMENT,
+                                  amount=inst.amount - inst.amount_paid, installment_id=inst.id,
+                                  bnpl_application_id=ag.application_id, callback_path="/flex")
+    db.commit()
+    return pay
+
+
+@payments.on_success(PaymentPurpose.BNPL_INSTALLMENT)
+def _installment_paid(db: Session, payment: Payment) -> None:
+    inst = db.query(Installment).filter_by(id=payment.installment_id).with_for_update().one()
+    if inst.status == InstallmentStatus.PAID:
+        return
+    ag = db.query(FinancingAgreement).filter_by(id=inst.agreement_id).with_for_update().one()
+    inst.amount_paid += payment.amount
+    if inst.amount_paid >= inst.amount:
+        inst.status, inst.paid_at = InstallmentStatus.PAID, utcnow()
+    ag.outstanding_balance = max(ag.outstanding_balance - payment.amount, Decimal("0"))
+    db.add(Repayment(installment_id=inst.id, payment_id=payment.id, amount=payment.amount, status="success",
+                     created_at=utcnow()))
+    if all(i.status == InstallmentStatus.PAID for i in ag.installments):
+        ag.status = BnplStatus.COMPLETED
+        ag.application.status = BnplStatus.COMPLETED
+    notify(db, payment.user_id, "repayment_reminder", "Repayment received",
+           f"₦{payment.amount:,.2f} received for instalment {inst.sequence}. Outstanding: ₦{ag.outstanding_balance:,.2f}.",
+           link="/flex")
+
+
+@payments.on_failure(PaymentPurpose.BNPL_INSTALLMENT)
+def _installment_failed(db: Session, payment: Payment) -> None:
+    inst = db.get(Installment, payment.installment_id)
+    db.add(Repayment(installment_id=inst.id, payment_id=payment.id, amount=payment.amount, status="failed",
+                     created_at=utcnow()))
+    if inst.status == InstallmentStatus.SCHEDULED and inst.due_date < date.today():
+        inst.status = InstallmentStatus.OVERDUE
+    notify(db, payment.user_id, "repayment_reminder", "Repayment failed",
+           f"Your payment for instalment {inst.sequence} did not go through. Please try again.", link="/flex")
+
+
+def cancel_financing_for_order(db: Session, order: Order, reason: str) -> None:
+    a = db.scalars(select(BnplApplication).where(BnplApplication.order_id == order.id)).first()
+    if not a or a.status in (BnplStatus.CANCELLED, BnplStatus.DECLINED, BnplStatus.COMPLETED):
+        return
+    get_financing_provider().cancel(application_ref=a.provider_application_ref, reason=reason)
+    a.status = BnplStatus.CANCELLED
+    if a.agreement:
+        a.agreement.status = BnplStatus.CANCELLED
+        a.agreement.outstanding_balance = Decimal("0")
+        for i in a.agreement.installments:
+            if i.status != InstallmentStatus.PAID:
+                i.status = InstallmentStatus.CANCELLED
+
+
+def financing_summary_for_order(db: Session, order: Order, role: str) -> dict | None:
+    a = db.scalars(select(BnplApplication).where(BnplApplication.order_id == order.id)).first()
+    if not a:
+        return None
+    out = {"application_id": str(a.id), "status": a.status, "provider": a.provider,
+           "credit_decision_ref": a.credit_decision_ref if role != "seller" else None}
+    if role == "seller":
+        out["settlement"] = "Funded and held in escrow" if order.paid_at else "Awaiting buyer down payment"
+        return out
+    if a.agreement:
+        ag = a.agreement
+        out.update(down_payment=f"{ag.down_payment:.2f}", outstanding_balance=f"{ag.outstanding_balance:.2f}")
+    return out
+
+
+def agreement_out(ag: FinancingAgreement) -> dict:
+    a = ag.application
+    return {
+        "id": str(ag.id), "application_id": str(a.id), "order_id": str(a.order_id) if a.order_id else None,
+        "status": ag.status, "provider_agreement_ref": ag.provider_agreement_ref,
+        "purchase_amount": f"{ag.purchase_amount:.2f}", "down_payment": f"{ag.down_payment:.2f}",
+        "financed_amount": f"{ag.financed_amount:.2f}", "financing_charge": f"{ag.financing_charge:.2f}",
+        "total_payable": f"{ag.total_payable:.2f}", "outstanding_balance": f"{ag.outstanding_balance:.2f}",
+        "tenor_months": ag.tenor_months, "accepted_at": ag.accepted_at, "terms": ag.terms_snapshot,
+        "installments": [{"id": str(i.id), "sequence": i.sequence, "due_date": i.due_date, "amount": f"{i.amount:.2f}",
+                          "amount_paid": f"{i.amount_paid:.2f}", "status": i.status, "paid_at": i.paid_at}
+                         for i in ag.installments],
+    }
+
+
+def application_out(a: BnplApplication) -> dict:
+    return {"id": str(a.id), "status": a.status, "order_id": str(a.order_id) if a.order_id else None,
+            "product_id": str(a.product_id), "purchase_amount": f"{a.purchase_amount:.2f}",
+            "tenor_months": a.tenor_months, "decline_reason": a.decline_reason, "offer_terms": a.offer_terms,
+            "offer_expires_at": a.offer_expires_at, "credit_decision_ref": a.credit_decision_ref,
+            "provider": a.provider, "created_at": a.created_at,
+            "agreement": agreement_out(a.agreement) if a.agreement else None}
+
+
+# ---------------- jobs ----------------
+def mark_overdue_and_remind(db: Session) -> dict:
+    today = date.today()
+    overdue = 0
+    for inst in db.scalars(select(Installment).where(Installment.status == InstallmentStatus.SCHEDULED,
+                                                     Installment.due_date < today)).all():
+        inst.status = InstallmentStatus.OVERDUE
+        overdue += 1
+        ag = db.get(FinancingAgreement, inst.agreement_id)
+        notify(db, ag.application.user_id, "repayment_reminder", "Instalment overdue",
+               f"Instalment {inst.sequence} of ₦{inst.amount:,.2f} was due on {inst.due_date:%d %b}. Please pay now.",
+               link="/flex")
+    db.flush()  # the default check below must see the instalments just marked overdue
+    # 30+ days overdue → plan is in default (still counts as the customer's running plan).
+    for inst in db.scalars(select(Installment).where(Installment.status == InstallmentStatus.OVERDUE,
+                                                     Installment.due_date < today - timedelta(days=30))).all():
+        ag = db.get(FinancingAgreement, inst.agreement_id)
+        if ag.status == BnplStatus.ACTIVE:
+            ag.status = ag.application.status = BnplStatus.DEFAULTED
+    reminded = 0
+    soon = today + timedelta(days=3)
+    for inst in db.scalars(select(Installment).where(Installment.status == InstallmentStatus.SCHEDULED,
+                                                     Installment.due_date <= soon,
+                                                     Installment.reminder_sent_at.is_(None))).all():
+        ag = db.get(FinancingAgreement, inst.agreement_id)
+        if ag.status != BnplStatus.ACTIVE:
+            continue
+        inst.reminder_sent_at = utcnow()
+        reminded += 1
+        notify(db, ag.application.user_id, "repayment_reminder", "Upcoming Goods Flex instalment",
+               f"₦{inst.amount:,.2f} is due on {inst.due_date:%d %b %Y}.", link="/flex")
+    db.commit()
+    return {"overdue": overdue, "reminded": reminded}
+
+
+__all__ = ["Forbidden"]

@@ -1,0 +1,45 @@
+# Local infrastructure:          docker compose up -d db redis
+# Full stack (prod-like images): docker compose --profile app up --build
+services:
+  db:
+    image: postgres:17
+    environment: { POSTGRES_USER: goodsng, POSTGRES_PASSWORD: goodsng, POSTGRES_DB: goodsng_dev }
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U goodsng"], interval: 5s, retries: 10 }
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  api:
+    profiles: [app]
+    build: ./backend
+    env_file: ./backend/.env.example
+    environment:
+      DATABASE_URL: postgresql+psycopg://goodsng:goodsng@db/goodsng_dev
+      REDIS_URL: redis://redis:6379/0
+    ports: ["8000:8000"]
+    depends_on: { db: { condition: service_healthy }, redis: { condition: service_started } }
+  migrate:
+    profiles: [app]
+    build: ./backend
+    command: sh -c "alembic upgrade head && python -m app.seed --demo"
+    environment: { DATABASE_URL: "postgresql+psycopg://goodsng:goodsng@db/goodsng_dev" }
+    depends_on: { db: { condition: service_healthy } }
+  worker:
+    profiles: [app]
+    build: ./backend
+    command: python -m app.worker
+    environment:
+      DATABASE_URL: postgresql+psycopg://goodsng:goodsng@db/goodsng_dev
+      REDIS_URL: redis://redis:6379/0
+    depends_on: [api]
+  web:
+    profiles: [app]
+    build:
+      context: ./frontend
+      args: { API_INTERNAL_URL: "http://api:8000", NEXT_PUBLIC_SITE_URL: "http://localhost:3000" }
+    environment: { API_INTERNAL_URL: "http://api:8000" }
+    ports: ["3000:3000"]
+    depends_on: [api]
+volumes:
+  pgdata:

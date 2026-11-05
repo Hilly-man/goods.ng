@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+/* Goods.ng design tokens — emerald trust green + market amber */
+@theme {
+  --color-brand-50: #ecfdf4;
+  --color-brand-100: #d1fae4;
+  --color-brand-200: #a7f3cc;
+  --color-brand-300: #6ee7ac;
+  --color-brand-400: #34d388;
+  --color-brand-500: #10b86b;
+  --color-brand-600: #069456;
+  --color-brand-700: #057a48;
+  --color-brand-800: #08603b;
+  --color-brand-900: #084f33;
+  --color-brand-950: #022c1b;
+
+  --color-accent-400: #fbbf24;
+  --color-accent-500: #f59e0b;
+  --color-accent-600: #d97706;
+
+  --color-premium-500: #c79a1e;
+  --color-premium-600: #a87f12;
+
+  --color-ink: #0f1d17;
+  --color-muted: #5b6b64;
+  --color-line: #e3e9e6;
+  --color-canvas: #f3f6f4;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --radius-card: 0.875rem;
+  --shadow-card: 0 1px 2px rgb(15 29 23 / 0.06), 0 1px 3px rgb(15 29 23 / 0.04);
+  --shadow-pop: 0 10px 30px -10px rgb(15 29 23 / 0.25);
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-canvas text-ink antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+  input, select, textarea, button {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-3 sm:px-4 lg:px-6;
+  }
+  .card {
+    @apply rounded-[var(--radius-card)] bg-white shadow-[var(--shadow-card)] ring-1 ring-line/60;
+  }
+  .input {
+    @apply block w-full rounded-lg border border-line bg-white px-3 py-2.5 text-[15px] text-ink placeholder:text-muted/70 transition focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 disabled:bg-canvas disabled:text-muted;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-line bg-white px-3 py-1.5 text-sm text-ink transition hover:border-brand-600 hover:text-brand-700;
+  }
+  .chip-active {
+    @apply border-brand-600 bg-brand-50 text-brand-800;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .prose-page h2 {
+    @apply mt-8 mb-3 text-xl font-semibold text-ink;
+  }
+  .prose-page h3 {
+    @apply mt-6 mb-2 text-lg font-semibold text-ink;
+  }
+  .prose-page p, .prose-page li {
+    @apply leading-relaxed text-ink/85;
+  }
+  .prose-page ul {
+    @apply my-3 list-disc space-y-1.5 pl-5;
+  }
+  .prose-page ol {
+    @apply my-3 list-decimal space-y-1.5 pl-5;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #e8eeeb;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.6), transparent);
+  animation: shimmer 1.4s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}

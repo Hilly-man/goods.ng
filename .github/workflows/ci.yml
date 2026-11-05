@@ -1,0 +1,109 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres, POSTGRES_DB: goodsng_test }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    defaults: { run: { working-directory: backend } }
+    env:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost/goodsng_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --python 3.12
+      - run: uv run ruff check app tests
+      - run: uv run pytest tests --cov=app --cov-report=term-missing
+      - name: Migrations apply cleanly and round-trip
+        run: uv run alembic downgrade base && uv run alembic upgrade head
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+        env: { API_INTERNAL_URL: "http://localhost:8000" }
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres, POSTGRES_DB: goodsng_e2e }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/goodsng_e2e
+      ENVIRONMENT: development
+      API_INTERNAL_URL: http://localhost:8000
+      FRONTEND_URL: http://localhost:3001
+      NEXT_PUBLIC_SITE_URL: http://localhost:3001
+      BASE_URL: http://localhost:3001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
+
+      - name: Install backend
+        working-directory: backend
+        run: uv sync --python 3.12
+      - name: Migrate and seed demo data
+        working-directory: backend
+        run: |
+          uv run alembic upgrade head
+          uv run python -m app.seed --demo
+      - name: Start backend
+        working-directory: backend
+        run: |
+          nohup uv run uvicorn app.main:app --port 8000 >/tmp/backend.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://localhost:8000/health >/dev/null && exit 0; sleep 2; done
+          cat /tmp/backend.log; exit 1
+
+      - name: Install frontend
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+      - name: Build and start frontend
+        working-directory: frontend
+        run: |
+          pnpm build
+          nohup pnpm start -p 3001 >/tmp/frontend.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://localhost:3001 >/dev/null && exit 0; sleep 2; done
+          cat /tmp/frontend.log; exit 1
+
+      - name: Run Playwright
+        working-directory: frontend
+        run: pnpm test:e2e
+      - name: Upload traces and logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-debug
+          path: |
+            frontend/test-results
+            /tmp/backend.log
+            /tmp/frontend.log
+          if-no-files-found: ignore
