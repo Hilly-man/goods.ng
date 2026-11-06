@@ -94,45 +94,49 @@ def _load(data: bytes) -> Image.Image:
     return img.convert("RGB")
 
 
-def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+def _font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     try:
-        return ImageFont.truetype("DejaVuSans-Bold.ttf", size)
+        return ImageFont.truetype("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf", size)
     except OSError:
         return ImageFont.load_default(size=size)
 
 
 def _watermark(img: Image.Image, text: str) -> Image.Image:
-    """A single bold, centred seller/brand mark (also applied before the thumbnail resize)."""
+    """Centre “Business name” in bold followed by a lighter “Listed on Goods.ng”."""
+    suffix = "Listed on Goods.ng"
     text = text.strip()
     if not text:
         return img
+    name = text[: -len(suffix)].rstrip() if text.endswith(suffix) else text
     base = img.convert("RGBA")
     w, h = base.size
     size = max(18, min(w // 18, 54))
-    font = _font(size)
+    suffix_size = max(12, int(size * 0.78))
+    name_font, suffix_font = _font(size, bold=True), _font(suffix_size, bold=False)
     layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
 
-    max_width = int(w * 0.78)
-    lines: list[str] = []
-    line = ""
-    for word in text.split():
-        candidate = f"{line} {word}".strip()
-        if draw.textlength(candidate, font=font) <= max_width or not line:
-            line = candidate
-        else:
-            lines.append(line)
-            line = word
-    if line:
-        lines.append(line)
+    name_width = draw.textlength(name, font=name_font)
+    suffix_width = draw.textlength(suffix, font=suffix_font)
+    gap = size * 0.4
+    fill, stroke = (255, 255, 255, 110), (0, 0, 0, 90)
 
-    line_height = size + int(size * 0.35)
-    y = (h - line_height * len(lines)) / 2
-    for line in lines:
-        width = draw.textlength(line, font=font)
-        draw.text(((w - width) / 2, y), line, font=font, fill=(255, 255, 255, 110),
-                  stroke_width=max(2, size // 14), stroke_fill=(0, 0, 0, 90))
+    if name_width + gap + suffix_width <= w * 0.82:
+        x = (w - (name_width + gap + suffix_width)) / 2
+        y = (h - size) / 2
+        draw.text((x, y), name, font=name_font, fill=fill,
+                  stroke_width=max(2, size // 14), stroke_fill=stroke)
+        draw.text((x + name_width + gap, y + (size - suffix_size) * 0.7), suffix, font=suffix_font,
+                  fill=fill, stroke_width=max(1, suffix_size // 18), stroke_fill=stroke)
+    else:
+        line_height = size + int(size * 0.35)
+        total = line_height + suffix_size + int(suffix_size * 0.35)
+        y = (h - total) / 2
+        draw.text(((w - name_width) / 2, y), name, font=name_font, fill=fill,
+                  stroke_width=max(2, size // 14), stroke_fill=stroke)
         y += line_height
+        draw.text(((w - suffix_width) / 2, y), suffix, font=suffix_font, fill=fill,
+                  stroke_width=max(1, suffix_size // 18), stroke_fill=stroke)
 
     base.alpha_composite(layer)
     return base.convert("RGB")
