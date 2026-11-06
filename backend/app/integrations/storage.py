@@ -9,7 +9,7 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 
 from app.core.config import settings
 from app.core.errors import AppError
@@ -94,6 +94,36 @@ def _load(data: bytes) -> Image.Image:
     return img.convert("RGB")
 
 
+def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    try:
+        return ImageFont.truetype("DejaVuSans-Bold.ttf", size)
+    except OSError:
+        return ImageFont.load_default(size=size)
+
+
+def _watermark(img: Image.Image, text: str) -> Image.Image:
+    """Tile a diagonal seller/brand watermark across the image (also applied to the thumbnail)."""
+    text = text[:80].strip()
+    if not text:
+        return img
+    base = img.convert("RGBA")
+    w, h = base.size
+    size = max(16, w // 26)
+    font = _font(size)
+    layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    step_x, step_y = tw + size * 4, th + size * 6
+    for y in range(-h, h * 2, max(step_y, 1)):
+        for x in range(-w, w * 2, max(step_x, 1)):
+            draw.text((x, y), text, font=font, fill=(255, 255, 255, 80),
+                      stroke_width=max(1, size // 18), stroke_fill=(0, 0, 0, 55))
+    layer = layer.rotate(-30, resample=Image.BICUBIC, expand=False)
+    base.alpha_composite(layer)
+    return base.convert("RGB")
+
+
 def _encode(img: Image.Image, max_side: int, quality: int) -> tuple[bytes, int, int]:
     im = img.copy()
     im.thumbnail((max_side, max_side))
@@ -102,8 +132,10 @@ def _encode(img: Image.Image, max_side: int, quality: int) -> tuple[bytes, int, 
     return buf.getvalue(), im.width, im.height
 
 
-def store_image(data: bytes, folder: str) -> StoredImage:
+def store_image(data: bytes, folder: str, watermark: str | None = None) -> StoredImage:
     img = _load(data)
+    if watermark:
+        img = _watermark(img, watermark)
     storage = get_storage()
     key = f"{folder}/{uuid.uuid4().hex}"
     full, w, h = _encode(img, 1280, 80)

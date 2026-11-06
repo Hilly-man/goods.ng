@@ -6,7 +6,7 @@ Last updated: 5 November 2026.
 
 | Check | Result |
 |---|---|
-| Backend tests (pytest, real PostgreSQL) | **186 passed** |
+| Backend tests (pytest, real PostgreSQL) | **187 passed** |
 | Frontend unit tests (vitest) | **5 passed** |
 | E2E (Playwright, mobile viewport, production build) | **6 passed**: redesigned product page; full protected purchase lifecycle; negotiation → checkout at agreed price; direct-contact warning gate; mandatory-guarantor and one-running-plan rules; TOTP 2FA login challenge |
 | Security controls | TOTP 2FA with recovery codes and replay protection · trusted-proxy IP resolution · CSP and HSTS headers |
@@ -22,7 +22,7 @@ Last updated: 5 November 2026.
 | 1–3 | Requirements, architecture, project setup | Done |
 | 4 | Database (46 tables, constraints, partial unique indexes, integrity triggers) | Done |
 | 5 | Authentication (JWT + rotating refresh, OTP, lockout, reset) | Done |
-| 6 | Marketplace (categories, listings, images, full-text search, filters, favourites) | Done |
+| 6 | Marketplace (categories, listings, watermarked WebP images, full-text search, filters, favourites) | Done |
 | 7 | Seller management (profiles, dashboard, analytics, verification) | Done |
 | 8 | Premium subscriptions (plans, paid activation, featured credits, admin grants) | Done |
 | 9 | Messaging (product-linked chats, read receipts, unread counts, reports) | Done — polling, not WebSockets |

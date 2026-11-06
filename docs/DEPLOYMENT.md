@@ -17,7 +17,7 @@
 - **Database:** managed PostgreSQL 15+ with PITR enabled, private networking and TLS.
 - **Cache:** managed Redis (required in production).
 - **Storage:** S3-compatible bucket (`STORAGE_BACKEND=s3`). Public images go behind a CDN (`MEDIA_BASE_URL`). KYC documents live under the `private/` prefix with **no public access**, server-side encryption, and access via short-lived signed URLs only.
-- **Upload limits:** each input is capped by `MAX_UPLOAD_MB` (8 MB), decoded with Pillow (40 MP decompression-bomb guard), and re-encoded to WebP at 1280px (thumbnail 400px). `MAX_IMAGES_PER_SELLER` (default 200) caps total listing photos per seller, so a single account cannot fill the bucket. Deleted listings/folders should be purged on a schedule.
+- **Upload limits:** each input is capped by `MAX_UPLOAD_MB` (8 MB), decoded with Pillow (40 MP decompression-bomb guard), and re-encoded to WebP at 1280px (thumbnail 400px). Listing photos are watermarked with the seller's business name and **Goods.ng** before encoding. `MAX_IMAGES_PER_SELLER` (default 200) caps total listing photos per seller, and the worker purges soft-deleted listings after `DELETED_LISTING_RETENTION_DAYS` (default 30).
 - **Secrets:** use a secret manager (not committed `.env` files). `DATA_ENCRYPTION_KEY` must be backed up separately — losing it makes encrypted KYC identifiers unreadable.
 
 ## Provider configuration (Goods Flex)
