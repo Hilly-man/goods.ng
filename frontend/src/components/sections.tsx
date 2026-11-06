@@ -49,11 +49,11 @@ export function CategorySidebar({ categories }: { categories: Category[] }) {
 
 export function CategoryTiles({ categories }: { categories: Category[] }) {
   return (
-    <nav aria-label="Categories" className="scrollbar-none -mx-3 grid auto-cols-[76px] grid-flow-col grid-rows-2 gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-6 sm:grid-rows-none sm:px-0">
+    <nav aria-label="Categories" className="grid grid-cols-4 gap-x-1 gap-y-3 sm:grid-cols-6 sm:gap-2">
       {byListings(categories).map((c) => (
         <Link key={c.id} href={`/c/${c.slug}`} className="flex flex-col items-center gap-1.5 rounded-xl p-1.5 text-center hover:bg-white">
-          <span className={`grid size-14 place-items-center rounded-2xl ${tintFor(c.slug)}`}>
-            <CategoryIcon name={c.icon} className="size-6" />
+          <span className={`grid size-12 place-items-center rounded-2xl sm:size-14 ${tintFor(c.slug)}`}>
+            <CategoryIcon name={c.icon} className="size-5 sm:size-6" />
           </span>
           <span className="line-clamp-2 text-[11px] font-medium leading-tight">{c.name}</span>
         </Link>

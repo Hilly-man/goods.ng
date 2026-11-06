@@ -24,7 +24,7 @@ export default function HomePage() {
         </aside>
         <div className="min-w-0 space-y-8">
           <div className="lg:hidden">
-            <Suspense fallback={<div className="skeleton h-44 rounded-xl" />}>
+            <Suspense fallback={<div className="skeleton h-[500px] rounded-xl" />}>
               <Categories variant="tiles" />
             </Suspense>
           </div>
