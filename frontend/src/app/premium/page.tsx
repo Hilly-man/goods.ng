@@ -41,7 +41,7 @@ export default function Page() {
           <Plans />
         </Suspense>
       </div>
-      <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-muted">Premium status is a paid subscription and is separate from identity or business verification. Premium features activate only after your payment is verified with our payment provider.</p>
+      <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-muted">Premium status is a paid subscription and is separate from identity or business verification. Premium features activate only after your payment is verified with our payment provider. Premium listings that meet our quality bar may also be promoted in Top spots and advertised by Goods.ng on Google and Facebook/Instagram at no extra cost.</p>
     </div>
   );
 }

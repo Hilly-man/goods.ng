@@ -6,13 +6,15 @@ import clsx from "clsx";
 import { Heart, Home, MessageCircle, Plus, User } from "lucide-react";
 import { useAuth } from "./auth-provider";
 import { useCounts } from "./header";
+import { useIsAdminArea } from "@/lib/admin-area";
 
 /** Thumb-reachable bottom navigation for phones — the primary way most Nigerian users browse. */
 export function MobileNav() {
   const pathname = usePathname();
   const { user } = useAuth();
   const counts = useCounts();
-  if (pathname.startsWith("/admin") || pathname.startsWith("/messages/") || pathname.startsWith("/item/")) return null;
+  const adminArea = useIsAdminArea();
+  if (adminArea || pathname.startsWith("/messages/") || pathname.startsWith("/item/")) return null;
   const items = [
     { href: "/", label: "Home", icon: Home, active: pathname === "/" },
     { href: "/saved", label: "Saved", icon: Heart, active: pathname.startsWith("/saved") },
@@ -23,7 +25,7 @@ export function MobileNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      className="site-mobile-nav fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
       <ul className="grid h-16 grid-cols-5">
         {items.map((it, i) =>

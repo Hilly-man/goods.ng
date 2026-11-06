@@ -4,6 +4,10 @@ import uuid
 from decimal import Decimal
 
 os.environ["ENVIRONMENT"] = "test"
+# Captcha is exercised explicitly in test_captcha.py; everywhere else sign-in stays one call.
+os.environ["CAPTCHA_PROVIDER"] = "off"
+# Real per-action limits in tests, whatever the local .env says.
+os.environ["RATE_LIMIT_MULTIPLIER"] = "1"
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://localhost/goodsng_test")
 os.environ["LOCAL_MEDIA_DIR"] = "/tmp/goodsng-test-media"
 os.environ["RATE_LIMIT_PER_MINUTE"] = "100000"
@@ -148,7 +152,7 @@ def make_admin(client, db):
 
     def _make(permissions: list[str] | None = None, super_admin=False) -> Api:
         email = f"admin{uuid.uuid4().hex[:8]}@goods.ng"
-        u = User(email=email, full_name="Admin", password_hash=hash_password(PASSWORD),
+        u = User(email=email, full_name="Admin", password_hash=hash_password(PASSWORD), account_type="staff",
                  role=UserRole.SUPER_ADMIN if super_admin else UserRole.ADMIN, admin_permissions=permissions or [])
         u.profile = Profile()
         db.add(u)

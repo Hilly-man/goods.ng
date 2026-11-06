@@ -142,9 +142,9 @@ function Landmarks() {
  * Full-width footer panorama: sun, Zuma Rock and savannah hills behind; the landmark silhouettes in
  * front, framed by palms and thatched huts; then a kente-inspired band into the footer.
  */
-export function AfricaSkyline() {
+export function AfricaSkyline({ className = "mt-16" }: { className?: string }) {
   return (
-    <div aria-hidden className="relative mt-16 select-none">
+    <div aria-hidden className={`relative select-none ${className}`}>
       <svg viewBox="0 0 1440 240" preserveAspectRatio="xMidYMax slice" className="block h-32 w-full sm:h-44 lg:h-56" fill={INK}>
         <defs>
           <linearGradient id="sky-sun" x1="0" y1="0" x2="0" y2="1">

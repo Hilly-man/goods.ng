@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
+import { TrackEvent } from "@/components/consent";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { CalendarDays, ChevronRight, Eye, MapPin, Star, Truck } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarDays, ChevronRight, Eye, MapPin, Smile, Star, Store } from "lucide-react";
 import { NotFoundError, serverGet, SITE_URL } from "@/lib/server-api";
 import type { ProductCard, ProductDetail } from "@/lib/types";
-import { CONDITION_LABEL, date, naira, timeAgo, VERIFICATION_LABEL } from "@/lib/format";
+import { CONDITION_LABEL, date, isVerified, naira, timeAgo, VERIFICATION_LABEL } from "@/lib/format";
 import { Gallery } from "@/components/gallery";
 import { ProductActions } from "@/components/product-actions";
+import { ProductSpecs } from "@/components/product-specs";
+import { ShareButtons } from "@/components/share-buttons";
+import { FavouriteButton } from "@/components/favourite-button";
+import { TrackSignal } from "@/components/recommended";
 import { ProductGrid } from "@/components/product-card";
 import { PremiumBadge, VerifiedBadge } from "@/components/badges";
 import { SectionHeader } from "@/components/sections";
@@ -68,7 +73,9 @@ async function Content({ params }: Params) {
   return (
     <>
       <JsonLd p={p} />
-      <nav aria-label="Breadcrumb" className="mb-3 flex flex-wrap items-center gap-1 text-xs text-muted">
+      <TrackSignal kind="view" product_slug={p.slug} />
+      <TrackEvent name="view_item" items={[{ id: p.id, price: p.price, name: p.title }]} value={Number(p.price)} />
+      <nav aria-label="Breadcrumb" className="mb-2 flex flex-wrap items-center gap-1 text-xs text-muted">
         <Link href="/" className="hover:text-brand-700">Home</Link>
         {p.category_path.map((c) => (
           <span key={c.id} className="inline-flex items-center gap-1">
@@ -83,46 +90,86 @@ async function Content({ params }: Params) {
           </span>
         )}
       </nav>
-      <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-4">
-          <Gallery images={p.images} title={p.title} categorySlug={p.category.slug} />
-          <section className="card p-4 sm:p-5">
-            <h1 className="text-lg font-bold leading-snug sm:text-2xl">{p.title}</h1>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-              <span className="inline-flex items-center gap-1"><MapPin className="size-3.5" />{p.city}, {p.state}</span>
-              <span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5" />Posted <time suppressHydrationWarning>{timeAgo(p.published_at ?? p.created_at)}</time></span>
-              <span className="inline-flex items-center gap-1"><Eye className="size-3.5" />{p.views_count.toLocaleString()} views</span>
+          <div className="relative">
+            <Gallery images={p.images} title={p.title} categorySlug={p.category.slug} />
+            <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+              {s.is_premium && <span className="rounded-md bg-accent-500 px-2 py-1 text-[11px] font-bold text-ink shadow-sm">Premium</span>}
+              {isVerified(s.verification_level) && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-white/95 px-2 py-1 text-[11px] font-semibold text-brand-800 shadow-sm">
+                  <BadgeCheck className="size-3.5" /> Verified
+                </span>
+              )}
             </div>
-            <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-line py-4 text-sm sm:grid-cols-4">
-              <div><dt className="text-xs text-muted">Condition</dt><dd className="font-semibold">{CONDITION_LABEL[p.condition]}</dd></div>
-              {p.brand && <div><dt className="text-xs text-muted">Brand</dt><dd className="font-semibold">{p.brand}</dd></div>}
-              {p.model && <div><dt className="text-xs text-muted">Model</dt><dd className="font-semibold">{p.model}</dd></div>}
-              <div><dt className="text-xs text-muted">Availability</dt><dd className="font-semibold">{p.quantity > 0 ? `${p.quantity} in stock` : "Out of stock"}</dd></div>
-            </dl>
-            <h2 className="mt-4 font-semibold">Description</h2>
-            <p className="mt-1.5 whitespace-pre-line text-[15px] leading-relaxed text-ink/85">{p.description}</p>
-          </section>
-          <section className="card p-4 sm:p-5">
-            <h2 className="flex items-center gap-2 font-semibold"><Truck className="size-5 text-brand-700" /> Delivery options</h2>
-            <ul className="mt-3 divide-y divide-line">
-              {p.delivery_options.map((o, i) => (
-                <li key={i} className="flex items-center justify-between py-2.5 text-sm">
-                  <span>{o.label}<span className="block text-xs text-muted">{o.eta_days ? `About ${o.eta_days} day${o.eta_days > 1 ? "s" : ""}` : "Same day"}</span></span>
-                  <span className="font-semibold">{Number(o.fee) === 0 ? "Free" : naira(o.fee)}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
+            <div className="absolute right-3 top-3">
+              <FavouriteButton productId={p.id} initial={p.is_favourite} />
+            </div>
+          </div>
+
+          <article className="overflow-hidden rounded-2xl border border-line bg-white">
+            <header className="p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h1 className="text-xl font-extrabold leading-tight tracking-tight sm:text-3xl">{p.title}</h1>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                    {p.is_featured && <span className="rounded bg-brand-50 px-1.5 py-0.5 font-semibold text-brand-700">Promoted</span>}
+                    <span className="inline-flex items-center gap-1"><MapPin className="size-3.5" />{p.city}, {p.state}</span>
+                    <span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5" />Posted <time suppressHydrationWarning>{timeAgo(p.published_at ?? p.created_at)}</time></span>
+                    <span className="inline-flex items-center gap-1 sm:hidden"><Eye className="size-3.5" />{p.views_count.toLocaleString()} views</span>
+                  </div>
+                </div>
+                <span className="hidden shrink-0 items-center gap-1 text-xs text-muted sm:flex"><Eye className="size-3.5" />{p.views_count.toLocaleString()} views</span>
+              </div>
+            </header>
+
+            <section className="border-t border-line px-4 py-4 sm:px-5">
+              <ProductSpecs items={[
+                { label: "Condition", value: CONDITION_LABEL[p.condition] },
+                ...(p.brand ? [{ label: "Brand", value: p.brand }] : []),
+                ...(p.model ? [{ label: "Model", value: p.model }] : []),
+                { label: "Category", value: p.category.name },
+                ...(p.subcategory ? [{ label: "Subcategory", value: p.subcategory.name }] : []),
+                { label: "Availability", value: p.quantity > 0 ? `${p.quantity} in stock` : "Out of stock" },
+                { label: "Delivery", value: p.delivery_options.length ? p.delivery_options.map((o) => `${o.label}${Number(o.fee) ? ` · ${naira(o.fee)}` : " · Free"}`).join("\n") : "Pickup only" },
+                { label: "Protected Checkout", value: p.protected_checkout_enabled ? "Yes — escrow protected" : "Not available" },
+                { label: "Goods Flex", value: p.bnpl_enabled ? "Available" : "Not available" },
+                { label: "Listed", value: date(p.published_at ?? p.created_at) },
+              ]} />
+            </section>
+
+            <section className="border-t border-line px-4 py-4 sm:px-5">
+              <h2 className="flex flex-wrap items-center gap-2 font-semibold">
+                <Store className="size-5 text-brand-700" /> Store location
+                <VerifiedBadge level={s.verification_level} />
+              </h2>
+              <p className="mt-2 flex items-center gap-1.5 text-sm font-medium"><MapPin className="size-4 text-muted" />{s.city}, {s.state}</p>
+              <p className="mt-1 text-sm text-muted">Member since {date(s.member_since)} · {s.completed_sales} completed sales</p>
+              <Link href={`/store/${s.slug}`} className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">Visit store <ArrowRight className="size-4" /></Link>
+            </section>
+
+            <section className="border-t border-line px-4 py-4 sm:px-5">
+              <h2 className="font-semibold">Description</h2>
+              <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed text-ink/85">{p.description}</p>
+              <ShareButtons url={`${SITE_URL}/item/${p.slug}`} title={p.title} />
+            </section>
+
+            <div className="border-t border-line px-4 py-4 sm:px-5">
+              <ProductActions p={p} variant="inline" recordView={false} />
+            </div>
+          </article>
         </div>
-        <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-          <div id="actions" className="card scroll-mt-20 p-4 sm:p-5">
-            <div className="text-2xl font-extrabold text-brand-800 sm:text-3xl">{naira(p.price)}</div>
-            <div className="mt-1 flex gap-1.5 text-xs">
-              {p.negotiable ? <span className="rounded bg-brand-50 px-2 py-0.5 font-semibold text-brand-800">Negotiable</span> : <span className="rounded bg-canvas px-2 py-0.5 font-semibold text-muted">Fixed price</span>}
+
+        <aside className="space-y-3 lg:sticky lg:top-20 lg:self-start">
+          <div id="actions" className="scroll-mt-20 rounded-2xl border border-line bg-white p-4 sm:p-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <div className="text-2xl font-extrabold text-brand-800 sm:text-3xl">{naira(p.price)}</div>
+              <span className="rounded bg-canvas px-2 py-0.5 text-[11px] font-semibold text-muted">{p.negotiable ? "Negotiable" : "Fixed price"}</span>
             </div>
             <div className="mt-4"><ProductActions p={p} /></div>
           </div>
-          <Link href={`/store/${s.slug}`} className="card block p-4 hover:shadow-[var(--shadow-pop)]">
+
+          <Link href={`/store/${s.slug}`} className="block rounded-2xl border border-line bg-white p-4 transition hover:shadow-[var(--shadow-pop)]">
             <div className="flex items-center gap-3">
               <span className={`grid size-12 shrink-0 place-items-center overflow-hidden rounded-full text-lg font-bold ${tintFor(s.slug)}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -139,23 +186,36 @@ async function Content({ params }: Params) {
             <div className="mt-3 flex flex-wrap gap-1.5">
               {s.is_premium && <PremiumBadge />}
               <VerifiedBadge level={s.verification_level} />
-              {!s.verification_level.endsWith("_verified") || s.verification_level === "phone_verified" ? (
-                <span className="rounded-full bg-canvas px-2 py-0.5 text-[11px] text-muted">{VERIFICATION_LABEL[s.verification_level]}</span>
-              ) : null}
+              {!isVerified(s.verification_level) && <span className="rounded-full bg-canvas px-2 py-0.5 text-[11px] text-muted">{VERIFICATION_LABEL[s.verification_level]}</span>}
             </div>
             <p className="mt-2 text-xs text-muted">Member since {date(s.member_since)} · {s.city}, {s.state}</p>
             <span className="mt-2 inline-block text-sm font-semibold text-brand-700">Visit store →</span>
           </Link>
-          <div className="card p-4 text-sm">
+
+          <Link href={`/store/${s.slug}#reviews`} className="flex items-center gap-2 rounded-2xl border border-line bg-white p-4 text-sm transition hover:border-brand-300">
+            <Smile className="size-5 text-accent-500" />
+            <span className="font-medium">{s.rating_count > 0 ? `${Number(s.rating_avg).toFixed(1)} rating · ${s.rating_count} reviews` : "No reviews yet"}</span>
+            <span className="ml-auto inline-flex items-center gap-1 font-semibold text-brand-700">View <ChevronRight className="size-4" /></span>
+          </Link>
+
+          <div className="rounded-2xl border border-line bg-white p-4 text-sm">
             <h3 className="font-semibold">Safety tips</h3>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-muted">
               <li>Pay with Protected Checkout — never send money upfront outside Goods.ng.</li>
               <li>Inspect the item before confirming delivery.</li>
               <li>Meet in a safe, public place for pickups.</li>
+              {p.delivery_options.length > 0 && <li>Confirm the delivery fee and timeline with the seller.</li>}
             </ul>
           </div>
+
+          <Link href="/sell" className="block rounded-2xl border border-brand-200 bg-white p-3 text-center text-sm font-semibold text-brand-700 transition hover:border-brand-500">
+            Post an ad like this
+          </Link>
         </aside>
       </div>
+      <Suspense>
+        <TrustedSellers slug={p.slug} sold={p.status !== "active" || p.quantity <= 0} />
+      </Suspense>
       <Suspense>
         <Similar slug={p.slug} />
       </Suspense>
@@ -171,6 +231,23 @@ async function Content({ params }: Params) {
         )}
       </div>
     </>
+  );
+}
+
+/** Promoted block (Premium sellers' quality-checked listings from other sellers) — most useful when this item is sold. */
+async function TrustedSellers({ slug, sold }: { slug: string; sold: boolean }) {
+  const items = await serverGet<ProductCard[]>(`/products/${slug}/sponsored`).catch(() => [] as ProductCard[]);
+  if (!items.length) return null;
+  return (
+    <section className="mt-8" aria-labelledby="trusted-sellers">
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div>
+          <h2 id="trusted-sellers" className="text-lg font-bold tracking-tight sm:text-xl">{sold ? "This item is sold — you may like these" : "You may also like"}</h2>
+          <p className="text-sm text-muted">Top picks from verified sellers</p>
+        </div>
+      </div>
+      <ProductGrid items={items} placement="item" />
+    </section>
   );
 }
 

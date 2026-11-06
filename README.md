@@ -41,7 +41,7 @@ API docs: http://localhost:8000/docs
 ## Tests
 
 ```bash
-cd backend && uv run pytest                 # 97 API/integration tests against real PostgreSQL
+cd backend && uv run pytest                 # 186 API/integration tests against real PostgreSQL
 cd frontend && pnpm test                    # unit tests (money formatting, redirects)
 cd frontend && pnpm build && pnpm start -p 3001 && pnpm test:e2e   # Playwright E2E (needs backend + demo seed)
 cd backend && uv run python perf/smoke.py   # load smoke test of public read paths

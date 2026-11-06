@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { byListings } from "@/lib/format";
+import { TrackSignal } from "@/components/recommended";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -8,7 +10,7 @@ import { ListingResults, ResultsSkeleton, type SP } from "@/components/listing-r
 
 type Cat = {
   id: string; name: string; slug: string; description: string | null;
-  parent: { name: string; slug: string } | null; children: { name: string; slug: string }[];
+  parent: { name: string; slug: string } | null; children: { name: string; slug: string; listing_count: number }[];
 };
 
 async function getCategory(slug: string) {
@@ -35,6 +37,7 @@ async function Content({ params, searchParams }: { params: Promise<{ slug: strin
   const c = await getCategory(slug);
   return (
     <>
+      <TrackSignal kind="view" category_slug={c.slug} query={typeof sp.q === "string" ? sp.q : undefined} />
       <nav aria-label="Breadcrumb" className="mb-2 flex items-center gap-1 text-xs text-muted">
         <Link href="/" className="hover:text-brand-700">Home</Link>
         <ChevronRight className="size-3" />
@@ -51,7 +54,7 @@ async function Content({ params, searchParams }: { params: Promise<{ slug: strin
       </h1>
       {c.children.length > 0 && (
         <div className="scrollbar-none -mx-3 mt-3 flex gap-2 overflow-x-auto px-3 pb-1 lg:hidden">
-          {c.children.map((ch) => (
+          {byListings(c.children).map((ch) => (
             <Link key={ch.slug} href={`/c/${ch.slug}`} className="chip shrink-0">{ch.name}</Link>
           ))}
         </div>

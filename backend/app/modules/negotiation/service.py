@@ -88,6 +88,9 @@ def _new_offer(neg, by, user, amount, note) -> Offer:
 
 
 def start(db: Session, buyer: User, product_id, amount: Decimal, note: str | None) -> Negotiation:
+    from app.core.deps import ensure_customer
+
+    ensure_customer(buyer)
     product = db.query(Product).filter_by(id=product_id).with_for_update().one_or_none()
     if not product or product.deleted_at or product.status != ProductStatus.ACTIVE:
         raise NotFound("Listing not available")

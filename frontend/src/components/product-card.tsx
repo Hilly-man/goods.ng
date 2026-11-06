@@ -4,8 +4,10 @@ import { MapPin, Images } from "lucide-react";
 import type { ProductCard as P } from "@/lib/types";
 import { CONDITION_LABEL, naira, timeAgo } from "@/lib/format";
 import { CategoryIcon, ROOT_CATEGORY_ICON, tintFor } from "./icons";
-import { PremiumBadge, VerifiedBadge } from "./badges";
+import { VerifiedBadge } from "./badges";
 import { FavouriteButton } from "./favourite-button";
+import { AdTracker, SponsoredLabel } from "./ad-tracker";
+import type { AdPlacement } from "@/lib/ads";
 
 export function ProductThumb({
   src,
@@ -40,13 +42,14 @@ export function ProductThumb({
   );
 }
 
-export function ProductCard({ p, eager, compact }: { p: P; eager?: boolean; compact?: boolean }) {
+export function ProductCard({ p, eager, compact, placement = "search" }: { p: P; eager?: boolean; compact?: boolean; placement?: AdPlacement }) {
   return (
     <article className="group card relative flex flex-col overflow-hidden transition hover:shadow-[var(--shadow-pop)]">
       <Link href={`/item/${p.slug}`} className="relative block aspect-[4/3] overflow-hidden bg-canvas">
         <ProductThumb src={p.thumb_url} alt={p.title} categorySlug={p.category.slug} eager={eager}
                       className="transition duration-300 group-hover:scale-[1.03]" />
         <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+          {p.sponsored && <SponsoredLabel />}
           {p.is_featured && <span className="rounded bg-accent-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink">Featured</span>}
           {p.bnpl_enabled && <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-bold text-white">Flex</span>}
         </div>
@@ -57,6 +60,7 @@ export function ProductCard({ p, eager, compact }: { p: P; eager?: boolean; comp
           </span>
         )}
       </Link>
+      {p.sponsored && <AdTracker productId={p.id} placement={placement} />}
       <FavouriteButton productId={p.id} initial={p.is_favourite} className={clsx("absolute right-2 top-2", compact && "max-sm:right-1 max-sm:top-1 max-sm:size-7")} />
       <div className={clsx("flex flex-1 flex-col", compact ? "p-2 sm:p-3" : "p-2.5 sm:p-3")}>
         <div className={clsx("font-bold text-brand-800 sm:text-base", compact ? "text-[13px]" : "text-[15px]")}>{naira(p.price)}</div>
@@ -78,7 +82,6 @@ export function ProductCard({ p, eager, compact }: { p: P; eager?: boolean; comp
         </div>
         {(p.seller.is_premium || p.seller.verification_level.endsWith("_verified")) && (
           <div className={clsx("mt-1.5 gap-1", compact ? "hidden sm:flex" : "flex")}>
-            {p.seller.is_premium && <PremiumBadge compact />}
             <VerifiedBadge level={p.seller.verification_level} compact />
           </div>
         )}
@@ -87,11 +90,11 @@ export function ProductCard({ p, eager, compact }: { p: P; eager?: boolean; comp
   );
 }
 
-export function ProductGrid({ items, eagerCount = 0 }: { items: P[]; eagerCount?: number }) {
+export function ProductGrid({ items, eagerCount = 0, placement }: { items: P[]; eagerCount?: number; placement?: AdPlacement }) {
   return (
     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 xl:grid-cols-5">
       {items.map((p, i) => (
-        <ProductCard key={p.id} p={p} eager={i < eagerCount} />
+        <ProductCard key={p.id} p={p} eager={i < eagerCount} placement={placement} />
       ))}
     </div>
   );

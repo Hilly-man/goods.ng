@@ -27,6 +27,10 @@ export default function Page() {
       </ul>
       <h2>Sharing</h2>
       <p>We share data only with service providers needed to run Goods.ng (payment, escrow, lending, SMS/email and hosting partners), with the other party to a transaction (e.g. your delivery address with the seller after payment), or where required by law. Goods Flex applications are shared with our lending partner only with your consent.</p>
+      <h2 id="cookies">Cookies &amp; advertising</h2>
+      <p><b>Necessary cookies</b> keep you signed in, protect your account (for example the security check on sign-in) and remember your choices. They are always on.</p>
+      <p><b>Marketing cookies</b> are only used if you choose &quot;Accept all&quot; (or tick Marketing). They let Meta (Facebook/Instagram) and Google measure our ads — for example that someone who clicked an ad viewed an item, contacted a seller or bought it — and show you relevant Goods.ng listings on their platforms. When you buy with marketing cookies accepted, we may send Meta a purchase notice from our servers containing the order value, product IDs and a one-way-hashed (not readable) email and phone number, so the same purchase isn&apos;t double-counted.</p>
+      <p>You can change your choice at any time with <b>Cookie settings</b> at the bottom of every page. We also record which site sent you to Goods.ng (for example a Google search or a Facebook post) to recommend relevant listings; you can clear this from &quot;Recommended for you&quot;.</p>
       <h2>Your rights</h2>
       <p>You can access, correct or delete your data, and object to certain processing, by contacting privacy@goods.ng. Some records (e.g. financial transactions) must be kept to meet legal obligations.</p>
       <h2>Security</h2>

@@ -10,9 +10,11 @@ from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.cache import cache
+from app.core.config import settings
 from app.core.errors import AppError, Forbidden, NotFound
 from app.core.security import clean_text
 from app.core.time import utcnow
+from app.integrations.storage import delete_stored_image
 from app.models import Category, Favourite, PlatformSetting, Product, ProductImage, ProductView, SellerProfile
 from app.models.enums import ProductStatus, VerificationLevel
 from app.modules.categories.router import descendant_ids
@@ -191,21 +193,24 @@ def search(db: Session, *, sort="relevance", **filters):
     rank = None
     if f["q"] and (tsq := build_tsquery(f["q"])):
         rank = func.ts_rank(Product.search_vector, func.to_tsquery("english", tsq))
-    premium_expr = premium_exists_for(Product.seller_id)
     featured = case((and_(Product.is_featured.is_(True),
                           or_(Product.featured_until.is_(None), Product.featured_until > func.now())), 1), else_=0)
+    # Freshness: a Premium "bump" counts as fresh, without changing the real posted date shown to buyers.
+    fresh = func.coalesce(Product.bumped_at, Product.published_at, Product.created_at)
     if sort == "newest":
-        stmt = stmt.order_by(desc(Product.published_at), desc(Product.created_at))
+        stmt = stmt.order_by(desc(fresh), desc(Product.created_at))
     elif sort == "price_asc":
         stmt = stmt.order_by(Product.price, desc(Product.created_at))
     elif sort == "price_desc":
         stmt = stmt.order_by(desc(Product.price), desc(Product.created_at))
     else:
-        # Relevance: featured, then premium sellers get priority visibility, then text rank, then recency.
+        # Relevance: Featured listings, then Premium sellers ("priority search visibility" they pay for),
+        # then text match, then freshness. Extra promoted slots (tagged "TOP") come from ads/service.py.
+        premium_expr = premium_exists_for(Product.seller_id)
         order = [desc(featured), desc(case((premium_expr, 1), else_=0))]
         if rank is not None:
             order.append(desc(rank))
-        order.append(desc(Product.created_at))
+        order.append(desc(fresh))
         stmt = stmt.order_by(*order)
     return stmt
 
@@ -410,10 +415,25 @@ def delete_product(db: Session, seller: SellerProfile, product_id) -> None:
     cache.invalidate("feed:")
 
 
+def seller_image_count(db: Session, seller_id) -> int:
+    """All listing photos, including those on soft-deleted products (their files still occupy storage)."""
+    return db.scalar(select(func.count()).select_from(ProductImage).join(Product).where(
+        Product.seller_id == seller_id)) or 0
+
+
+def ensure_image_capacity(db: Session, seller: SellerProfile, count: int) -> None:
+    used = seller_image_count(db, seller.id)
+    limit = settings.max_images_per_seller
+    if used + count > limit:
+        raise AppError(f"Your photo limit is full ({used}/{limit}). Delete photos or listings to free space.",
+                       code="seller_image_limit", details={"used": used, "limit": limit})
+
+
 def add_images(db: Session, seller: SellerProfile, product_id, stored: list) -> Product:
     p = get_owned(db, seller, product_id)
     if len(p.images) + len(stored) > MAX_IMAGES:
         raise AppError(f"A listing can have at most {MAX_IMAGES} photos", code="too_many_images")
+    ensure_image_capacity(db, seller, len(stored))
     start = len(p.images)
     for i, s in enumerate(stored):
         p.images.append(ProductImage(url=s.url, thumb_url=s.thumb_url, storage_key=s.key, width=s.width,
@@ -421,6 +441,24 @@ def add_images(db: Session, seller: SellerProfile, product_id, stored: list) -> 
     db.commit()
     cache.invalidate("feed:")
     return p
+
+
+def purge_deleted_listings(db: Session, retention_days: int | None = None) -> dict:
+    """Hard-delete listings that have been soft-deleted past the retention window and remove their files."""
+    days = settings.deleted_listing_retention_days if retention_days is None else retention_days
+    cutoff = utcnow() - timedelta(days=days)
+    products = db.scalars(select(Product).where(
+        Product.deleted_at.isnot(None), Product.deleted_at < cutoff)).all()
+    images = 0
+    for p in products:
+        for img in list(p.images):
+            delete_stored_image(img.storage_key)
+            images += 1
+        db.delete(p)
+    if products:
+        db.commit()
+        cache.invalidate("feed:")
+    return {"products": len(products), "images": images}
 
 
 def delete_image(db: Session, seller: SellerProfile, product_id, image_id) -> Product:

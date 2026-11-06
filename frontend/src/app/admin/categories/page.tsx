@@ -1,7 +1,9 @@
 "use client";
 
+import { askValue, AdminPageHeader } from "@/components/admin-ui";
+import clsx from "clsx";
 import { useState } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, FolderTree } from "lucide-react";
 import { Badge, Button, Input, PageLoader, Select, useToast } from "@/components/ui";
 import { CategoryIcon } from "@/components/icons";
 import { http, errorMessage } from "@/lib/api";
@@ -27,19 +29,21 @@ export default function Page() {
     try { await http.post("/categories/admin/reorder", { ids }); reload(); } catch (e) { toast(errorMessage(e), "bad"); }
   };
   const Row = ({ c, list, i, depth }: { c: Category; list: Category[]; i: number; depth: number }) => (
-    <li className="flex items-center gap-2 border-b border-line/60 py-2" style={{ paddingLeft: depth * 24 }}>
+    <li className={clsx("flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line/60 py-2", depth > 0 && "pl-4 sm:pl-6")}>
       {depth === 0 && <CategoryIcon name={c.icon} className="size-4 text-brand-700" />}
-      <span className="flex-1 text-sm font-medium">{c.name} <span className="text-xs text-muted">({c.listing_count})</span></span>
-      {!c.is_active && <Badge tone="bad">Inactive</Badge>}
-      <button aria-label="Move up" className="p-1 text-muted hover:text-ink" onClick={() => move(list, i, -1)}><ArrowUp className="size-4" /></button>
-      <button aria-label="Move down" className="p-1 text-muted hover:text-ink" onClick={() => move(list, i, 1)}><ArrowDown className="size-4" /></button>
-      <Button size="sm" variant="ghost" onClick={() => { const n = prompt("Rename category", c.name); if (n) save(c, { name: n }); }}>Rename</Button>
-      <Button size="sm" variant="outline" onClick={() => save(c, { is_active: !c.is_active })}>{c.is_active ? "Deactivate" : "Activate"}</Button>
+      <span className="min-w-0 flex-1 basis-40 text-sm font-medium">{c.name} <span className="text-xs text-muted">({c.listing_count})</span></span>
+      <span className="ml-auto flex shrink-0 items-center gap-1">
+        {!c.is_active && <Badge tone="bad">Inactive</Badge>}
+        <button aria-label="Move up" className="p-1 text-muted hover:text-ink" onClick={() => move(list, i, -1)}><ArrowUp className="size-4" /></button>
+        <button aria-label="Move down" className="p-1 text-muted hover:text-ink" onClick={() => move(list, i, 1)}><ArrowDown className="size-4" /></button>
+        <Button size="sm" variant="ghost" onClick={async () => { const n = await askValue(`Rename “${c.name}”`, { label: "Category name", initial: c.name, min: 2 }); if (n && n !== c.name) save(c, { name: n }); }}>Rename</Button>
+        <Button size="sm" variant="outline" onClick={() => save(c, { is_active: !c.is_active })}>{c.is_active ? "Deactivate" : "Activate"}</Button>
+      </span>
     </li>
   );
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Categories</h1>
+      <AdminPageHeader icon={FolderTree} title="Categories" description="Add, rename, reorder or hide categories. Changes show on the marketplace straight away." />
       <form className="card flex flex-wrap items-end gap-2 p-4" onSubmit={async (e) => {
         e.preventDefault();
         try { await http.post("/categories/admin", { name, parent_id: parent || null }); setName(""); toast("Category created"); reload(); } catch (err) { toast(errorMessage(err), "bad"); }

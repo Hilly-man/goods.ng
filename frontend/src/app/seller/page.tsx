@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Crown, Eye, Handshake, MessageCircle, MousePointerClick, Package, PlusCircle, ShieldCheck, ShoppingBag, Wallet } from "lucide-react";
+import { Crown, Eye, Handshake, Image as ImageIcon, MessageCircle, MousePointerClick, Package, PlusCircle, ShieldCheck, ShoppingBag, Wallet } from "lucide-react";
 import { RequireAuth } from "@/components/require-auth";
 import { Alert, ButtonLink, PageLoader, Stat } from "@/components/ui";
 import { useApi } from "@/lib/hooks";
 import { naira, VERIFICATION_LABEL } from "@/lib/format";
 import type { VerificationLevel } from "@/lib/types";
 
-type Dash = { total_listings: number; active_listings: number; product_views: number; enquiries: number; contact_clicks: number; pending_orders: number; orders_in_transit: number; completed_orders: number; protected_sales: number; revenue_completed: string; open_negotiations: number; is_premium: boolean; verification_level: VerificationLevel };
+type Dash = { total_listings: number; active_listings: number; product_views: number; enquiries: number; contact_clicks: number; pending_orders: number; orders_in_transit: number; completed_orders: number; protected_sales: number; revenue_completed: string; open_negotiations: number; images_used: number; images_limit: number; is_premium: boolean; verification_level: VerificationLevel };
 
 function Overview() {
   const { data: d } = useApi<Dash>("/sellers/me/dashboard");
@@ -30,6 +30,7 @@ function Overview() {
         <Stat label="In transit" value={d.orders_in_transit} />
         <Stat label="Completed orders" value={d.completed_orders} hint={`${d.protected_sales} protected sales`} icon={<ShieldCheck className="size-4" />} />
         <Stat label="Revenue (completed)" value={naira(d.revenue_completed)} icon={<Wallet className="size-4" />} />
+        <Stat label="Photo slots" value={`${d.images_used}/${d.images_limit}`} hint="Delete photos to free space" icon={<ImageIcon className="size-4" />} />
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         {!d.is_premium && (

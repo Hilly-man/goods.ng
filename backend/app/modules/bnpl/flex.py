@@ -173,6 +173,9 @@ def guaranteed_amount(db: Session, user: User) -> Decimal:
 
 # ---------------- steps ----------------
 def verify_bvn(db: Session, user: User, bvn: str, dob: date | None) -> FlexProfile:
+    from app.core.deps import ensure_customer
+
+    ensure_customer(user)
     if not user.phone_verified:
         raise AppError("Verify your phone number first", code="phone_unverified")
     if not re.fullmatch(r"\d{11}", bvn):
@@ -197,6 +200,9 @@ def verify_bvn(db: Session, user: User, bvn: str, dob: date | None) -> FlexProfi
 
 
 def connect_bank(db: Session, user: User, code: str) -> CreditAssessment:
+    from app.core.deps import ensure_customer
+
+    ensure_customer(user)
     p = profile(db, user)
     if not p.bvn_verified_at:
         raise AppError("Verify your BVN before connecting a bank account", code="bvn_required")

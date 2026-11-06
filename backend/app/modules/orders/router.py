@@ -5,8 +5,10 @@ from fastapi import APIRouter, Depends, File, Header, Query, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
+from app.core.cache import check_rate_limit
 from app.core.deps import DB, CurrentSeller, CurrentUser
 from app.core.errors import NotFound
+from app.core.security import CleanStr
 from app.integrations.storage import store_image
 from app.models import Dispute, EscrowTransaction, Order, Payment, Product, Refund
 from app.models.enums import DisputeReason, EscrowStatus, PaymentMethod
@@ -19,12 +21,12 @@ router = APIRouter(tags=["orders"])
 
 
 class Address(BaseModel):
-    full_name: str = Field(min_length=2, max_length=120)
+    full_name: CleanStr = Field(min_length=2, max_length=120)
     phone: str
     state: str
-    city: str = Field(min_length=2, max_length=80)
-    street: str = Field(min_length=3, max_length=300)
-    landmark: str | None = Field(None, max_length=200)
+    city: CleanStr = Field(min_length=2, max_length=80)
+    street: CleanStr = Field(min_length=3, max_length=300)
+    landmark: CleanStr | None = Field(None, max_length=200)
 
     @field_validator("phone")
     @classmethod
@@ -48,7 +50,8 @@ class QuoteIn(BaseModel):
 
 class CheckoutIn(QuoteIn):
     address: Address
-    note: str | None = Field(None, max_length=500)
+    note: CleanStr | None = Field(None, max_length=500)
+    marketing_consent: bool = False  # buyer accepted marketing cookies (ads measurement)
 
 
 def quote_out(q: dict) -> dict:
@@ -73,11 +76,15 @@ def quote(data: QuoteIn, user: CurrentUser, db: DB):
 
 @router.post("/checkout", status_code=201)
 def checkout(data: CheckoutIn, user: CurrentUser, db: DB, idempotency_key: str | None = Header(None, max_length=80)):
+    check_rate_limit(f"checkout:{user.id}", 30, 3600)
     order, pay = service.create_checkout(
         db, user, product_id=data.product_id, quantity=data.quantity, negotiation_id=data.negotiation_id,
         delivery_index=data.delivery_option_index, address=data.address.model_dump(), note=data.note,
         idempotency_key=idempotency_key,
     )
+    if data.marketing_consent and not order.marketing_consent:
+        order.marketing_consent = True
+        db.commit()
     return {"order_id": str(order.id), "order_number": order.order_number, "total": f"{order.total:.2f}",
             "payment_reference": pay.reference if pay else None,
             "authorization_url": pay.authorization_url if pay and pay.status == "initialized" else None}
@@ -271,6 +278,7 @@ def delivery_update(order_id: uuid.UUID, data: UpdateIn, user: CurrentUser, db: 
 
 @router.post("/orders/{order_id}/evidence")
 async def upload_evidence(order_id: uuid.UUID, user: CurrentUser, db: DB, file: UploadFile = File(...)):
+    check_rate_limit(f"evidence:{user.id}", 40, 3600)
     service.get_for(db, user, order_id)
     img = store_image(await file.read(), f"evidence/{order_id}")
     return {"url": img.url}
@@ -296,6 +304,7 @@ def cancel(order_id: uuid.UUID, data: ReasonIn, user: CurrentUser, db: DB):
 
 @router.post("/orders/{order_id}/disputes", status_code=201)
 def dispute(order_id: uuid.UUID, data: DisputeIn, user: CurrentUser, db: DB):
+    check_rate_limit(f"dispute:{user.id}", 10, 86400)
     service.open_dispute(db, user, order_id, data.reason, data.description, data.evidence_urls)
     return _detail(db, user, order_id)
 

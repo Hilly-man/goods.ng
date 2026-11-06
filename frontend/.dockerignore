@@ -1,0 +1,14 @@
+# Never ship local secrets, dependencies or build/test output into the image
+.env*
+!.env.example
+node_modules
+.next
+out
+coverage
+test-results
+playwright-report
+e2e
+*.pem
+*.key
+.DS_Store
+.git

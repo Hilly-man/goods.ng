@@ -54,17 +54,23 @@ def test_admin_endpoints_require_permissions(make_user, make_admin):
     limited = make_admin(["analytics.view"])
     assert limited.get("/admin/overview").status_code == 200
     assert limited.get("/admin/users").status_code == 403
-    assert limited.post(f"/admin/users/{u.user['id']}/role", {"role": "super_admin"}).status_code == 403
+    # only super admins can create staff accounts
+    assert limited.post("/admin/staff", {"full_name": "X Y", "email": "x@goods.ng",
+                                         "role_id": "00000000-0000-0000-0000-000000000000"}).status_code == 403
 
 
-def test_only_super_admin_changes_roles_and_actions_are_audited(db, make_user, make_admin):
+def test_customers_cannot_be_promoted_to_admin(db, make_user, make_admin):
     u = make_user()
     sup = make_admin(super_admin=True)
-    r = sup.post(f"/admin/users/{u.user['id']}/role", {"role": "admin", "permissions": ["listings.moderate"]})
-    assert r.status_code == 200
-    # role change revokes the user's existing tokens
-    assert u.get("/auth/me").status_code == 401
-    assert db.query(AdminAuditLog).filter_by(action="user.role").count() == 1
+    # The old "promote a user" endpoint is gone; staff are created separately by a super admin.
+    assert sup.post(f"/admin/users/{u.user['id']}/role", {"role": "admin"}).status_code in (404, 405)
+    # Even if a customer row were tampered with to say "admin", it grants nothing.
+    from app.models import User
+
+    db.query(User).filter_by(id=u.user["id"]).update({"role": "super_admin"})
+    db.commit()
+    assert u.get("/admin/overview").status_code == 403
+    _ = AdminAuditLog
 
 
 def test_verification_flow_with_encrypted_kyc(db, make_seller, make_admin):

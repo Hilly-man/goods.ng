@@ -16,7 +16,7 @@ from app.core.logging import RequestContextMiddleware, configure_logging
 
 ROUTERS = [
     "auth", "users", "sellers", "categories", "products", "subscriptions", "messaging", "negotiation",
-    "payments", "orders", "bnpl", "reviews", "notifications", "admin",
+    "payments", "orders", "bnpl", "reviews", "notifications", "admin", "staff", "stats", "recommendations", "ads", "marketing",
 ]
 
 
@@ -27,8 +27,11 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version="1.0.0",
         description="Goods.ng — Buy. Sell. Trade with Confidence.",
-        docs_url="/docs" if not settings.is_production else None,
-        openapi_url="/openapi.json" if not settings.is_production else None,
+        # Interactive docs only in development/test — never in staging or production.
+        docs_url="/docs" if settings.environment in ("development", "test") else None,
+        redoc_url="/redoc" if settings.environment in ("development", "test") else None,
+        openapi_url="/openapi.json" if settings.environment in ("development", "test") else None,
+        debug=False,
     )
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(
@@ -36,7 +39,7 @@ def create_app() -> FastAPI:
         allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-        allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Idempotency-Key", "X-Request-ID"],
+        allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Idempotency-Key", "X-Request-ID", "X-Anon-Id"],
     )
 
     @app.middleware("http")
@@ -52,8 +55,37 @@ def create_app() -> FastAPI:
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
+        response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+        response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
+        path = request.url.path
+        if (path.startswith(settings.api_prefix) or path.startswith("/media")) \
+                and not response.headers.get("content-type", "").startswith("text/html"):
+            # JSON and images never need to run scripts or be framed.
+            response.headers.setdefault("Content-Security-Policy", "default-src 'none'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'")
+        if path.startswith(f"{settings.api_prefix}/auth") or path.startswith(f"{settings.api_prefix}/admin"):
+            response.headers.setdefault("Cache-Control", "no-store")
         if settings.environment in ("production", "staging"):
             response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+        return response
+
+    @app.middleware("http")
+    async def admin_activity_log(request: Request, call_next):
+        """Attach request context for audit entries, and record any admin write that didn't log itself."""
+        from starlette.concurrency import run_in_threadpool
+
+        from app.modules.audit import request_audit
+
+        ctx = {"audited": False, "ip": client_ip(request), "ua": request.headers.get("user-agent")}
+        token = request_audit.set(ctx)
+        try:
+            response = await call_next(request)
+        finally:
+            request_audit.reset(token)
+        path = request.url.path
+        if (request.method in ("POST", "PUT", "PATCH", "DELETE") and path.startswith(settings.api_prefix)
+                and "/admin" in path and (not ctx["audited"] or response.status_code >= 400)):
+            await run_in_threadpool(_record_unlogged_admin_request, request, response.status_code, ctx)
         return response
 
     register_exception_handlers(app)
@@ -79,11 +111,44 @@ def create_app() -> FastAPI:
     def ready():
         with engine.connect() as c:
             c.execute(text("SELECT 1"))
+        if settings.is_production:
+            return {"status": "ready"}  # don't advertise internals publicly
         return {"status": "ready", "database": "ok", "cache": cache.backend,
                 "providers": {"payment": settings.payment_provider, "escrow": settings.escrow_provider,
                               "bnpl": settings.bnpl_provider}}
 
     return app
+
+
+def _record_unlogged_admin_request(request: Request, status: int, ctx: dict) -> None:
+    """Safety net: an admin write with no explicit audit entry (or one that failed and was rolled back)."""
+    from app.core.db import SessionLocal
+    from app.core.security import decode_access_token
+    from app.models import User
+    from app.modules.audit import audit
+
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("bearer "):
+        return
+    try:
+        claims = decode_access_token(auth[7:])
+    except AppError:
+        return
+    if claims.get("role") == "user":
+        return
+    path = request.url.path
+    try:
+        with SessionLocal() as db:
+            user = db.get(User, claims.get("sub"))
+            if not user or not user.is_staff:
+                return
+            outcome = "success" if status < 400 else "denied" if status in (401, 403) else "failed"
+            audit(db, user, f"request.{request.method.lower()}", "endpoint", path[len(settings.api_prefix):][:80],
+                  {"status": status, "method": request.method, "path": path}, ctx.get("ip"),
+                  category="api", outcome=outcome)
+            db.commit()
+    except Exception:  # never let logging break the response
+        logging.getLogger("goodsng").exception("admin_activity_log_failed")
 
 
 app = create_app()

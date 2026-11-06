@@ -11,6 +11,7 @@ from app.core.cache import check_rate_limit
 from app.core.config import settings
 from app.core.deps import DB, CurrentUser, client_ip
 from app.core.errors import AppError, NotFound
+from app.core.security import CleanStr
 from app.models import BnplApplication, FinancingAgreement, Product
 from app.modules.auth.schemas import normalize_ng_phone
 from app.modules.bnpl import flex, service
@@ -41,18 +42,27 @@ class ApplyIn(BaseModel):
     negotiation_id: uuid.UUID | None = None
     delivery_option_index: int = 0
     address: Address
-    note: str | None = Field(None, max_length=500)
+    note: CleanStr | None = Field(None, max_length=500)
     tenor_months: int = Field(ge=1, le=24)
     consent: bool = Field(description="Consent to share application data with the lending partner")
+    marketing_consent: bool = False  # buyer accepted marketing cookies (ads measurement)
 
 
 @router.post("/applications", status_code=201)
 def apply(data: ApplyIn, user: CurrentUser, db: DB, idempotency_key: str | None = Header(None, max_length=80)):
+    check_rate_limit(f"flex:apply:{user.id}", 10, 3600)
     if not data.consent:
         raise AppError("Consent is required to submit your application to the lending partner", code="consent_required")
     a = service.apply(db, user, product_id=data.product_id, quantity=data.quantity, negotiation_id=data.negotiation_id,
                       delivery_index=data.delivery_option_index, address=data.address.model_dump(), note=data.note,
                       tenor_months=data.tenor_months, idempotency_key=idempotency_key)
+    if data.marketing_consent and a.order_id:
+        from app.models import Order
+
+        o = db.get(Order, a.order_id)
+        if o and not o.marketing_consent:
+            o.marketing_consent = True
+            db.commit()
     return service.application_out(a)
 
 
@@ -85,9 +95,9 @@ class TokenIn(BaseModel):
 
 
 class GuarantorIn(BaseModel):
-    full_name: str = Field(min_length=3, max_length=160)
+    full_name: CleanStr = Field(min_length=3, max_length=160)
     phone: str
-    relationship: str = Field(min_length=2, max_length=40)
+    relationship: CleanStr = Field(min_length=2, max_length=40)
     bvn: str = Field(pattern=r"^\d{11}$")
 
     @field_validator("phone")

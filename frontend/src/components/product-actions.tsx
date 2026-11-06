@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@/lib/tracking";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -22,7 +23,9 @@ function WhatsAppIcon() {
   );
 }
 
-export function ProductActions({ p }: { p: ProductDetail }) {
+export function ProductActions({ p, variant = "sidebar", recordView = true }: {
+  p: ProductDetail; variant?: "sidebar" | "inline"; recordView?: boolean;
+}) {
   const { user } = useAuth();
   const router = useRouter();
   const toast = useToast();
@@ -40,13 +43,14 @@ export function ProductActions({ p }: { p: ProductDetail }) {
   const available = p.status === "active" && p.quantity > 0;
 
   useEffect(() => {
+    if (!recordView) return;
     fetch(`/api/v1/products/${p.slug}/view`, { method: "POST" }).catch(() => {});
     if (p.bnpl_enabled) {
       http.get<{ options: FinancingOption[] }>("/bnpl/quote", { product_id: p.id })
         .then((r) => setFlex(r.options.at(-1) ?? null))
         .catch(() => {});
     }
-  }, [p.slug, p.id, p.bnpl_enabled]);
+  }, [p.slug, p.id, p.bnpl_enabled, recordView]);
 
   const requireLogin = () => {
     if (!user) {
@@ -85,6 +89,7 @@ export function ProductActions({ p }: { p: ProductDetail }) {
     setBusy(true);
     try {
       const r = await http.post<{ conversation_id: string }>("/conversations", { product_id: p.id, body: msg });
+      track("contact", { items: [{ id: p.id, price: p.price, name: p.title }] });
       router.push(`/messages/${r.conversation_id}`);
     } catch (e) {
       setErr(errorMessage(e));
@@ -95,6 +100,7 @@ export function ProductActions({ p }: { p: ProductDetail }) {
   async function contact() {
     setBusy(true);
     try {
+      track("contact", { items: [{ id: p.id, price: p.price, name: p.title }] });
       const r = await http.post<{ link: string; display: string }>(`/sellers/${p.seller.id}/contact`, {
         channel,
         product_id: p.id,
@@ -124,6 +130,37 @@ export function ProductActions({ p }: { p: ProductDetail }) {
 
   return (
     <>
+      {variant === "inline" ? (
+        <div className="flex flex-wrap gap-2">
+          {isOwn ? (
+            <ButtonLink href={`/seller/products/${p.id}/edit`} variant="outline">Edit your listing</ButtonLink>
+          ) : !available ? (
+            <Alert tone="warn" title={p.status === "sold" ? "This item has been sold" : "Currently out of stock"}>
+              Save it or chat with the seller to ask about availability.
+            </Alert>
+          ) : (
+            <>
+              <Button
+                onClick={() => {
+                  if (p.seller.whatsapp_available) { setChannel("whatsapp"); setAck(false); open("contact"); }
+                  else if (p.seller.phone_available) { setChannel("phone"); setAck(false); open("contact"); }
+                  else open("chat");
+                }}
+              >
+                {p.seller.whatsapp_available ? <WhatsAppIcon /> : <Phone className="size-4" />} Show contact
+              </Button>
+              {p.negotiable && (
+                <Button variant="outline" onClick={() => open("offer")}>
+                  <Handshake className="size-4" /> Make an offer
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => open("chat")}>
+                <MessageCircle className="size-4" /> Chat with seller
+              </Button>
+            </>
+          )}
+        </div>
+      ) : (
       <div className="space-y-2.5">
         {isOwn ? (
           <ButtonLink href={`/seller/products/${p.id}/edit`} variant="outline" block>Edit your listing</ButtonLink>
@@ -186,6 +223,7 @@ export function ProductActions({ p }: { p: ProductDetail }) {
           </p>
         )}
       </div>
+      )}
 
       <Modal open={modal === "offer"} onClose={() => setModal(null)} title="Make an offer"
         footer={<><Button variant="ghost" onClick={() => setModal(null)}>Cancel</Button><Button loading={busy} onClick={sendOffer}>Send offer</Button></>}>

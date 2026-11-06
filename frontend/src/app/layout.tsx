@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ConsentBanner, TrackingScripts } from "@/components/consent";
 import { Suspense } from "react";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
@@ -7,6 +8,7 @@ import { Header } from "@/components/header";
 import { MobileNav } from "@/components/mobile-nav";
 import { Footer } from "@/components/footer";
 import { Logo } from "@/components/logo";
+import { InterestCapture } from "@/components/recommended";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -53,6 +55,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               {children}
             </main>
             <Footer />
+            <InterestCapture />
+            <Suspense>
+              <ConsentBanner />
+              <TrackingScripts />
+            </Suspense>
             <Suspense>
               <MobileNav />
             </Suspense>

@@ -52,6 +52,9 @@ def review_out(r: Review) -> dict:
 
 @router.post("/reviews", status_code=201)
 def create_review(data: ReviewIn, user: CurrentUser, db: DB):
+    from app.core.deps import ensure_customer
+
+    ensure_customer(user)
     check_rate_limit(f"review:{user.id}", 10, 86400)
     if data.order_id:
         o = db.get(Order, data.order_id)

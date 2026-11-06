@@ -216,6 +216,8 @@ class AdminAuditLog(UUIDPk, Base):
     __table_args__ = (
         Index("ix_audit_created", "created_at"),
         Index("ix_audit_target", "target_type", "target_id"),
+        Index("ix_audit_actor_created", "actor_id", "created_at"),
+        Index("ix_audit_category_created", "category", "created_at"),
     )
 
     actor_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
@@ -224,6 +226,11 @@ class AdminAuditLog(UUIDPk, Base):
     target_id: Mapped[str | None] = mapped_column(String(80))
     details: Mapped[dict] = mapped_column(JSONB, default=dict)
     ip: Mapped[str | None] = mapped_column(String(64))
+    # action = a deliberate admin operation · auth = sign-in/out & 2FA · view = console page viewed
+    # api = safety-net record of an admin write that didn't log itself (incl. refused attempts)
+    category: Mapped[str] = mapped_column(String(16), default="action", server_default="action")
+    outcome: Mapped[str] = mapped_column(String(16), default="success", server_default="success")  # success|denied|failed
+    user_agent: Mapped[str | None] = mapped_column(String(300))
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
@@ -265,3 +272,47 @@ class City(UUIDPk, Base):
     name: Mapped[str] = mapped_column(String(80))
     is_active: Mapped[bool] = mapped_column(default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class InterestSignal(UUIDPk, Base):
+    """A first-party interest signal used for "Recommended for you".
+
+    kind: search (searched on Goods.ng) | view (opened a listing) | landing (arrived from an external site).
+    source: goods | google | bing | yahoo | duckduckgo | facebook | instagram | tiktok | x | whatsapp | youtube | other.
+    For landings we only ever store what the visitor's own click carried to us (referrer domain, UTM/ad keyword,
+    the page they landed on) — never anything read from another site. Rows older than 90 days are purged.
+    """
+
+    __tablename__ = "interest_signals"
+    __table_args__ = (
+        Index("ix_interest_user_created", "user_id", "created_at"),
+        Index("ix_interest_anon_created", "anon_id", "created_at"),
+        Index("ix_interest_created", "created_at"),
+    )
+
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    anon_id: Mapped[str | None] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(16))
+    source: Mapped[str] = mapped_column(String(20), default="goods")
+    query: Mapped[str | None] = mapped_column(String(120))
+    campaign: Mapped[str | None] = mapped_column(String(120))
+    category_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"))
+    product_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class AdEvent(UUIDPk, Base):
+    """Sponsored-placement analytics: impression | click | bump. Viewer is a user id or anonymous id (no PII)."""
+
+    __tablename__ = "ad_events"
+    __table_args__ = (
+        Index("ix_ad_events_seller_created", "seller_id", "created_at"),
+        Index("ix_ad_events_product_kind_created", "product_id", "kind", "created_at"),
+    )
+
+    kind: Mapped[str] = mapped_column(String(12))  # impression | click | bump
+    placement: Mapped[str] = mapped_column(String(16))  # search | category | item | for_you | home | seller
+    product_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"))
+    seller_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("seller_profiles.id", ondelete="CASCADE"))
+    viewer: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)

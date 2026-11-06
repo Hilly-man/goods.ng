@@ -8,7 +8,7 @@ export function VerifiedBadge({ level, compact }: { level: VerificationLevel; co
   return (
     <span
       title={VERIFICATION_LABEL[level]}
-      className="inline-flex items-center gap-0.5 rounded-full bg-sky-50 px-1.5 py-0.5 text-[11px] font-semibold text-sky-700"
+      className="relative inline-flex items-center gap-0.5 rounded-full bg-sky-50 px-1.5 py-0.5 text-[11px] font-semibold text-sky-700"
     >
       <BadgeCheck className="size-3.5" aria-hidden />
       {!compact && (level === "business_verified" ? "Verified business" : "Verified")}
@@ -22,7 +22,7 @@ export function PremiumBadge({ compact, className }: { compact?: boolean; classN
     <span
       title="Premium Seller"
       className={clsx(
-        "inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-200 to-yellow-100 px-1.5 py-0.5 text-[11px] font-bold text-premium-600 ring-1 ring-amber-300",
+        "relative inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-200 to-yellow-100 px-1.5 py-0.5 text-[11px] font-bold text-premium-600 ring-1 ring-amber-300",
         className,
       )}
     >

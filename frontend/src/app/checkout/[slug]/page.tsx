@@ -1,5 +1,7 @@
 "use client";
 
+import { TrackEvent } from "@/components/consent";
+import { readConsent } from "@/lib/consent";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, use, useEffect, useMemo, useState } from "react";
@@ -70,12 +72,13 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
       if (flex) {
         const a = await http.post<{ id: string; status: string }>("/bnpl/applications", {
           product_id: p!.id, quantity: qty, negotiation_id: negotiationId, delivery_option_index: delivery, address, note: note || undefined,
-          tenor_months: tenor, consent,
+          tenor_months: tenor, consent, marketing_consent: readConsent().marketing,
         }, { "Idempotency-Key": idemKey });
         router.push(`/flex/applications/${a.id}`);
       } else {
         const r = await http.post<{ order_id: string; authorization_url: string | null }>("/checkout", {
           product_id: p!.id, quantity: qty, negotiation_id: negotiationId, delivery_option_index: delivery, address, note: note || undefined,
+          marketing_consent: readConsent().marketing,
         }, { "Idempotency-Key": idemKey });
         if (r.authorization_url) window.location.href = r.authorization_url;
         else router.push(`/orders/${r.order_id}`);
@@ -93,6 +96,7 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
   const set = (k: keyof typeof addr) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setAddr({ ...addr, [k]: e.target.value });
   return (
     <form onSubmit={submit} className="grid gap-5 lg:grid-cols-[1fr_380px]">
+      <TrackEvent name="begin_checkout" items={[{ id: p.id, price: p.price, name: p.title }]} value={quote ? Number(quote.total) : Number(p.price)} />
       <div className="space-y-4">
         {p.bnpl_enabled && (
           <div className="card grid grid-cols-2 gap-1 p-1">

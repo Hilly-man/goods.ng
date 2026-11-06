@@ -15,15 +15,20 @@ class Settings(BaseSettings):
     app_name: str = "Goods.ng API"
     api_prefix: str = "/api/v1"
     frontend_url: str = "http://localhost:3000"
+    admin_url: str | None = None  # admin console origin, e.g. https://admin.goods.ng (used in staff invites)
     public_api_url: str = "http://localhost:8000"
     cors_origins: list[str] = ["http://localhost:3000"]
 
     database_url: str = "postgresql+psycopg://localhost/goodsng_dev"
+    db_statement_timeout_ms: int = 15000
+    # Production must use an encrypted DB connection (sslmode=require/verify-full in DATABASE_URL).
+    # Only set false for a private network where TLS is terminated elsewhere.
+    database_require_ssl: bool = True
     redis_url: str | None = None
 
     # Auth
     jwt_secret: str = "dev-only-change-me-please-0123456789abcdef"
-    jwt_algorithm: str = "HS256"
+    jwt_algorithm: Literal["HS256", "HS384", "HS512"] = "HS256"  # never "none"/asymmetric confusion
     access_token_minutes: int = 15
     refresh_token_days: int = 30
     otp_ttl_minutes: int = 10
@@ -43,12 +48,35 @@ class Settings(BaseSettings):
     mock_provider_secret: str = "mock-webhook-signing-secret"
     # Mono Connect (open banking). Both keys come from the Mono dashboard.
     mono_secret_key: str | None = None
+    # Google sign-in (OIDC). Without credentials, development/test use a clearly-labelled mock consent page
+    # and staging/production hide the button.
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    # "I'm not a robot" check on sign-in for devices that haven't signed in within 24h (or after failed attempts).
+    # recaptcha = Google reCAPTCHA v2 checkbox · turnstile = Cloudflare Turnstile · mock = dev-only · off = disabled
+    captcha_provider: Literal["off", "mock", "recaptcha", "turnstile"] = "mock"
+    captcha_site_key: str | None = None
+    captcha_secret_key: str | None = None
     mono_public_key: str | None = None
+    # Ads: Meta Conversions API token (secret — env only) and optional token protecting the product feeds.
+    meta_capi_access_token: str | None = None
+    meta_graph_version: str = "v21.0"
+    feed_token: str | None = None
     mono_base_url: str = "https://api.withmono.com"
 
     # Notifications
-    email_provider: Literal["console"] = "console"
-    sms_provider: Literal["console"] = "console"
+    email_provider: Literal["console", "smtp", "postmark"] = "console"
+    sms_provider: Literal["console", "termii"] = "console"
+    termii_api_key: str | None = None
+    termii_sender_id: str = "GoodsNG"
+    termii_base_url: str = "https://api.ng.termii.com"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    postmark_server_token: str | None = None
+    postmark_from: str | None = None
 
     # Storage
     storage_backend: Literal["local", "s3"] = "local"
@@ -57,6 +85,11 @@ class Settings(BaseSettings):
     s3_bucket: str | None = None
     s3_endpoint_url: str | None = None
     max_upload_mb: int = 8
+    # Storage cap per seller. Each photo is re-encoded to a bounded WebP, so a count cap also
+    # bounds bytes. Includes photos on soft-deleted listings until they are hard-deleted.
+    max_images_per_seller: int = 200
+    # Soft-deleted listings (and their photo files) are purged by the worker after this many days.
+    deleted_listing_retention_days: int = 30
 
     # Marketplace economics (defaults; overridable through platform settings)
     platform_commission_rate: Decimal = Decimal("0.05")
@@ -68,8 +101,16 @@ class Settings(BaseSettings):
     auto_release_days: int = 3
 
     rate_limit_per_minute: int = 240
+    rate_limit_multiplier: int = 1  # dev/test only (e.g. 50 for E2E runs); must be 1 in staging/production
 
-    @field_validator("cors_origins", mode="before")
+    # Only trust X-Forwarded-For when the direct peer is one of these CIDRs (your load balancer).
+    # Empty means ignore the header entirely, which is the safe default.
+    trusted_proxy_cidrs: list[str] = []
+
+    # Refuse to let admins use the admin API until TOTP 2FA is enabled. Required in production.
+    admin_2fa_required: bool = False
+
+    @field_validator("cors_origins", "trusted_proxy_cidrs", mode="before")
     @classmethod
     def split_origins(cls, v):
         if isinstance(v, str) and not v.startswith("["):
@@ -85,13 +126,27 @@ class Settings(BaseSettings):
         if self.environment not in ("production", "staging"):
             return
         problems = []
+        if self.rate_limit_multiplier != 1:
+            problems.append("RATE_LIMIT_MULTIPLIER must be 1 outside development/test")
         if self.jwt_secret.startswith("dev-only"):
             problems.append("JWT_SECRET must be set")
+        elif len(self.jwt_secret) < 32:
+            problems.append("JWT_SECRET must be at least 32 random characters")
+        if any(o.strip() == "*" or not o.startswith("https://") for o in self.cors_origins):
+            problems.append("CORS_ORIGINS must list explicit https:// origins (no '*')")
+        if not self.frontend_url.startswith("https://"):
+            problems.append("FRONTEND_URL must be https://")
+        if self.admin_url and not self.admin_url.startswith("https://"):
+            problems.append("ADMIN_URL must be https://")
         if self.otp_secret.startswith("dev-only"):
             problems.append("OTP_SECRET must be set")
         if self.data_encryption_key.startswith("dev-only"):
             problems.append("DATA_ENCRYPTION_KEY must be set")
         if self.environment == "production":
+            if self.database_require_ssl and not any(m in self.database_url for m in ("sslmode=require", "sslmode=verify-full", "sslmode=verify-ca")):
+                problems.append("DATABASE_URL must use sslmode=require (or verify-full) in production")
+            if self.storage_backend != "s3" or not self.s3_bucket:
+                problems.append("STORAGE_BACKEND=s3 with S3_BUCKET is required in production (durable, private KYC storage)")
             if not self.redis_url:
                 problems.append("REDIS_URL is required in production (shared rate limiting and cache)")
             if self.payment_provider == "mock":
@@ -104,6 +159,24 @@ class Settings(BaseSettings):
                 problems.append("A real open-banking provider is required in production")
             if self.bank_data_provider == "mono" and not self.mono_secret_key:
                 problems.append("MONO_SECRET_KEY is required when BANK_DATA_PROVIDER=mono")
+            if self.captcha_provider in ("mock", "off"):
+                problems.append("CAPTCHA_PROVIDER must be 'recaptcha' or 'turnstile' in production")
+            elif not (self.captcha_site_key and self.captcha_secret_key):
+                problems.append("CAPTCHA_SITE_KEY and CAPTCHA_SECRET_KEY are required for the captcha provider")
+            if not self.trusted_proxy_cidrs:
+                problems.append("TRUSTED_PROXY_CIDRS must list your load balancer CIDRs in production")
+            if not self.admin_2fa_required:
+                problems.append("ADMIN_2FA_REQUIRED must be true in production")
+            if self.sms_provider == "console":
+                problems.append("SMS_PROVIDER must be 'termii' in production")
+            elif self.sms_provider == "termii" and not self.termii_api_key:
+                problems.append("TERMII_API_KEY is required when SMS_PROVIDER=termii")
+            if self.email_provider == "console":
+                problems.append("EMAIL_PROVIDER must be 'smtp' or 'postmark' in production")
+            elif self.email_provider == "smtp" and not (self.smtp_host and self.smtp_from):
+                problems.append("SMTP_HOST and SMTP_FROM are required when EMAIL_PROVIDER=smtp")
+            elif self.email_provider == "postmark" and not self.postmark_server_token:
+                problems.append("POSTMARK_SERVER_TOKEN is required when EMAIL_PROVIDER=postmark")
         if problems:
             raise RuntimeError("Unsafe configuration: " + "; ".join(problems))
 

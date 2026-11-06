@@ -4,10 +4,13 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, u
 import { http, refreshSession, setAccessToken, CSRF } from "@/lib/api";
 import type { User } from "@/lib/types";
 
+export type LoginResult = { user: User } | { mfaRequired: true; ticket: string };
+
 interface AuthState {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<User>;
+  login: (email: string, password: string, captchaToken?: string | null) => Promise<LoginResult>;
+  verifyMfa: (ticket: string, code: string) => Promise<User>;
   register: (data: { full_name: string; email: string; phone?: string; password: string }) => Promise<User>;
   logout: () => Promise<void>;
   reload: () => Promise<void>;
@@ -30,8 +33,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const r = await http.post<{ access_token: string; user: User }>("/auth/login", { email, password });
+  const login = useCallback(async (email: string, password: string, captchaToken?: string | null): Promise<LoginResult> => {
+    const r = await http.post<{ access_token?: string; user?: User; mfa_required?: boolean; mfa_ticket?: string }>(
+      "/auth/login", { email, password, captcha_token: captchaToken || undefined });
+    if (r.mfa_required && r.mfa_ticket) return { mfaRequired: true, ticket: r.mfa_ticket };
+    setAccessToken(r.access_token!);
+    setUser(r.user!);
+    return { user: r.user! };
+  }, []);
+
+  const verifyMfa = useCallback(async (ticket: string, code: string) => {
+    const r = await http.post<{ access_token: string; user: User }>("/auth/mfa/verify", { mfa_ticket: ticket, code });
     setAccessToken(r.access_token);
     setUser(r.user);
     return r.user;
@@ -55,8 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout, reload, setUser }),
-    [user, loading, login, register, logout, reload],
+    () => ({ user, loading, login, verifyMfa, register, logout, reload, setUser }),
+    [user, loading, login, verifyMfa, register, logout, reload],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

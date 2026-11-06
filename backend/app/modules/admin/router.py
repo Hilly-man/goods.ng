@@ -10,13 +10,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 
 from app.core.cache import cache
-from app.core.deps import DB, CurrentUser, client_ip, require_permission
+from app.core.config import settings
+from app.core.deps import DB, CurrentUser, client_ip, require_admin_2fa, require_permission
 from app.core.errors import AppError, Forbidden, NotFound
 from app.core.security import clean_text, decrypt_field, mask
 from app.core.time import utcnow
 from app.models import (
     AdminAuditLog,
     BnplApplication,
+    Category,
     CreditAssessment,
     Dispute,
     EscrowTransaction,
@@ -43,21 +45,22 @@ from app.models import (
     WebhookEvent,
 )
 from app.models.enums import (
-    AdminPermission as P,
-)
-from app.models.enums import (
+    AccountType,
     BnplStatus,
     DisputeStatus,
     EscrowStatus,
     InstallmentStatus,
+    PaymentMethod,
     PaymentStatus,
     ProductStatus,
     RefundStatus,
     ReportStatus,
     ReviewStatus,
-    UserRole,
     VerificationLevel,
     VerificationStatus,
+)
+from app.models.enums import (
+    AdminPermission as P,
 )
 from app.modules.audit import audit
 from app.modules.auth.service import revoke_all_sessions
@@ -69,7 +72,7 @@ from app.modules.orders.router import order_out
 from app.modules.reviews.router import recompute_rating
 from app.modules.subscriptions.premium import premium_exists_for
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin_2fa)])
 
 
 def perm(p: P):
@@ -80,8 +83,87 @@ def perm(p: P):
 def admin_me(user: CurrentUser):
     if not user.is_admin:
         raise Forbidden("Not an administrator")
-    perms = [p.value for p in P] if user.role == UserRole.SUPER_ADMIN else user.admin_permissions
-    return {"role": user.role, "permissions": perms}
+    role = user.admin_role
+    return {"role": user.role, "is_super_admin": user.is_super_admin,
+            "role_name": role.name if role else ("Super Admin" if user.is_super_admin else "Admin"),
+            "permissions": sorted(user.permissions())}
+
+
+@router.get("/nav-counts")
+def nav_counts(db: DB, user: CurrentUser):
+    """Work-queue badges for the admin sidebar — only the queues this staff member is allowed to act on."""
+    if not user.is_admin:
+        raise Forbidden("Not an administrator")
+    perms = user.permissions()
+
+    def c(stmt):
+        return db.scalar(stmt) or 0
+
+    queues = {
+        "disputes": (P.DISPUTES_RESOLVE, lambda: c(select(func.count()).select_from(Dispute).where(
+            Dispute.status.in_([DisputeStatus.OPEN, DisputeStatus.UNDER_REVIEW])))),
+        "refunds": (P.REFUNDS_APPROVE, lambda: c(select(func.count()).select_from(Refund).where(
+            Refund.status == RefundStatus.PENDING_APPROVAL))),
+        "verifications": (P.SELLERS_VERIFY, lambda: c(select(func.count()).select_from(SellerVerification).where(
+            SellerVerification.status == VerificationStatus.PENDING))),
+        "products": (P.LISTINGS_MODERATE, lambda: c(select(func.count()).select_from(Product).where(
+            Product.status == ProductStatus.PENDING_REVIEW, Product.deleted_at.is_(None)))),
+        "reports": (P.REPORTS_MANAGE, lambda: c(select(func.count()).select_from(Report).where(
+            Report.status == ReportStatus.OPEN))),
+        "reviews": (P.REVIEWS_MODERATE, lambda: c(select(func.count(func.distinct(ReviewReport.review_id))).where(
+            ReviewReport.status == ReportStatus.OPEN))),
+    }
+    return {k: fn() for k, (p, fn) in queues.items() if p.value in perms}
+
+
+@router.get("/overview/trends")
+def overview_trends(db: DB, days: int = Query(30, ge=7, le=90), admin: User = perm(P.ANALYTICS_VIEW)):
+    """Daily series (Lagos calendar days) + breakdowns for the overview charts."""
+    return cache.get_or_compute(f"admin:trends:{days}", 60, lambda: _trends(db, days))
+
+
+def _trends(db, days: int) -> dict:
+    from datetime import date as _date
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo
+
+    lagos = ZoneInfo("Africa/Lagos")
+    today = _dt.now(lagos).date()
+    start_day = today - timedelta(days=days - 1)
+    start = _dt.combine(start_day, _dt.min.time(), tzinfo=lagos)
+
+    def day(col):
+        return func.date(func.timezone("Africa/Lagos", col))
+
+    def by_day(col, value, *where):
+        d = day(col)
+        return {r[0]: r[1] for r in db.execute(select(d, value).where(col >= start, *where).group_by(d)).all()}
+
+    paid = Order.paid_at.isnot(None)
+    sales = by_day(Order.paid_at, func.coalesce(func.sum(Order.total), 0), paid)
+    orders = by_day(Order.paid_at, func.count(), paid)
+    users = by_day(User.created_at, func.count(), User.deleted_at.is_(None), User.account_type == "customer")
+    listings = by_day(Product.created_at, func.count(), Product.deleted_at.is_(None))
+    series = []
+    for i in range(days):
+        d: _date = start_day + timedelta(days=i)
+        series.append({"date": d.isoformat(), "sales": f"{sales.get(d, 0):.2f}", "orders": orders.get(d, 0),
+                       "new_users": users.get(d, 0), "new_listings": listings.get(d, 0)})
+
+    in_range = (Order.paid_at >= start,)
+    by_status = db.execute(select(Order.status, func.count()).where(paid, *in_range).group_by(Order.status)
+                           .order_by(func.count().desc())).all()
+    mix = dict(db.execute(select(Order.payment_method, func.count()).where(paid, *in_range)
+                          .group_by(Order.payment_method)).all())
+    top_cats = db.execute(select(Category.name, func.count()).join(Product, Product.category_id == Category.id).where(
+        Product.status == ProductStatus.ACTIVE, Product.deleted_at.is_(None)).group_by(Category.name)
+        .order_by(func.count().desc()).limit(6)).all()
+    return {
+        "days": days, "series": series,
+        "orders_by_status": [{"status": s.value if hasattr(s, "value") else s, "count": n} for s, n in by_status],
+        "payment_mix": {"full": mix.get(PaymentMethod.FULL, 0), "bnpl": mix.get(PaymentMethod.BNPL, 0)},
+        "top_categories": [{"name": n, "count": c} for n, c in top_cats],
+    }
 
 
 # ---------------- overview ----------------
@@ -150,7 +232,7 @@ def overview(db: DB, admin: User = perm(P.ANALYTICS_VIEW)):
 @router.get("/users")
 def users(db: DB, q: str | None = None, role: str | None = None, params: PageParams = Depends(),
           admin: User = perm(P.USERS_MANAGE)):
-    stmt = select(User)
+    stmt = select(User).where(User.account_type == AccountType.CUSTOMER)
     if q:
         like = f"%{q[:60]}%"
         stmt = stmt.where(or_(User.email.ilike(like), User.full_name.ilike(like), User.phone.ilike(like)))
@@ -174,8 +256,8 @@ def set_user_status(user_id: uuid.UUID, data: UserStatusIn, request: Request, db
     u = db.get(User, user_id)
     if not u:
         raise NotFound("User not found")
-    if u.role == UserRole.SUPER_ADMIN or (u.is_admin and admin.role != UserRole.SUPER_ADMIN):
-        raise Forbidden("Only a super administrator can change another administrator's status")
+    if u.is_staff:
+        raise Forbidden("Staff accounts are managed under Admin team (super admin only)", code="staff_account")
     u.is_active = data.is_active
     if not data.is_active:
         revoke_all_sessions(db, u)
@@ -184,27 +266,7 @@ def set_user_status(user_id: uuid.UUID, data: UserStatusIn, request: Request, db
     return {"id": str(u.id), "is_active": u.is_active}
 
 
-class RoleIn(BaseModel):
-    role: UserRole
-    permissions: list[P] = []
-
-
-@router.post("/users/{user_id}/role")
-def set_role(user_id: uuid.UUID, data: RoleIn, request: Request, db: DB, admin: CurrentUser):
-    if admin.role != UserRole.SUPER_ADMIN:
-        raise Forbidden("Only a super administrator can change roles and permissions")
-    u = db.get(User, user_id)
-    if not u:
-        raise NotFound("User not found")
-    if u.id == admin.id:
-        raise Forbidden("You cannot change your own role")
-    u.role = data.role
-    u.admin_permissions = [p.value for p in data.permissions] if data.role == UserRole.ADMIN else []
-    revoke_all_sessions(db, u)
-    audit(db, admin, "user.role", "user", u.id, {"role": data.role.value, "permissions": u.admin_permissions},
-          client_ip(request))
-    db.commit()
-    return {"id": str(u.id), "role": u.role, "permissions": u.admin_permissions}
+# Role changes for admins live in app/modules/staff (super admin only). Customers can't be promoted.
 
 
 # ---------------- sellers & verification ----------------
@@ -642,9 +704,13 @@ def get_settings(db: DB, admin: User = perm(P.SETTINGS_MANAGE)):
     from app.modules.bnpl.flex import rules as flex_rules
 
     fees = fee_config(db)
+    from app.modules.marketing.service import config as marketing_config
+
     return {"fees": {k: str(v) for k, v in fees.items()},
             "listing_moderation_required": rows.get("listing_moderation_required", {"enabled": False}),
-            "flex_rules": {k: str(v) for k, v in flex_rules(db).items()}}
+            "flex_rules": {k: str(v) for k, v in flex_rules(db).items()},
+            "marketing": {**marketing_config(db), "capi_configured": bool(settings.meta_capi_access_token),
+                          "feed_token_required": bool(settings.feed_token)}}
 
 
 class FeesIn(BaseModel):
@@ -664,8 +730,18 @@ class FlexRulesIn(BaseModel):
     max_active_guarantees: int = Field(3, ge=1, le=20)
 
 
+class MarketingIn(BaseModel):
+    feed_enabled: bool = False
+    feed_excluded_categories: list[str] = Field(default_factory=list, max_length=100)
+    meta_pixel_id: str = Field("", max_length=20)
+    ga4_id: str = Field("", max_length=20)
+    google_ads_id: str = Field("", max_length=20)
+    google_ads_purchase_label: str = Field("", max_length=40)
+
+
 class SettingsIn(BaseModel):
     fees: FeesIn | None = None
+    marketing: MarketingIn | None = None
     listing_moderation_required: bool | None = None
     flex_rules: FlexRulesIn | None = None
 
@@ -692,20 +768,169 @@ def put_settings(data: SettingsIn, request: Request, db: DB, admin: User = perm(
         row = db.get(PlatformSetting, "flex_rules")
         upsert("flex_rules", {**(row.value if row else {}),
                               **{k: (str(v) if isinstance(v, Decimal) else v) for k, v in fr.model_dump().items()}})
+    if data.marketing:
+        from app.core.cache import cache as _cache
+        from app.modules.marketing.service import ID_RULES
+
+        m = data.marketing.model_dump()
+        for k, rule in ID_RULES.items():
+            m[k] = (m[k] or "").strip()
+            if m[k] and not rule.match(m[k]):
+                raise AppError(f"{k.replace('_', ' ')} doesn't look right", code="invalid_tracking_id")
+        m["feed_excluded_categories"] = sorted({c.strip().lower() for c in m["feed_excluded_categories"] if c.strip()})
+        upsert("marketing", m)
+        _cache.invalidate("feed:")
+        _cache.invalidate("tracking:")
     audit(db, admin, "settings.update", "settings", None, data.model_dump(mode="json", exclude_none=True),
           client_ip(request))
     db.commit()
     return get_settings(db, admin)
 
 
+# ---------------- admin activity report ----------------
+ACTIVITY_CATEGORIES = ("action", "auth", "view", "api")
+
+
+def _activity_filters(actor_id: uuid.UUID | None, category: str | None, outcome: str | None, q: str | None,
+                      days: int | None, since: str | None, until: str | None):
+    from datetime import date as _date
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo
+
+    conds = []
+    if actor_id:
+        conds.append(AdminAuditLog.actor_id == actor_id)
+    if category:
+        conds.append(AdminAuditLog.category == category)
+    elif category is None:
+        conds.append(AdminAuditLog.category != "view")  # page views are opt-in: they're noisy
+    if outcome:
+        conds.append(AdminAuditLog.outcome == outcome)
+    if q:
+        like = f"%{q.strip()[:80]}%"
+        conds.append(or_(AdminAuditLog.action.ilike(like), AdminAuditLog.target_type.ilike(like),
+                         AdminAuditLog.target_id.ilike(like), AdminAuditLog.ip.ilike(like)))
+    lagos = ZoneInfo("Africa/Lagos")
+    if days:
+        conds.append(AdminAuditLog.created_at >= utcnow() - timedelta(days=days))
+    try:
+        if since:
+            conds.append(AdminAuditLog.created_at >= _dt.combine(_date.fromisoformat(since), _dt.min.time(), tzinfo=lagos))
+        if until:
+            conds.append(AdminAuditLog.created_at < _dt.combine(_date.fromisoformat(until) + timedelta(days=1), _dt.min.time(), tzinfo=lagos))
+    except ValueError as e:
+        raise AppError("Dates must be YYYY-MM-DD") from e
+    return conds
+
+
+def _actor_map(db, ids) -> dict:
+    ids = {i for i in ids if i}
+    if not ids:
+        return {}
+    users = db.scalars(select(User).where(User.id.in_(ids))).all()
+    return {u.id: {"id": str(u.id), "name": u.full_name, "email": u.email,
+                   "role": u.admin_role.name if u.admin_role else ("Super Admin" if u.is_super_admin else "Admin")}
+            for u in users}
+
+
+def _entry(a: AdminAuditLog, actors: dict) -> dict:
+    return {"id": str(a.id), "actor": actors.get(a.actor_id) or {"id": str(a.actor_id), "name": "Unknown", "email": "", "role": ""},
+            "action": a.action, "category": a.category, "outcome": a.outcome, "target_type": a.target_type,
+            "target_id": a.target_id, "details": a.details, "ip": a.ip, "user_agent": a.user_agent, "created_at": a.created_at}
+
+
 @router.get("/audit-logs")
-def audit_logs(db: DB, action: str | None = None, params: PageParams = Depends(), admin: User = perm(P.AUDIT_VIEW)):
-    stmt = select(AdminAuditLog)
-    if action:
-        stmt = stmt.where(AdminAuditLog.action.ilike(f"{action}%"))
-    return paginate(db, stmt.order_by(AdminAuditLog.created_at.desc()), params, lambda a: {
-        "id": str(a.id), "actor_id": str(a.actor_id), "action": a.action, "target_type": a.target_type,
-        "target_id": a.target_id, "details": a.details, "ip": a.ip, "created_at": a.created_at})
+def audit_logs(db: DB, params: PageParams = Depends(), actor_id: uuid.UUID | None = None,
+               category: Literal["action", "auth", "view", "api", "all"] | None = None,
+               outcome: Literal["success", "denied", "failed"] | None = None, q: str | None = None,
+               action: str | None = None, days: int | None = Query(None, ge=1, le=366),
+               since: str | None = None, until: str | None = None, admin: User = perm(P.AUDIT_VIEW)):
+    conds = _activity_filters(actor_id, "" if category == "all" else category, outcome, q or action, days, since, until)
+    stmt = select(AdminAuditLog).where(*conds).order_by(AdminAuditLog.created_at.desc())
+    page = paginate(db, stmt, params, lambda a: a)
+    actors = _actor_map(db, [a.actor_id for a in page["items"]])
+    page["items"] = [_entry(a, actors) for a in page["items"]]
+    return page
+
+
+@router.get("/audit-logs/summary")
+def audit_summary(db: DB, days: int = Query(30, ge=1, le=366), admin: User = perm(P.AUDIT_VIEW)):
+    """Per-admin activity totals for the period, plus every staff member (so inactive admins show up too)."""
+    since = utcnow() - timedelta(days=days)
+    L = AdminAuditLog
+    rows = db.execute(select(
+        L.actor_id, func.count().filter(L.category == "action"), func.count().filter(L.category == "auth", L.action == "auth.sign_in"),
+        func.count().filter(L.outcome != "success"), func.count().filter(L.category == "view"), func.max(L.created_at),
+    ).where(L.created_at >= since).group_by(L.actor_id)).all()
+    stats = {r[0]: r for r in rows}
+    staff = db.scalars(select(User).where(User.account_type == AccountType.STAFF)).all()
+    actors = _actor_map(db, [u.id for u in staff] + list(stats))
+    last_seen = dict(db.execute(select(L.actor_id, func.max(L.created_at)).group_by(L.actor_id)).all())
+    out = []
+    for uid, info in actors.items():
+        r = stats.get(uid)
+        out.append({**info, "actions": r[1] if r else 0, "sign_ins": r[2] if r else 0, "issues": r[3] if r else 0,
+                    "page_views": r[4] if r else 0, "last_active": last_seen.get(uid),
+                    "is_active": next((u.is_active for u in staff if u.id == uid), True)})
+    out.sort(key=lambda x: (x["actions"], x["sign_ins"]), reverse=True)
+    totals = db.execute(select(func.count().filter(L.category == "action"), func.count().filter(L.category == "auth"),
+                               func.count().filter(L.outcome != "success"), func.count(func.distinct(L.actor_id)))
+                        .where(L.created_at >= since, L.category != "view")).one()
+    return {"days": days, "admins": out,
+            "totals": {"actions": totals[0], "auth_events": totals[1], "issues": totals[2], "active_admins": totals[3]}}
+
+
+@router.get("/audit-logs/export")
+def audit_export(db: DB, actor_id: uuid.UUID | None = None,
+                 category: Literal["action", "auth", "view", "api", "all"] | None = None,
+                 outcome: Literal["success", "denied", "failed"] | None = None, q: str | None = None,
+                 days: int | None = Query(None, ge=1, le=366), since: str | None = None, until: str | None = None,
+                 admin: User = perm(P.AUDIT_VIEW)):
+    """CSV of the filtered activity (max 50,000 rows). The export itself is recorded in the log."""
+    import csv
+    import io
+    import json
+
+    from fastapi.responses import Response as RawResponse
+
+    conds = _activity_filters(actor_id, "" if category == "all" else category, outcome, q, days, since, until)
+    rows = db.scalars(select(AdminAuditLog).where(*conds).order_by(AdminAuditLog.created_at.desc()).limit(50_000)).all()
+    actors = _actor_map(db, [r.actor_id for r in rows])
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["time_utc", "admin", "email", "role", "category", "action", "outcome", "target_type", "target_id", "ip", "details"])
+    for r in rows:
+        a = actors.get(r.actor_id, {})
+        cells = [r.created_at.isoformat(), a.get("name", ""), a.get("email", ""), a.get("role", ""), r.category, r.action,
+                 r.outcome, r.target_type, r.target_id or "", r.ip or "", json.dumps(r.details, default=str)]
+        w.writerow([("'" + c) if isinstance(c, str) and c[:1] in ("=", "+", "-", "@") else c for c in cells])  # CSV-injection safe
+    audit(db, admin, "activity.export", "audit_log", None, {"rows": len(rows), "filters": {
+        "actor_id": str(actor_id) if actor_id else None, "category": category, "outcome": outcome, "q": q, "days": days,
+        "since": since, "until": until}})
+    db.commit()
+    return RawResponse(buf.getvalue(), media_type="text/csv",
+                       headers={"Content-Disposition": f'attachment; filename="goodsng-admin-activity-{utcnow():%Y%m%d-%H%M}.csv"'})
+
+
+class PageViewIn(BaseModel):
+    path: str = Field(min_length=1, max_length=200, pattern=r"^/")
+    title: str | None = Field(None, max_length=120)
+
+
+@router.post("/activity/view", status_code=202)
+def record_page_view(data: PageViewIn, db: DB, user: CurrentUser):
+    """Console page viewed. One entry per admin per page per 10 minutes."""
+    if not user.is_admin:
+        raise Forbidden("Not an administrator")
+    recent = db.scalar(select(AdminAuditLog.id).where(
+        AdminAuditLog.actor_id == user.id, AdminAuditLog.category == "view", AdminAuditLog.target_id == data.path[:80],
+        AdminAuditLog.created_at > utcnow() - timedelta(minutes=10)).limit(1))
+    audit(db, user, "page.view", "page", data.path[:80], {"title": clean_text(data.title)} if data.title else {}, category="view")
+    if recent:
+        db.rollback()
+        return {"recorded": False}
+    db.commit()
+    return {"recorded": True}
 
 
 __all__ = ["SETTING_KEYS"]

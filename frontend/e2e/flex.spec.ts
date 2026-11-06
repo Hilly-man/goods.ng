@@ -1,14 +1,17 @@
+import crypto from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { PASSWORD, createListing, login } from "./helpers";
+import { PASSWORD, createListing, login, uniquePhone } from "./helpers";
 
-const unique = () => String(Date.now()).slice(-8);
-const phone = () => `+23480${unique()}`;
-const bvn = () => `1${String(Date.now()).slice(-9)}${Math.floor(Math.random() * 10)}`;
+const bvn = () => {
+  let value = `1${String(Math.floor(Math.random() * 1e10)).padStart(10, "0")}`;
+  while (value.endsWith("9999")) value = `1${String(Math.floor(Math.random() * 1e10)).padStart(10, "0")}`;
+  return value;
+};
 
 async function newBuyer(request: APIRequestContext) {
-  const email = `flex-${Date.now()}-${Math.floor(Math.random() * 1000)}@example.com`;
+  const email = `flex-${crypto.randomUUID()}@example.com`;
   const reg = await request.post("/api/v1/auth/register", {
-    data: { full_name: "Flex E2E Buyer", email, phone: phone(), password: PASSWORD },
+    data: { full_name: "Flex E2E Buyer", email, phone: uniquePhone(), password: PASSWORD },
   });
   expect(reg.status()).toBe(201);
   const token = (await reg.json()).access_token as string;
@@ -55,7 +58,7 @@ test("Goods Flex requires a guarantor and only allows one running plan", async (
   await expect(page.getByRole("button", { name: "Apply for Goods Flex" })).toBeEnabled();
 
   // Start a plan via the API (apply → accept → pay the down payment).
-  const address = { full_name: "Flex E2E Buyer", phone: phone(), state: "Lagos", city: "Ikeja", street: "12 Test Street" };
+  const address = { full_name: "Flex E2E Buyer", phone: uniquePhone(), state: "Lagos", city: "Ikeja", street: "12 Test Street" };
   const application = await request.post("/api/v1/bnpl/applications", {
     headers: buyer.headers,
     data: { product_id: product.id, tenor_months: 3, consent: true, delivery_option_index: 0, address },

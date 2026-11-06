@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 from slugify import slugify
 from sqlalchemy import func, select, update
 
+from app.core.cache import check_rate_limit
 from app.core.config import settings
 from app.core.deps import DB, CurrentSeller, CurrentUser, OptionalUser, client_ip
 from app.core.errors import AppError, Conflict, Forbidden, NotFound
@@ -20,6 +21,7 @@ from app.models import (
     Negotiation,
     Order,
     Product,
+    ProductImage,
     ProductView,
     SellerProfile,
     SellerVerification,
@@ -121,6 +123,9 @@ def seller_public_out(db, s: SellerProfile) -> dict:
 
 @router.post("/sellers", status_code=201)
 def become_seller(data: SellerCreate, user: CurrentUser, db: DB):
+    from app.core.deps import ensure_customer
+
+    ensure_customer(user)
     if db.scalars(select(SellerProfile).where(SellerProfile.user_id == user.id)).first():
         raise Conflict("You already have a seller profile")
     base = slugify(data.store_name)[:120] or "store"
@@ -197,6 +202,7 @@ async def submit_verification(
     business_name: str | None = Form(None, max_length=200),
     file: UploadFile = File(...),
 ):
+    check_rate_limit(f"kyc:submit:{seller.id}", 10, 86400)
     if document_type not in DOC_TYPES:
         raise AppError("Unsupported document type")
     if level == "business_verified" and document_type != "cac":
@@ -255,11 +261,14 @@ def dashboard(seller: CurrentSeller, db: DB):
         Negotiation.seller_id == seller.id, Negotiation.status == NegotiationStatus.OPEN))
     unread_convos = count(select(func.count()).select_from(Conversation).where(
         Conversation.seller_user_id == seller.user_id))
+    images_used = count(select(func.count()).select_from(ProductImage).join(Product).where(
+        Product.seller_id == seller.id))
     return {
         "total_listings": agg[0], "active_listings": active, "product_views": int(agg[1]),
         "enquiries": int(agg[2]), "contact_clicks": int(agg[3]), "pending_orders": pending,
         "orders_in_transit": shipping, "completed_orders": completed, "protected_sales": protected,
         "revenue_completed": f"{revenue:.2f}", "open_negotiations": open_offers, "conversations": unread_convos,
+        "images_used": images_used, "images_limit": settings.max_images_per_seller,
         "is_premium": is_premium(db, seller.id), "verification_level": seller.verification_level,
     }
 

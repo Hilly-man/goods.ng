@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { byListings } from "@/lib/format";
 import { ChevronRight, Star } from "lucide-react";
 import type { Category, SellerCard } from "@/lib/types";
 import { CategoryIcon, tintFor } from "./icons";
-import { PremiumBadge, VerifiedBadge } from "./badges";
+import { VerifiedBadge } from "./badges";
 
 export function SectionHeader({ title, href, sub, action }: { title: string; href?: string; sub?: string; action?: React.ReactNode }) {
   return (
@@ -27,7 +28,7 @@ export function CategorySidebar({ categories }: { categories: Category[] }) {
   return (
     <nav aria-label="Categories" className="card overflow-hidden">
       <ul className="divide-y divide-line/70">
-        {categories.map((c) => (
+        {byListings(categories).map((c) => (
           <li key={c.id}>
             <Link href={`/c/${c.slug}`} className="group flex items-center gap-3 px-3 py-2.5 hover:bg-brand-50">
               <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${tintFor(c.slug)}`}>
@@ -49,7 +50,7 @@ export function CategorySidebar({ categories }: { categories: Category[] }) {
 export function CategoryTiles({ categories }: { categories: Category[] }) {
   return (
     <nav aria-label="Categories" className="scrollbar-none -mx-3 grid auto-cols-[76px] grid-flow-col grid-rows-2 gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-6 sm:grid-rows-none sm:px-0">
-      {categories.map((c) => (
+      {byListings(categories).map((c) => (
         <Link key={c.id} href={`/c/${c.slug}`} className="flex flex-col items-center gap-1.5 rounded-xl p-1.5 text-center hover:bg-white">
           <span className={`grid size-14 place-items-center rounded-2xl ${tintFor(c.slug)}`}>
             <CategoryIcon name={c.icon} className="size-6" />
@@ -79,7 +80,6 @@ export function SellerTile({ s }: { s: SellerCard }) {
           {Number(s.rating_avg).toFixed(1)} · {s.completed_sales} sales
         </span>
         <span className="mt-1 flex gap-1">
-          {s.is_premium && <PremiumBadge compact />}
           <VerifiedBadge level={s.verification_level} compact />
         </span>
       </span>

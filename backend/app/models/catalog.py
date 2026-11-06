@@ -82,6 +82,8 @@ class Product(UUIDPk, Timestamps, SoftDelete, Base):
     rejection_reason: Mapped[str | None] = mapped_column(String(300))
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     featured_until: Mapped[datetime | None]
+    # Premium "bump to top": counts as fresh for ordering (without faking the posted date).
+    bumped_at: Mapped[datetime | None] = mapped_column(index=True)
     views_count: Mapped[int] = mapped_column(Integer, default=0)
     enquiries_count: Mapped[int] = mapped_column(Integer, default=0)
     contact_clicks: Mapped[int] = mapped_column(Integer, default=0)

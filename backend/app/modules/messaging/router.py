@@ -79,6 +79,9 @@ def get_or_create_conversation(db: Session, product: Product, buyer: User) -> tu
 
 @router.post("/conversations", status_code=201)
 def start(data: StartIn, user: CurrentUser, db: DB):
+    from app.core.deps import ensure_customer
+
+    ensure_customer(user)
     check_rate_limit(f"msg:{user.id}", 30, 60)
     product = db.get(Product, data.product_id)
     if not product or product.deleted_at or product.status != ProductStatus.ACTIVE:

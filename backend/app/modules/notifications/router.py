@@ -4,6 +4,7 @@ from fastapi import APIRouter, Query
 from sqlalchemy import func, select, update
 
 from app.core.deps import DB, CurrentUser
+from app.core.errors import NotFound
 from app.core.time import utcnow
 from app.models import Notification
 
@@ -29,8 +30,10 @@ def unread(user: CurrentUser, db: DB):
 
 @router.post("/{notification_id}/read")
 def mark_read(notification_id: uuid.UUID, user: CurrentUser, db: DB):
-    db.execute(update(Notification).where(Notification.id == notification_id, Notification.user_id == user.id)
-               .values(read_at=utcnow()))
+    res = db.execute(update(Notification).where(Notification.id == notification_id, Notification.user_id == user.id)
+                     .values(read_at=utcnow()))
+    if not res.rowcount:
+        raise NotFound("Notification not found")  # someone else's (or no such) notification
     db.commit()
     return {"ok": True}
 

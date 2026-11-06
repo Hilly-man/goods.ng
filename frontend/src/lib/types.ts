@@ -44,11 +44,15 @@ export interface User {
   admin_permissions: string[];
   email_verified: boolean;
   phone_verified: boolean;
+  two_factor_enabled: boolean;
   created_at: string;
   avatar_url: string | null;
+  google_linked?: boolean;
   state: string | null;
   city: string | null;
   seller: SellerSummary | null;
+  account_type?: "customer" | "staff";
+  admin_role_name?: string | null;
 }
 
 export interface SellerCard {
@@ -97,6 +101,7 @@ export interface ProductCard {
   thumb_url: string | null;
   image_count: number;
   is_featured: boolean;
+  sponsored?: boolean;
   created_at: string;
   seller: SellerCard;
   category: CategoryRef;

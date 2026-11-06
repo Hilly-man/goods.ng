@@ -18,9 +18,12 @@ from app.main import app as _app  # noqa: F401  (registers payment handlers)
 from app.models import Product, Promotion, Subscription
 from app.models.enums import PromotionStatus, SubscriptionStatus
 from app.modules.bnpl.service import mark_overdue_and_remind
+from app.modules.marketing.service import send_capi_purchases
 from app.modules.negotiation.service import expire_due as expire_negotiations
 from app.modules.notifications.service import drain_outbox
 from app.modules.orders.service import auto_release_due, expire_unpaid
+from app.modules.products.service import purge_deleted_listings
+from app.modules.recommendations.router import purge_old_signals
 
 log = logging.getLogger("goodsng.worker")
 
@@ -47,6 +50,9 @@ JOBS = {
     "auto_release_escrow": (300, auto_release_due),
     "expire_subscriptions": (300, expire_subscriptions_and_features),
     "bnpl_reminders": (3600, mark_overdue_and_remind),
+    "purge_interest_signals": (86400, purge_old_signals),
+    "purge_deleted_listings": (86400, purge_deleted_listings),
+    "meta_capi_purchases": (300, send_capi_purchases),
 }
 
 

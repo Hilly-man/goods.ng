@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { BadgeCheck, BarChart3, Camera, Crown, Handshake, ShieldCheck, Wallet } from "lucide-react";
 import { ButtonLink } from "@/components/ui";
@@ -22,7 +23,7 @@ export default function Page() {
           <p className="mt-3 max-w-xl text-white/85">Free listings, real negotiation, and protected payments that land in your account after delivery.</p>
           <div className="mt-6 flex flex-wrap gap-3">
             <ButtonLink href="/seller/onboarding" variant="accent" size="lg">Start selling — it&apos;s free</ButtonLink>
-            <ButtonLink href="/premium" variant="outline" size="lg" className="border-white/30 bg-transparent text-white hover:border-white hover:text-white"><Crown className="size-5" />Go Premium</ButtonLink>
+            <Link href="/premium" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-white/40 px-5 text-base font-semibold text-white transition hover:border-white hover:bg-white/10"><Crown className="size-5" />Go Premium</Link>
           </div>
         </div>
       </section>

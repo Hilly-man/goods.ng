@@ -1,5 +1,6 @@
 "use client";
 
+import { byListings } from "@/lib/format";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import clsx from "clsx";
@@ -40,7 +41,7 @@ export function CategoryMenu({ categories }: { categories: Category[] }) {
     >
       <nav aria-label="Categories" className="card overflow-hidden">
         <ul className="divide-y divide-line/70">
-          {categories.map((c) => {
+          {byListings(categories).map((c) => {
             const isActive = c.id === activeId;
             return (
               <li key={c.id} onMouseEnter={() => open(c.id)}>
@@ -82,7 +83,7 @@ export function CategoryMenu({ categories }: { categories: Category[] }) {
             <ChevronRight className="size-4 text-brand-700" aria-hidden />
           </Link>
           <ul className="divide-y divide-line/70">
-            {active.children.map((s) => (
+            {byListings(active.children).map((s) => (
               <li key={s.id}>
                 <Link href={`/c/${s.slug}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-50">
                   <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${tintFor(active.slug)}`}>

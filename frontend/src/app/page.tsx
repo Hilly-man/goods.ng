@@ -7,8 +7,10 @@ import { ProductGridSkeleton } from "@/components/product-card";
 import { ProductCollection } from "@/components/product-collection";
 import { ViewToggle } from "@/components/view-toggle";
 import { FeaturedCarousel } from "@/components/featured-carousel";
+import { AutoCarousel } from "@/components/auto-carousel";
 import { CategoryTiles, SectionHeader, SellerTile } from "@/components/sections";
 import { CategoryMenu } from "@/components/category-menu";
+import { RecommendedForYou } from "@/components/recommended";
 
 export default function HomePage() {
   return (
@@ -104,14 +106,7 @@ async function Feed() {
         <SectionHeader title="Trending now" sub="Most viewed and saved this month" href="/search" action={<ViewToggle />} />
         <ProductCollection items={feed.trending.slice(0, 10)} eagerCount={feed.featured.length ? 0 : 4} />
       </section>
-      {feed.premium_sellers.length > 0 && (
-        <section>
-          <SectionHeader title="Premium sellers" sub="Established stores you can call or WhatsApp" href="/search?premium=true" />
-          <div className="scrollbar-none -mx-3 flex gap-3 overflow-x-auto px-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-3">
-            {feed.premium_sellers.slice(0, 6).map((s) => <SellerTile key={s.id} s={s} />)}
-          </div>
-        </section>
-      )}
+      <RecommendedForYou />
       <section>
         <SectionHeader title="Recently listed" sub="Fresh ads from across Nigeria" href="/search?sort=newest" />
         <ProductCollection items={feed.recent.slice(0, 15)} />
@@ -119,15 +114,11 @@ async function Feed() {
       {feed.verified_sellers.length > 0 && (
         <section>
           <SectionHeader title="Verified sellers" sub="Identity or business verified by Goods.ng" href="/search?verified=true" />
-          <div className="scrollbar-none -mx-3 flex gap-3 overflow-x-auto px-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-3">
-            {feed.verified_sellers.slice(0, 6).map((s) => <SellerTile key={s.id} s={s} />)}
-          </div>
-        </section>
-      )}
-      {feed.premium.length > 0 && (
-        <section>
-          <SectionHeader title="Recommended for you" sub="From top-rated premium stores" href="/search?premium=true" />
-          <ProductCollection items={feed.premium.slice(0, 10)} />
+          {/* One row that scrolls to the left on its own: ~1.4 per view on phones, 2 on tablets, 3 on desktop. */}
+          <AutoCarousel label="Verified sellers"
+            slideClassName="basis-[72%] sm:basis-[calc((100%-0.75rem)/2)] lg:basis-[calc((100%-1.5rem)/3)] [&>a]:w-full">
+            {feed.verified_sellers.map((s) => <SellerTile key={s.id} s={s} />)}
+          </AutoCarousel>
         </section>
       )}
     </>

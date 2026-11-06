@@ -102,6 +102,9 @@ def _order_number() -> str:
 def create_checkout(db: Session, buyer: User, *, product_id, quantity: int, negotiation_id, delivery_index: int,
                     address: dict, note: str | None, idempotency_key: str | None,
                     payment_method: PaymentMethod = PaymentMethod.FULL) -> tuple[Order, Payment | None]:
+    from app.core.deps import ensure_customer
+
+    ensure_customer(buyer)
     if idempotency_key:
         existing = db.scalars(select(Order).where(Order.buyer_id == buyer.id,
                                                   Order.idempotency_key == idempotency_key)).first()

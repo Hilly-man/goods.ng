@@ -27,6 +27,7 @@ from app.models import (
     User,
 )
 from app.models.enums import BnplStatus, InstallmentStatus, PaymentMethod, PaymentPurpose
+from app.modules.bnpl import lifecycle as life
 from app.modules.notifications.service import notify
 from app.modules.orders import escrow
 from app.modules.orders import service as orders
@@ -98,6 +99,9 @@ def quote(db: Session, product: Product, amount: Decimal) -> list[dict]:
 
 def apply(db: Session, user: User, *, product_id, quantity, negotiation_id, delivery_index, address, note,
           tenor_months: int, idempotency_key: str | None) -> BnplApplication:
+    from app.core.deps import ensure_customer
+
+    ensure_customer(user)
     from sqlalchemy.exc import IntegrityError
 
     from app.modules.bnpl import flex
@@ -139,6 +143,7 @@ def apply(db: Session, user: User, *, product_id, quantity, negotiation_id, deli
         provider=provider.name, provider_application_ref=decision.application_ref,
         credit_decision_ref=decision.decision_ref, purchase_amount=order.total, tenor_months=tenor_months,
         monthly_income_declared=prof.monthly_income_declared, employment_status=prof.employment_type,
+        # Created directly in the lender's decided state (submitted -> approved/declined happens in one call).
         status=BnplStatus.APPROVED if decision.approved else BnplStatus.DECLINED,
         decline_reason=decision.reason, offer_terms=decision.option.as_dict() if decision.option else {},
         offer_expires_at=utcnow() + timedelta(hours=24) if decision.approved else None,
@@ -164,7 +169,7 @@ def apply(db: Session, user: User, *, product_id, quantity, negotiation_id, deli
 
 def release_application(db: Session, a: BnplApplication, reason: str) -> None:
     """Cancel an approved/accepted application that never got funded, and its unpaid order (frees the plan slot)."""
-    if a.status not in (BnplStatus.APPROVED, BnplStatus.ACCEPTED):
+    if a.status not in life.OPEN_APPLICATION:
         return
     order = db.get(Order, a.order_id) if a.order_id else None
     if order and order.status == "pending_payment":
@@ -172,7 +177,7 @@ def release_application(db: Session, a: BnplApplication, reason: str) -> None:
         orders.cancel_unpaid(db, o, esc, reason=reason)
     if order:
         cancel_financing_for_order(db, order, reason)
-    a.status = BnplStatus.CANCELLED
+    life.move_application(a, BnplStatus.CANCELLED)
     db.flush()
 
 
@@ -182,7 +187,7 @@ def withdraw(db: Session, user: User, application_id) -> BnplApplication:
         from app.core.errors import NotFound
 
         raise NotFound("Application not found")
-    if a.status not in (BnplStatus.APPROVED, BnplStatus.ACCEPTED):
+    if a.status not in life.OPEN_APPLICATION:
         raise AppError("Only applications that haven't been paid for can be withdrawn", code="cannot_withdraw")
     release_application(db, a, "Withdrawn by customer")
     db.commit()
@@ -228,7 +233,7 @@ def accept(db: Session, user: User, application_id, ip: str) -> Payment:
     for s in t["schedule"]:
         db.add(Installment(agreement_id=ag.id, sequence=s["sequence"], due_date=date.fromisoformat(s["due_date"]),
                            amount=Decimal(s["amount"])))
-    a.status = BnplStatus.ACCEPTED
+    life.move_application(a, BnplStatus.ACCEPTED)
     pay = payments.create_payment(db, user=user, purpose=PaymentPurpose.BNPL_DOWN_PAYMENT, amount=down,
                                   order_id=order.id, bnpl_application_id=a.id,
                                   callback_path=f"/orders/{order.id}/payment", metadata={"order": order.order_number})
@@ -239,11 +244,13 @@ def accept(db: Session, user: User, application_id, ip: str) -> Payment:
 @payments.on_success(PaymentPurpose.BNPL_DOWN_PAYMENT)
 def _down_paid(db: Session, payment: Payment) -> None:
     a = db.query(BnplApplication).filter_by(id=payment.bnpl_application_id).with_for_update().one()
-    if a.status != BnplStatus.ACCEPTED:
-        return
     ag = a.agreement
+    if a.status != BnplStatus.ACCEPTED or not ag or payment.amount != ag.down_payment or payment.user_id != a.user_id:
+        # Late/duplicate/mismatched down payment (e.g. the offer was withdrawn meanwhile): never keep the money.
+        _refund_unapplied(db, payment, payment.amount, "Goods Flex down payment could not be applied")
+        return
     # Partner disburses the financed amount to the escrow partner (mock: immediate).
-    a.status = ag.status = BnplStatus.ACTIVE
+    life.move_plan(ag, BnplStatus.ACTIVE)
     order, esc = escrow.lock(db, a.order_id)
     orders.on_order_funded(db, order, esc, payment)
     seller = db.get(SellerProfile, order.seller_id)
@@ -258,10 +265,18 @@ def pay_installment(db: Session, user: User, installment_id) -> Payment:
     ag = db.get(FinancingAgreement, inst.agreement_id)
     if ag.application.user_id != user.id:
         raise NotFound("Instalment not found")
-    if inst.status not in (InstallmentStatus.SCHEDULED, InstallmentStatus.OVERDUE, InstallmentStatus.FAILED):
+    if inst.status not in life.PAYABLE_INSTALMENT:
         raise InvalidState("This instalment is not payable")
-    if ag.status != BnplStatus.ACTIVE:
+    if ag.status not in life.PAYABLE_PLAN:
         raise InvalidState("This plan is not active")
+    due = inst.amount - inst.amount_paid
+    # One open payment per instalment: a second tap reuses it instead of creating a second charge.
+    open_pay = db.scalars(select(Payment).where(Payment.installment_id == inst.id,
+                                                Payment.purpose == PaymentPurpose.BNPL_INSTALLMENT,
+                                                Payment.status == "initialized", Payment.amount == due)
+                          .order_by(Payment.created_at.desc())).first()
+    if open_pay:
+        return open_pay
     pay = payments.create_payment(db, user=user, purpose=PaymentPurpose.BNPL_INSTALLMENT,
                                   amount=inst.amount - inst.amount_paid, installment_id=inst.id,
                                   bnpl_application_id=ag.application_id, callback_path="/flex")
@@ -272,30 +287,55 @@ def pay_installment(db: Session, user: User, installment_id) -> Payment:
 @payments.on_success(PaymentPurpose.BNPL_INSTALLMENT)
 def _installment_paid(db: Session, payment: Payment) -> None:
     inst = db.query(Installment).filter_by(id=payment.installment_id).with_for_update().one()
-    if inst.status == InstallmentStatus.PAID:
-        return
     ag = db.query(FinancingAgreement).filter_by(id=inst.agreement_id).with_for_update().one()
-    inst.amount_paid += payment.amount
-    if inst.amount_paid >= inst.amount:
-        inst.status, inst.paid_at = InstallmentStatus.PAID, utcnow()
-    ag.outstanding_balance = max(ag.outstanding_balance - payment.amount, Decimal("0"))
-    db.add(Repayment(installment_id=inst.id, payment_id=payment.id, amount=payment.amount, status="success",
-                     created_at=utcnow()))
-    if all(i.status == InstallmentStatus.PAID for i in ag.installments):
-        ag.status = BnplStatus.COMPLETED
-        ag.application.status = BnplStatus.COMPLETED
-    notify(db, payment.user_id, "repayment_reminder", "Repayment received",
-           f"₦{payment.amount:,.2f} received for instalment {inst.sequence}. Outstanding: ₦{ag.outstanding_balance:,.2f}.",
-           link="/flex")
+    due = max(inst.amount - inst.amount_paid, Decimal("0"))
+    if inst.status not in life.PAYABLE_INSTALMENT or ag.status not in life.PAYABLE_PLAN:
+        due = Decimal("0")  # e.g. a duplicate payment that landed after the instalment was settled
+    applied = min(payment.amount, due)
+    excess = payment.amount - applied
+    if applied > 0:
+        inst.amount_paid += applied
+        ag.outstanding_balance = max(ag.outstanding_balance - applied, Decimal("0"))
+        db.add(Repayment(installment_id=inst.id, payment_id=payment.id, amount=applied, status="success",
+                         created_at=utcnow()))
+        if inst.amount_paid >= inst.amount:
+            life.move_instalment(inst, InstallmentStatus.PAID)
+    if excess > 0:
+        _refund_unapplied(db, payment, excess, f"Instalment {inst.sequence} was already paid")
+    db.flush()
+    if all(i.status in (InstallmentStatus.PAID, InstallmentStatus.CANCELLED) for i in ag.installments):
+        if ag.status in life.PAYABLE_PLAN:
+            life.move_plan(ag, BnplStatus.COMPLETED)
+    elif ag.status == BnplStatus.DEFAULTED and not _seriously_overdue(ag):
+        life.move_plan(ag, BnplStatus.ACTIVE)  # caught up: back in good standing
+    if applied > 0:
+        notify(db, payment.user_id, "repayment_reminder", "Repayment received",
+               f"₦{applied:,.2f} received for instalment {inst.sequence}. Outstanding: ₦{ag.outstanding_balance:,.2f}.",
+               link="/flex")
+
+
+def _seriously_overdue(ag: FinancingAgreement) -> bool:
+    cutoff = date.today() - timedelta(days=life.DEFAULT_AFTER_DAYS)
+    return any(i.status == InstallmentStatus.OVERDUE and i.due_date < cutoff for i in ag.installments)
+
+
+def _refund_unapplied(db: Session, payment: Payment, amount: Decimal, reason: str) -> None:
+    """Money we can't apply goes straight back to the customer — never silently kept."""
+    payments.refund_payment(db, payment, amount, reason)
+    if payment.installment_id:
+        db.add(Repayment(installment_id=payment.installment_id, payment_id=payment.id, amount=amount,
+                         status="refunded", created_at=utcnow()))
+    notify(db, payment.user_id, "repayment_reminder", "Payment refunded",
+           f"₦{amount:,.2f} is being refunded to you: {reason}.", link="/flex")
 
 
 @payments.on_failure(PaymentPurpose.BNPL_INSTALLMENT)
 def _installment_failed(db: Session, payment: Payment) -> None:
-    inst = db.get(Installment, payment.installment_id)
+    inst = db.query(Installment).filter_by(id=payment.installment_id).with_for_update().one()
     db.add(Repayment(installment_id=inst.id, payment_id=payment.id, amount=payment.amount, status="failed",
                      created_at=utcnow()))
     if inst.status == InstallmentStatus.SCHEDULED and inst.due_date < date.today():
-        inst.status = InstallmentStatus.OVERDUE
+        life.move_instalment(inst, InstallmentStatus.OVERDUE)
     notify(db, payment.user_id, "repayment_reminder", "Repayment failed",
            f"Your payment for instalment {inst.sequence} did not go through. Please try again.", link="/flex")
 
@@ -305,13 +345,13 @@ def cancel_financing_for_order(db: Session, order: Order, reason: str) -> None:
     if not a or a.status in (BnplStatus.CANCELLED, BnplStatus.DECLINED, BnplStatus.COMPLETED):
         return
     get_financing_provider().cancel(application_ref=a.provider_application_ref, reason=reason)
-    a.status = BnplStatus.CANCELLED
-    if a.agreement:
-        a.agreement.status = BnplStatus.CANCELLED
+    life.move_application(a, BnplStatus.CANCELLED)
+    if a.agreement and a.agreement.status != BnplStatus.COMPLETED:
+        life.move_agreement(a.agreement, BnplStatus.CANCELLED)
         a.agreement.outstanding_balance = Decimal("0")
         for i in a.agreement.installments:
-            if i.status != InstallmentStatus.PAID:
-                i.status = InstallmentStatus.CANCELLED
+            if i.status not in (InstallmentStatus.PAID, InstallmentStatus.CANCELLED):
+                life.move_instalment(i, InstallmentStatus.CANCELLED)
 
 
 def financing_summary_for_order(db: Session, order: Order, role: str) -> dict | None:
@@ -355,28 +395,33 @@ def application_out(a: BnplApplication) -> dict:
 
 # ---------------- jobs ----------------
 def mark_overdue_and_remind(db: Session) -> dict:
+    """Daily job. Rows are locked and anything being paid right now is skipped (skip_locked),
+    so this can never overwrite a payment that's landing at the same moment."""
     today = date.today()
     overdue = 0
     for inst in db.scalars(select(Installment).where(Installment.status == InstallmentStatus.SCHEDULED,
-                                                     Installment.due_date < today)).all():
-        inst.status = InstallmentStatus.OVERDUE
+                                                     Installment.due_date < today)
+                           .with_for_update(skip_locked=True)).all():
+        life.move_instalment(inst, InstallmentStatus.OVERDUE)
         overdue += 1
         ag = db.get(FinancingAgreement, inst.agreement_id)
         notify(db, ag.application.user_id, "repayment_reminder", "Instalment overdue",
                f"Instalment {inst.sequence} of ₦{inst.amount:,.2f} was due on {inst.due_date:%d %b}. Please pay now.",
                link="/flex")
     db.flush()  # the default check below must see the instalments just marked overdue
-    # 30+ days overdue → plan is in default (still counts as the customer's running plan).
+    # 30+ days overdue → plan is in default (still counts as the customer's running plan; they can still pay).
+    cutoff = today - timedelta(days=life.DEFAULT_AFTER_DAYS)
     for inst in db.scalars(select(Installment).where(Installment.status == InstallmentStatus.OVERDUE,
-                                                     Installment.due_date < today - timedelta(days=30))).all():
-        ag = db.get(FinancingAgreement, inst.agreement_id)
-        if ag.status == BnplStatus.ACTIVE:
-            ag.status = ag.application.status = BnplStatus.DEFAULTED
+                                                     Installment.due_date < cutoff)).all():
+        ag = db.query(FinancingAgreement).filter_by(id=inst.agreement_id).with_for_update(skip_locked=True).one_or_none()
+        if ag and ag.status == BnplStatus.ACTIVE:
+            life.move_plan(ag, BnplStatus.DEFAULTED)
     reminded = 0
     soon = today + timedelta(days=3)
     for inst in db.scalars(select(Installment).where(Installment.status == InstallmentStatus.SCHEDULED,
                                                      Installment.due_date <= soon,
-                                                     Installment.reminder_sent_at.is_(None))).all():
+                                                     Installment.reminder_sent_at.is_(None))
+                           .with_for_update(skip_locked=True)).all():
         ag = db.get(FinancingAgreement, inst.agreement_id)
         if ag.status != BnplStatus.ACTIVE:
             continue

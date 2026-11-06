@@ -1,5 +1,7 @@
 "use client";
 
+import { Landmark } from "lucide-react";
+import { FilterChips, AdminPageHeader, StatusBadge } from "@/components/admin-ui";
 import Link from "next/link";
 import { useState } from "react";
 import { AdminTable } from "@/components/admin-table";
@@ -50,11 +52,11 @@ export default function Page() {
   const [status, setStatus] = useState("");
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Escrow & ledger</h1>
+      <AdminPageHeader icon={Landmark} title="Escrow & ledger" description="Money held for protected orders, reconciled against the double-entry ledger." />
       <Recon />
-      <AdminTable<E> path="/admin/escrow" query={{ status: status || undefined }} filters={<select className="input w-auto" value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status"><option value="">All</option>{["pending_payment", "awaiting_seller", "processing", "dispatched", "awaiting_buyer_confirmation", "disputed", "refund_pending", "completed", "refunded", "cancelled"].map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}</select>} columns={[
+      <AdminTable<E> path="/admin/escrow" query={{ status: status || undefined }} filters={<FilterChips label="Status" value={status} onChange={setStatus} options={[{ value: "", label: "All" }, ...["pending_payment", "awaiting_seller", "processing", "dispatched", "awaiting_buyer_confirmation", "disputed", "refund_pending", "completed", "refunded", "cancelled"].map((s) => ({ value: s, label: titleCase(s) }))]} />} columns={[
         { key: "o", label: "Order", render: (e) => <><Link href={`/orders/${e.order_id}`} className="font-mono text-brand-700">{e.order_number}</Link><p className="font-mono text-[10px] text-muted">{e.provider}:{e.provider_escrow_ref ?? "—"}</p></> },
-        { key: "s", label: "Status", render: (e) => <Badge>{titleCase(e.status)}</Badge> },
+        { key: "s", label: "Status", render: (e) => <StatusBadge status={e.status} /> },
         { key: "a", label: "Held", render: (e) => naira(e.amount) },
         { key: "sp", label: "Seller / Platform", render: (e) => <span className="text-xs">{naira(e.seller_amount)} / {naira(e.platform_amount)}</span> },
         { key: "f", label: "Funded", render: (e) => date(e.funded_at, true) },

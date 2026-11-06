@@ -30,8 +30,8 @@ function SellerShell({ children }: { children: React.ReactNode }) {
   if (!user?.seller || pathname.startsWith("/seller/onboarding")) return <>{children}</>;
   const active = (n: (typeof NAV)[number]) => (n.exact ? pathname === n.href : pathname.startsWith(n.href));
   return (
-    <div className="container-page grid gap-5 py-5 lg:grid-cols-[230px_1fr]">
-      <aside className="lg:sticky lg:top-20 lg:self-start">
+    <div className="container-page grid grid-cols-[minmax(0,1fr)] gap-5 py-5 lg:grid-cols-[230px_minmax(0,1fr)]">
+      <aside className="min-w-0 lg:sticky lg:top-20 lg:self-start">
         <div className="card mb-3 hidden p-4 lg:block">
           <p className="truncate font-semibold">{user.seller.store_name}</p>
           <div className="mt-1 flex items-center gap-2 text-xs">

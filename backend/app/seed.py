@@ -64,7 +64,10 @@ def seed_cities(db) -> None:
 
 
 def seed_reference(db) -> None:
+    from app.modules.staff.roles import ensure_system_roles
+
     seed_cities(db)
+    ensure_system_roles(db)
     for i, (name, icon, subs) in enumerate(CATEGORIES):
         slug = slugify(name)
         cat = db.scalars(select(Category).where(Category.slug == slug)).first()
@@ -167,6 +170,7 @@ def seed_demo(db) -> None:
     pw = hash_password(DEMO_PASSWORD)
     if not db.scalars(select(User).where(User.email == "admin@goods.ng")).first():
         admin = User(email="admin@goods.ng", full_name="Goods.ng Admin", password_hash=pw, role=UserRole.SUPER_ADMIN,
+                     account_type="staff",
                      email_verified=True, admin_permissions=[])
         admin.profile = Profile()
         db.add(admin)

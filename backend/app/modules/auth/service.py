@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from datetime import timedelta
 
@@ -7,17 +8,27 @@ from app.core.cache import check_rate_limit
 from app.core.config import settings
 from app.core.errors import AppError, Conflict, Unauthorized
 from app.core.security import (
+    burn_password_check,
     create_access_token,
+    create_mfa_ticket,
+    decode_mfa_ticket,
+    decrypt_field,
+    encrypt_field,
     generate_otp,
+    generate_totp_secret,
     hash_otp,
     hash_password,
+    match_totp_counter,
     new_opaque_token,
+    password_needs_rehash,
     sha256,
+    totp_uri,
     verify_password,
 )
 from app.core.time import utcnow
 from app.models import OtpCode, Profile, RefreshToken, User
 from app.models.enums import OtpPurpose, VerificationLevel
+from app.modules.audit import audit_auth
 from app.modules.notifications.service import notify, send_direct
 
 MAX_FAILED_LOGINS = 5
@@ -49,12 +60,17 @@ def authenticate(db: Session, email: str, password: str, ip: str) -> User:
     now = utcnow()
     if user and user.locked_until and user.locked_until > now:
         raise Unauthorized("Too many failed attempts. Try again later.", code="account_locked")
+    if not user:
+        burn_password_check(password)  # same response time whether or not the email exists
     if not user or not verify_password(password, user.password_hash):
         if user:
             user.failed_login_count += 1
-            if user.failed_login_count >= MAX_FAILED_LOGINS:
+            locked = user.failed_login_count >= MAX_FAILED_LOGINS
+            if locked:
                 user.locked_until = now + timedelta(minutes=LOCKOUT_MINUTES)
                 user.failed_login_count = 0
+            audit_auth(db, user, "auth.sign_in_failed", outcome="failed",
+                       details={"reason": "wrong password", **({"locked_for_minutes": LOCKOUT_MINUTES} if locked else {})}, ip=ip)
             db.commit()
         raise Unauthorized("Incorrect email or password", code="invalid_credentials")
     if not user.is_active or user.deleted_at:
@@ -62,8 +78,93 @@ def authenticate(db: Session, email: str, password: str, ip: str) -> User:
     user.failed_login_count = 0
     user.locked_until = None
     user.last_login_at = now
+    if password_needs_rehash(user.password_hash):
+        user.password_hash = hash_password(password)
     db.commit()
     return user
+
+
+# ---------------- two-factor authentication ----------------
+RECOVERY_CODE_COUNT = 8
+RECOVERY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def issue_mfa_ticket(user: User) -> str:
+    return create_mfa_ticket(user.id, user.token_version)
+
+
+def start_totp(db: Session, user: User) -> tuple[str, str]:
+    if user.totp_enabled_at:
+        raise Conflict("Two-factor authentication is already enabled", code="totp_already_enabled")
+    secret = generate_totp_secret()
+    user.totp_secret_enc = encrypt_field(secret)
+    db.commit()
+    return secret, totp_uri(secret, user.email)
+
+
+def enable_totp(db: Session, user: User, code: str, keep_refresh_hash: str | None = None) -> list[str]:
+    if user.totp_enabled_at:
+        raise Conflict("Two-factor authentication is already enabled", code="totp_already_enabled")
+    if not user.totp_secret_enc:
+        raise AppError("Start two-factor setup first", code="totp_not_started")
+    counter = match_totp_counter(decrypt_field(user.totp_secret_enc), code)
+    if counter is None:
+        raise Unauthorized("Incorrect authentication code", code="totp_invalid")
+    codes = ["".join(secrets.choice(RECOVERY_ALPHABET) for _ in range(10)) for _ in range(RECOVERY_CODE_COUNT)]
+    user.totp_recovery_hashes = [sha256(c) for c in codes]
+    user.totp_enabled_at = utcnow()
+    user.totp_last_counter = counter
+    # A session created before 2FA should not be able to refresh forever. Keep this browser's
+    # refresh token (if provided) and revoke every other session.
+    query = db.query(RefreshToken).filter(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))
+    if keep_refresh_hash:
+        query = query.filter(RefreshToken.token_hash != keep_refresh_hash)
+    query.update({"revoked_at": utcnow()}, synchronize_session=False)
+    db.commit()
+    return codes
+
+
+def _check_second_factor(user: User, code: str) -> None:
+    code = (code or "").strip().upper()
+    hashes = list(user.totp_recovery_hashes or [])
+    recovery_hash = sha256(code)
+    if recovery_hash in hashes:
+        # Recovery codes are single-use.
+        user.totp_recovery_hashes = [h for h in hashes if h != recovery_hash]
+        return
+    if not user.totp_secret_enc:
+        raise Unauthorized("Incorrect authentication code", code="totp_invalid")
+    counter = match_totp_counter(decrypt_field(user.totp_secret_enc), code)
+    if counter is None or (user.totp_last_counter is not None and counter <= user.totp_last_counter):
+        raise Unauthorized("Incorrect or already-used authentication code", code="totp_invalid")
+    user.totp_last_counter = counter
+
+
+def verify_login_mfa(db: Session, ticket: str, code: str) -> User:
+    payload = decode_mfa_ticket(ticket)
+    user = db.get(User, payload["sub"])
+    if not user or not user.is_active or user.deleted_at:
+        raise Unauthorized("Account unavailable")
+    if payload.get("tv") != user.token_version:
+        raise Unauthorized("Session revoked", code="token_revoked")
+    if not user.totp_enabled_at:
+        raise Unauthorized("Two-factor authentication is not enabled for this account")
+    _check_second_factor(user, code)
+    db.commit()
+    return user
+
+
+def disable_totp(db: Session, user: User, password: str, code: str) -> None:
+    if not verify_password(password, user.password_hash):
+        raise AppError("Password is incorrect", code="invalid_password")
+    if not user.totp_enabled_at:
+        raise AppError("Two-factor authentication is not enabled", code="totp_not_enabled")
+    _check_second_factor(user, code)
+    user.totp_secret_enc = None
+    user.totp_enabled_at = None
+    user.totp_recovery_hashes = []
+    user.totp_last_counter = None
+    db.commit()
 
 
 def issue_tokens(db: Session, user: User, *, family_id: uuid.UUID | None = None, user_agent: str | None = None,
@@ -114,15 +215,18 @@ def rotate_refresh(db: Session, raw: str, user_agent: str | None, ip: str) -> tu
     return user, access, new_raw
 
 
-def logout(db: Session, raw: str | None) -> None:
+def logout(db: Session, raw: str | None) -> User | None:
+    """Revoke the session's refresh-token family. Returns the user it belonged to (for the activity log)."""
     if not raw:
-        return
+        return None
     rt = db.query(RefreshToken).filter_by(token_hash=sha256(raw)).one_or_none()
     if rt:
         db.query(RefreshToken).filter(RefreshToken.family_id == rt.family_id, RefreshToken.revoked_at.is_(None)).update(
             {"revoked_at": utcnow()}
         )
         db.commit()
+        return db.get(User, rt.user_id)
+    return None
 
 
 def revoke_all_sessions(db: Session, user: User) -> None:

@@ -70,8 +70,10 @@ def get_category(slug: str, db: DB):
     if not c:
         raise NotFound("Category not found")
     parent = db.get(Category, c.parent_id) if c.parent_id else None
+    # Live listing counts come from the cached tree (no extra queries).
+    counts = {n["id"]: n["listing_count"] for root in category_tree(db) for n in [root, *root["children"]]}
     children = [
-        {"id": str(x.id), "name": x.name, "slug": x.slug, "icon": x.icon}
+        {"id": str(x.id), "name": x.name, "slug": x.slug, "icon": x.icon, "listing_count": counts.get(str(x.id), 0)}
         for x in c.children if x.is_active
     ]
     return {"id": str(c.id), "name": c.name, "slug": c.slug, "icon": c.icon, "description": c.description,

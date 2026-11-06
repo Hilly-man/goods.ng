@@ -6,9 +6,10 @@ Last updated: 5 November 2026.
 
 | Check | Result |
 |---|---|
-| Backend tests (pytest, real PostgreSQL) | **97 passed** |
+| Backend tests (pytest, real PostgreSQL) | **186 passed** |
 | Frontend unit tests (vitest) | **5 passed** |
-| E2E (Playwright, mobile viewport, production build) | **4 passed**: full protected purchase lifecycle; negotiation → checkout at agreed price; direct-contact warning gate; mandatory-guarantor and one-running-plan rules |
+| E2E (Playwright, mobile viewport, production build) | **6 passed**: redesigned product page; full protected purchase lifecycle; negotiation → checkout at agreed price; direct-contact warning gate; mandatory-guarantor and one-running-plan rules; TOTP 2FA login challenge |
+| Security controls | TOTP 2FA with recovery codes and replay protection · trusted-proxy IP resolution · CSP and HSTS headers |
 | Lint / types | ruff clean · eslint 0 errors · tsc clean |
 | Production build | `next build` succeeds (static and partially prerendered routes) |
 | Migrations | upgrade and downgrade round-trip clean |
@@ -43,15 +44,15 @@ Last updated: 5 November 2026.
 - **Lending partner (Goods Flex):** `MockFinancingProvider`, whose pricing (30% down payment, 3.5% flat per month) and affordability rule are illustrative. A licensed lender adapter must implement `FinancingProvider`, and real terms must be reviewed against FCCPC digital lending regulations.
 - **Open banking (Goods Flex credit limit):** `MockBankDataProvider` generates deterministic six-month statements for test personas, and a `MonoBankDataProvider` adapter is implemented against Mono's v2 API. The Mono adapter is **not yet tested against a Mono sandbox account**; set `BANK_DATA_PROVIDER=mono` with `test_sk_…` keys in staging. The credit engine's thresholds are configurable but illustrative and need review against the lender's credit policy and FCCPC digital lending rules.
 - **Payments:** development uses the mock provider. The Paystack and Flutterwave adapters follow the providers' public documentation but **have not been tested against a sandbox account**.
-- **Email/SMS:** messages are queued in an outbox and "sent" by a console logger. Add adapters (e.g. Termii or another Nigerian SMS gateway; SES, Postmark or SendGrid for email).
+- **Email/SMS:** messages are queued in an outbox. Development uses a console logger; production adapters for **Termii SMS**, **Postmark** and **SMTP** are implemented but have **not been sandbox-tested** yet. Set `SMS_PROVIDER=termii` and `EMAIL_PROVIDER=postmark|smtp` with credentials in staging.
 - **Payouts to sellers:** recorded as `seller_payable` in the ledger. Actual disbursement is the escrow partner's job and isn't integrated yet.
 
 ## Outstanding before launch (prioritised)
 
 1. Sign the licensed escrow/payment and lending partners; implement and sandbox-test their adapters; verify Paystack/Flutterwave and the Mono open-banking adapter in staging.
-2. Real SMS and email providers; push notifications for future mobile apps.
+2. Sandbox-test the Termii SMS and Postmark/SMTP email adapters; add push notifications for future mobile apps.
 3. Deploy staging (managed Postgres, Redis, S3 with CDN, Vercel); set up Sentry error tracking and alerting.
-4. Security follow-ups in SECURITY.md (trusted proxies, CSP, admin 2FA, upload malware scanning, KYC provider, pen test).
+4. Security follow-ups in SECURITY.md (upload malware scanning, licensed KYC provider, external penetration test, DPO/data-subject workflow).
 5. **Legal review** of the Terms, Privacy, Refund & Dispute, Goods Flex and guarantor consent copy. The current text is a draft written for product purposes, not legal advice. See the Goods Flex compliance checklist in SECURITY.md.
 6. Partial refunds (the model supports amounts, but the UI and dispute flow only offer full refunds today).
 7. Seller payout and bank-account management UI, once the escrow partner's payout API is known.

@@ -17,6 +17,7 @@
 - **Database:** managed PostgreSQL 15+ with PITR enabled, private networking and TLS.
 - **Cache:** managed Redis (required in production).
 - **Storage:** S3-compatible bucket (`STORAGE_BACKEND=s3`). Public images go behind a CDN (`MEDIA_BASE_URL`). KYC documents live under the `private/` prefix with **no public access**, server-side encryption, and access via short-lived signed URLs only.
+- **Upload limits:** each input is capped by `MAX_UPLOAD_MB` (8 MB), decoded with Pillow (40 MP decompression-bomb guard), and re-encoded to WebP at 1280px (thumbnail 400px). `MAX_IMAGES_PER_SELLER` (default 200) caps total listing photos per seller, so a single account cannot fill the bucket. Deleted listings/folders should be purged on a schedule.
 - **Secrets:** use a secret manager (not committed `.env` files). `DATA_ENCRYPTION_KEY` must be backed up separately — losing it makes encrypted KYC identifiers unreadable.
 
 ## Provider configuration (Goods Flex)
@@ -27,8 +28,76 @@
 | `MONO_SECRET_KEY` | — | `test_sk_…` in staging, `live_sk_…` in production |
 | `MONO_PUBLIC_KEY` | — | Mono public key (served to the browser only for the Connect widget) |
 | `BNPL_PROVIDER` | `mock` | licensed lender adapter (not bundled) |
+| `SMS_PROVIDER` | `console` | `termii` (`TERMII_API_KEY`, `TERMII_SENDER_ID`) |
+| `EMAIL_PROVIDER` | `console` | `postmark` (`POSTMARK_SERVER_TOKEN`) or `smtp` (`SMTP_HOST`, `SMTP_FROM`, credentials) |
 
 The Mono secret key is used only by the API. Never prefix it with `NEXT_PUBLIC_` or expose it to the browser. The `bank_data_provider` boot guard refuses `mock` in production and requires `MONO_SECRET_KEY` when Mono is selected.
+
+## Sign in with Google
+
+1. In Google Cloud Console → APIs & Services → Credentials, create an **OAuth client ID** of type *Web application*.
+2. Authorised redirect URI: `${FRONTEND_URL}/api/v1/auth/google/callback` (e.g. `https://goods.ng/api/v1/auth/google/callback`; add the staging URL to a separate client).
+3. Configure the OAuth consent screen (app name Goods.ng, support email, privacy policy and terms URLs; scopes `openid email profile`) and publish it.
+4. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` on the API only — never as `NEXT_PUBLIC_*`.
+
+Without these, development/test use a clearly-labelled mock consent screen and staging/production hide the button. Staff accounts cannot use Google sign-in; accounts with 2FA still have to enter their code.
+
+## "I'm not a robot" check on sign-in
+
+The sign-in form asks for a captcha when the browser hasn't signed in successfully in the last 24 hours, or after 3 wrong passwords on the account. It's enforced by the API before the password is checked.
+
+- **Google reCAPTCHA v2 (checkbox):** create a v2 "I'm not a robot" key at google.com/recaptcha/admin for your domains, then set `CAPTCHA_PROVIDER=recaptcha`, `CAPTCHA_SITE_KEY` and `CAPTCHA_SECRET_KEY`.
+- **Cloudflare Turnstile** (privacy-friendly alternative): create a widget in the Cloudflare dashboard, then set `CAPTCHA_PROVIDER=turnstile` with its site key and secret.
+
+Production refuses to start with `mock` or `off`. The site's Content-Security-Policy already allows both providers' scripts and frames.
+
+## Advertising on Google & Facebook
+
+Goods.ng advertises quality-checked Premium listings from its own ad accounts.
+
+1. **Google Merchant Center** — create an account, verify and claim `goods.ng`, set Nigeria / NGN as the target, add a *scheduled fetch* feed with the Google feed URL shown in **Admin › Platform settings › Ads** (`/api/v1/feeds/google.xml`). Then link Merchant Center to **Google Ads** and create a Performance Max (or Shopping) campaign — a feed alone doesn't run ads. Nigeria is marked *beta* by Google, so some placements may not be available yet.
+2. **Meta** — in Business Manager create a Pixel and a catalog (Commerce Manager → data source → scheduled feed with `/api/v1/feeds/meta.csv`), verify the domain, then run Advantage+ catalog ads.
+3. Enter the **Meta Pixel ID**, **GA4 ID**, **Google Ads tag ID** and **purchase conversion label** in Admin › Platform settings, and tick *Publish product feeds*.
+4. Server-side purchases (Meta Conversions API): set `META_CAPI_ACCESS_TOKEN` (and optionally `META_GRAPH_VERSION`) on the API and run the worker. Only orders whose buyer accepted marketing cookies are reported; emails/phones are SHA-256 hashed.
+5. Optional: set `FEED_TOKEN` and append `?token=…` to the feed URLs to stop casual scraping.
+
+Tracking scripts never load until a visitor accepts marketing cookies (banner + "Cookie settings" in the footer; NDPA). Feeds contain only Premium listings with a verified seller, 3+ photos and a real description; property, vehicles, jobs and services are excluded by default.
+
+## Security configuration
+
+| Variable | Development | Staging / production |
+|---|---|---|
+| `TRUSTED_PROXY_CIDRS` | empty | load balancer CIDRs, e.g. `10.0.0.0/8` |
+| `ADMIN_2FA_REQUIRED` | `false` | `true` (boot guard requires it) |
+| uvicorn proxy flags | — | leave `--proxy-headers` off; the app reads `X-Forwarded-For` only from `TRUSTED_PROXY_CIDRS` |
+
+`X-Forwarded-For` is ignored unless the peer is in `TRUSTED_PROXY_CIDRS`; the app then walks the chain right-to-left. Admins must enable TOTP 2FA at `/account` before the admin API accepts their session. The frontend sends a CSP and HSTS header; if you add analytics or error tracking, extend `script-src`/`connect-src` in `frontend/next.config.ts` rather than disabling the policy.
+
+## Admin console subdomain
+
+The admin console is served from its own subdomain (e.g. `https://admin.goods.ng`) by `frontend/src/proxy.ts`.
+
+1. **DNS:** add `admin.goods.ng` pointing at the frontend (on Vercel: add the domain to the same project; it issues the certificate).
+2. **Frontend env (build + runtime):** `ADMIN_URL=https://admin.goods.ng` and `NEXT_PUBLIC_ADMIN_URL=https://admin.goods.ng`. `NEXT_PUBLIC_*` values are baked in at build time, so redeploy after changing them.
+3. **Behaviour:**
+   - `admin.goods.ng/` → console overview; `admin.goods.ng/<section>` → that section (`/users`, `/disputes`, …).
+   - `goods.ng/admin/...` → 308 redirect to the subdomain; `admin.goods.ng/admin/...` → 308 to the clean URL.
+   - Other paths on the admin host (`/login`, `/orders/<id>`, `/item/...`) are served normally, so admin links to order detail pages keep working.
+   - Every admin-host response carries `X-Robots-Tag: noindex, nofollow`.
+   - Sessions are per host (the refresh cookie is host-only), so admin sign-in is separate from the shop.
+4. **Optional hardening:** restrict `admin.goods.ng` at the edge (Vercel Firewall / Cloudflare Access / office VPN IP allow-list) and set `ADMIN_2FA_REQUIRED=true`.
+
+Leaving `ADMIN_URL` unset keeps the console at `/admin` on the main domain (useful for local development without subdomains). For local testing with the subdomain, use `http://admin.localhost:3000`; browsers resolve `*.localhost` automatically, and `next.config.ts` allows it as a dev origin.
+
+## Staff accounts & the first super admin
+
+Staff (admin) accounts are separate from customer accounts. Nobody can sign up as staff, and customers can never be promoted. After the first deploy to an environment, create the first super admin from a trusted shell:
+
+```bash
+python -m app.create_super_admin --email ceo@goods.ng --name "Ada Founder"
+```
+
+It prints a one-time link (valid 72 hours) for setting the password. Set `ADMIN_URL` on the API so invitation links point at the admin subdomain. From then on, the super admin invites staff from **Admin team** and assigns them roles (Operations Manager, Finance, Customer Support, Trust & Safety, KYC Officer, Marketing, Auditor or a custom role). The command refuses to run if an active super admin already exists, unless you pass `--force` (for access recovery).
 
 ## Release procedure
 

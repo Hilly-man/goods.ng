@@ -58,6 +58,10 @@ class Order(UUIDPk, Timestamps, Base):
     expires_at: Mapped[datetime | None]
     paid_at: Mapped[datetime | None]
     completed_at: Mapped[datetime | None]
+    # Ads measurement: did the buyer accept marketing cookies at checkout? Server-side purchase events
+    # (Meta Conversions API) are only ever sent for orders where this is true.
+    marketing_consent: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    capi_sent_at: Mapped[datetime | None]
     cancelled_at: Mapped[datetime | None]
     cancellation_reason: Mapped[str | None] = mapped_column(String(300))
     # Client-supplied key making checkout creation idempotent per buyer.

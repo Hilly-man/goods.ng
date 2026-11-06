@@ -4,11 +4,13 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
 from pydantic import BaseModel
 
+from app.core.cache import check_rate_limit
 from app.core.deps import DB, CurrentSeller, CurrentUser, OptionalUser, client_ip
 from app.core.errors import AppError
 from app.integrations.storage import store_image
 from app.models import Favourite, Product
 from app.models.enums import ProductCondition
+from app.modules.ads import service as ads
 from app.modules.common import Page, PageParams, paginate
 from app.modules.locations import cities_by_state
 from app.modules.products import service
@@ -85,7 +87,20 @@ def search_products(
     params: PageParams = Depends(),
 ):
     page = paginate(db, service.search(db, sort=sort, **filters.values), params)
-    page["items"] = service.to_cards(db, page["items"], user.id if user else None)
+    organic = page["items"]
+    sponsored = []
+    f = filters.values
+    # Sponsored slots: only when ranking by relevance/newest, never when sorting by price, browsing one store,
+    # or already filtering to Premium sellers. They always match the buyer's filters.
+    if sort in ("relevance", "newest") and not f.get("seller_id") and not f.get("premium_only"):
+        sponsored = ads.pick(db, service.filter_conditions(db, f))
+        promoted = {p.id for p in sponsored}
+        organic = [p for p in organic if p.id not in promoted]  # shown once, in its labelled slot
+    blended = ads.blend(organic, sponsored, params.page_size) if sponsored else [(p, False) for p in organic]
+    cards = service.to_cards(db, [p for p, _ in blended], user.id if user else None)
+    for card, (_, is_sponsored) in zip(cards, blended, strict=True):
+        card.sponsored = is_sponsored
+    page["items"] = cards
     return page
 
 
@@ -147,6 +162,7 @@ def my_product(product_id: uuid.UUID, seller: CurrentSeller, db: DB):
 
 @router.post("/seller/products", response_model=SellerProductDetail, status_code=201)
 def create_product(data: ProductIn, seller: CurrentSeller, db: DB):
+    check_rate_limit(f"listing:create:{seller.id}", 100, 86400)
     p = service.create_product(db, seller, data)
     return owner_detail(db, service.get_owned(db, seller, p.id))
 
@@ -170,9 +186,12 @@ def delete_product(product_id: uuid.UUID, seller: CurrentSeller, db: DB):
 
 @router.post("/seller/products/{product_id}/images", response_model=SellerProductDetail)
 async def upload_images(product_id: uuid.UUID, seller: CurrentSeller, db: DB, files: list[UploadFile] = File(...)):
+    check_rate_limit(f"listing:images:{seller.id}", 200, 3600)
     service.get_owned(db, seller, product_id)  # authorise before doing any work
     if len(files) > service.MAX_IMAGES:
         raise AppError(f"Upload at most {service.MAX_IMAGES} photos at once")
+    # Check before writing files, so rejected uploads don't consume storage.
+    service.ensure_image_capacity(db, seller, len(files))
     stored = [store_image(await f.read(), f"products/{product_id}") for f in files]
     service.add_images(db, seller, product_id, stored)
     return owner_detail(db, service.get_owned(db, seller, product_id))
@@ -197,6 +216,9 @@ def reorder_images(product_id: uuid.UUID, data: ReorderIn, seller: CurrentSeller
 # ---------------- favourites ----------------
 @router.post("/products/{product_id}/favourite")
 def favourite(product_id: uuid.UUID, user: CurrentUser, db: DB):
+    from app.core.deps import ensure_customer
+
+    ensure_customer(user)
     return {"favourite": service.toggle_favourite(db, user.id, product_id, True)}
 
 

@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth-provider";
 import { Alert, Button, Checkbox, Input } from "@/components/ui";
 import { ApiError, errorMessage } from "@/lib/api";
 import { safeNext } from "../login/form";
+import { GoogleButton } from "@/components/google-button";
 
 export function RegisterForm() {
   const { register } = useAuth();
@@ -40,6 +41,7 @@ export function RegisterForm() {
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
       {err && <Alert tone="bad">{err}</Alert>}
+      <GoogleButton next={next} label="Sign up with Google" divider="or sign up with email" />
       <Input label="Full name" autoComplete="name" required value={f.full_name} onChange={set("full_name")} error={errs.full_name} />
       <Input label="Email" type="email" autoComplete="email" required value={f.email} onChange={set("email")} error={errs.email} />
       <Input label="Phone number" type="tel" autoComplete="tel" placeholder="0803 123 4567" value={f.phone} onChange={set("phone")} error={errs.phone} hint="Needed to sell, verify your account and use Goods Flex." />

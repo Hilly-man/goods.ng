@@ -1,5 +1,7 @@
 "use client";
 
+import { RotateCcw } from "lucide-react";
+import { AdminPageHeader, FilterChips, confirmAction, StatusBadge } from "@/components/admin-ui";
 import Link from "next/link";
 import { useState } from "react";
 import { AdminTable, askReason } from "@/components/admin-table";
@@ -13,17 +15,16 @@ export default function Page() {
   const toast = useToast();
   const [status, setStatus] = useState("pending_approval");
   return (
-    <><h1 className="mb-1 text-2xl font-bold">Refunds</h1>
-    <p className="mb-4 text-sm text-muted">Dispute refunds require approval by a different administrator from the one who resolved the dispute (four-eyes control).</p>
-    <AdminTable<F> path="/admin/refunds" query={{ status: status || undefined }} filters={<select className="input w-auto" value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status"><option value="">All</option>{["pending_approval", "processing", "completed", "rejected", "failed"].map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}</select>} columns={[
+    <><AdminPageHeader icon={RotateCcw} title="Refunds" description={<>Dispute refunds require approval by a different administrator from the one who resolved the dispute (four-eyes control).</>} />
+    <AdminTable<F> path="/admin/refunds" query={{ status: status || undefined }} filters={<FilterChips label="Status" value={status} onChange={setStatus} options={[{ value: "", label: "All" }, ...["pending_approval", "processing", "completed", "rejected", "failed"].map((s) => ({ value: s, label: titleCase(s) }))]} />} columns={[
       { key: "o", label: "Order", render: (r) => <Link href={`/orders/${r.order_id}`} className="text-brand-700">View order</Link> },
       { key: "a", label: "Amount", render: (r) => <b>{naira(r.amount)}</b> },
       { key: "r", label: "Reason", render: (r) => <p className="max-w-sm text-xs">{r.reason}</p> },
-      { key: "s", label: "Status", render: (r) => <Badge tone={r.status === "completed" ? "good" : r.status === "pending_approval" ? "warn" : "neutral"}>{titleCase(r.status)}</Badge> },
+      { key: "s", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       { key: "t", label: "Requested", render: (r) => date(r.created_at, true) },
     ]} actions={(r, reload) => r.status === "pending_approval" ? (<>
-      <Button size="sm" onClick={async () => { if (!confirm(`Approve and execute refund of ${naira(r.amount)}?`)) return; try { await http.post(`/admin/refunds/${r.id}/approve`); toast("Refund executed"); reload(); } catch (e) { toast(errorMessage(e), "bad"); } }}>Approve</Button>
-      <Button size="sm" variant="danger" onClick={async () => { const reason = askReason("Reason for rejecting (returns the order to dispute):", 5); if (!reason) return; try { await http.post(`/admin/refunds/${r.id}/reject`, { reason }); reload(); } catch (e) { toast(errorMessage(e), "bad"); } }}>Reject</Button>
+      <Button size="sm" onClick={async () => { if (!(await confirmAction({ title: `Refund ${naira(r.amount)}?`, message: "The money goes back to the buyer through the original payment method. This can’t be undone.", confirmLabel: "Approve refund", tone: "danger" }))) return; try { await http.post(`/admin/refunds/${r.id}/approve`); toast("Refund executed"); reload(); } catch (e) { toast(errorMessage(e), "bad"); } }}>Approve</Button>
+      <Button size="sm" variant="danger" onClick={async () => { const reason = await askReason("Reason for rejecting (returns the order to dispute):", 5); if (!reason) return; try { await http.post(`/admin/refunds/${r.id}/reject`, { reason }); reload(); } catch (e) { toast(errorMessage(e), "bad"); } }}>Reject</Button>
     </>) : null} /></>
   );
 }

@@ -102,3 +102,8 @@ export function toMoneyString(input: string): string | null {
   const [w, f = ""] = clean.split(".");
   return `${BigInt(w).toString()}.${f.padEnd(2, "0")}`;
 }
+
+/** Categories ordered by how many live listings they have (most first); ties alphabetical. */
+export function byListings<T extends { listing_count: number; name: string }>(items: readonly T[]): T[] {
+  return [...items].sort((a, b) => b.listing_count - a.listing_count || a.name.localeCompare(b.name));
+}

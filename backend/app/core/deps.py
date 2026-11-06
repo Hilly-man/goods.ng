@@ -1,9 +1,11 @@
+import ipaddress
 from typing import Annotated
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.db import get_db
 from app.core.errors import Forbidden, Unauthorized
 from app.core.security import decode_access_token
@@ -53,6 +55,13 @@ def current_seller(user: CurrentUser, db: DB) -> SellerProfile:
 CurrentSeller = Annotated[SellerProfile, Depends(current_seller)]
 
 
+def ensure_customer(user: User) -> None:
+    """Staff accounts are for administration only and can't buy, sell, chat or take credit."""
+    if user.is_staff:
+        raise Forbidden("Staff accounts can't use marketplace features. Use a separate customer account.",
+                        code="staff_account")
+
+
 def require_permission(perm: str):
     def checker(user: CurrentUser) -> User:
         if not user.has_permission(perm):
@@ -62,6 +71,43 @@ def require_permission(perm: str):
     return checker
 
 
+def require_admin_2fa(user: CurrentUser) -> User:
+    if settings.admin_2fa_required and user.is_admin and not user.totp_enabled_at:
+        raise Forbidden("Enable two-factor authentication on your account before using the admin API",
+                        code="admin_2fa_required")
+    return user
+
+
+def _ip_in(ip: str, networks: list[ipaddress.IPv4Network | ipaddress.IPv6Network]) -> bool:
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return any(addr in net for net in networks)
+
+
+def resolve_client_ip(remote: str | None, forwarded: str | None, trusted_cidrs: list[str] | None) -> str:
+    """Return the real client IP without trusting spoofable X-Forwarded-For values.
+
+    The header is only considered when the direct peer is a configured trusted proxy. We then walk
+    the chain from right to left and return the first address that is not itself a trusted proxy.
+    """
+    remote = (remote or "unknown").strip()
+    networks = []
+    for cidr in trusted_cidrs or []:
+        try:
+            networks.append(ipaddress.ip_network(cidr, strict=False))
+        except ValueError:
+            continue
+    if not forwarded or not networks or not _ip_in(remote, networks):
+        return remote[:64]
+    chain = [ip.strip() for ip in forwarded.split(",") if ip.strip()]
+    for ip in reversed(chain):
+        if not _ip_in(ip, networks):
+            return ip[:64]
+    return (chain[0] if chain else remote)[:64]
+
+
 def client_ip(request: Request) -> str:
-    fwd = request.headers.get("x-forwarded-for")
-    return (fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown"))[:64]
+    return resolve_client_ip(request.client.host if request.client else None,
+                             request.headers.get("x-forwarded-for"), settings.trusted_proxy_cidrs)

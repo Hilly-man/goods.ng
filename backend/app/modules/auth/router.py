@@ -1,13 +1,19 @@
+import segno
 from fastapi import APIRouter, Request, Response
 
+from app.core.cache import check_rate_limit
 from app.core.config import settings
 from app.core.deps import DB, CurrentUser, client_ip
-from app.core.errors import Forbidden
+from app.core.errors import AppError, Forbidden
+from app.core.security import decode_mfa_ticket, sha256
 from app.models import User
-from app.modules.auth import service
+from app.modules.audit import audit_auth
+from app.modules.auth import captcha, service
 from app.modules.auth.schemas import (
     ChangePasswordIn,
     LoginIn,
+    MfaChallengeOut,
+    MfaVerifyIn,
     OtpRequestIn,
     OtpVerifyIn,
     PasswordResetIn,
@@ -15,6 +21,10 @@ from app.modules.auth.schemas import (
     RegisterIn,
     SellerSummary,
     TokenOut,
+    TotpDisableIn,
+    TotpEnableIn,
+    TotpEnableOut,
+    TotpSetupOut,
     UserOut,
 )
 from app.modules.subscriptions.premium import is_premium
@@ -27,6 +37,11 @@ CSRF_HEADER = "x-requested-with"
 
 def user_out(db, user: User) -> UserOut:
     out = UserOut.model_validate(user)
+    out.account_type = user.account_type.value if hasattr(user.account_type, "value") else str(user.account_type)
+    if user.is_admin:
+        out.admin_role_name = user.admin_role.name if user.admin_role else ("Super Admin" if user.is_super_admin else "Admin")
+    out.two_factor_enabled = user.totp_enabled_at is not None
+    out.google_linked = user.google_sub is not None
     if user.profile:
         out.avatar_url, out.state, out.city = user.profile.avatar_url, user.profile.state, user.profile.city
     if user.seller_profile:
@@ -62,14 +77,70 @@ def register(data: RegisterIn, request: Request, response: Response, db: DB):
     return _token_response(db, response, user, request)
 
 
-@router.post("/login", response_model=TokenOut)
+@router.get("/captcha")
+def captcha_status(request: Request):
+    """Does this browser need the "I'm not a robot" check to sign in? (and which widget to show)"""
+    return captcha.public_config(request)
+
+
+@router.post("/login", response_model=TokenOut | MfaChallengeOut)
 def login(data: LoginIn, request: Request, response: Response, db: DB):
+    # Bot check happens before the password is looked at.
+    existing = db.query(User).filter(User.email == data.email.lower()).one_or_none()
+    captcha.enforce(request, existing, data.captcha_token, client_ip(request))
     user = service.authenticate(db, data.email, data.password, client_ip(request))
+    if user.totp_enabled_at:
+        return MfaChallengeOut(mfa_ticket=service.issue_mfa_ticket(user))
+    audit_auth(db, user, "auth.sign_in", details={"method": "password"})
+    captcha.mark_seen(response)
     return _token_response(db, response, user, request)
+
+
+@router.post("/mfa/verify", response_model=TokenOut)
+def mfa_verify(data: MfaVerifyIn, request: Request, response: Response, db: DB):
+    check_rate_limit(f"mfa:{client_ip(request)}", 20, 300)
+    try:
+        user = service.verify_login_mfa(db, data.mfa_ticket, data.code)
+    except AppError:
+        db.rollback()
+        try:
+            who = db.get(User, decode_mfa_ticket(data.mfa_ticket)["sub"])
+        except AppError:
+            who = None
+        audit_auth(db, who, "auth.2fa_failed", outcome="failed")
+        db.commit()
+        raise
+    audit_auth(db, user, "auth.sign_in", details={"method": "password + 2FA"})
+    captcha.mark_seen(response)
+    return _token_response(db, response, user, request)
+
+
+@router.post("/2fa/setup", response_model=TotpSetupOut)
+def totp_setup(user: CurrentUser, db: DB):
+    check_rate_limit(f"2fa-setup:{user.id}", 5, 3600)
+    secret, uri = service.start_totp(db, user)
+    qr = segno.make(uri, error="m").svg_data_uri(scale=6, border=2, dark="#063d27", light="#ffffff")
+    return TotpSetupOut(secret=secret, otpauth_url=uri, qr_svg=qr)
+
+
+@router.post("/2fa/enable", response_model=TotpEnableOut)
+def totp_enable(data: TotpEnableIn, request: Request, user: CurrentUser, db: DB):
+    check_rate_limit(f"2fa-enable:{user.id}", 10, 3600)
+    raw = request.cookies.get(REFRESH_COOKIE, "")
+    return TotpEnableOut(recovery_codes=service.enable_totp(db, user, data.code,
+                                                           keep_refresh_hash=sha256(raw) if raw else None))
+
+
+@router.post("/2fa/disable")
+def totp_disable(data: TotpDisableIn, user: CurrentUser, db: DB):
+    check_rate_limit(f"2fa-disable:{user.id}", 10, 3600)
+    service.disable_totp(db, user, data.password, data.code)
+    return {"message": "Two-factor authentication disabled"}
 
 
 @router.post("/refresh", response_model=TokenOut)
 def refresh(request: Request, response: Response, db: DB):
+    check_rate_limit(f"refresh:{client_ip(request)}", 120, 60)
     _require_csrf(request)
     try:
         user, access, raw = service.rotate_refresh(
@@ -85,7 +156,10 @@ def refresh(request: Request, response: Response, db: DB):
 @router.post("/logout", status_code=204)
 def logout(request: Request, response: Response, db: DB):
     _require_csrf(request)
-    service.logout(db, request.cookies.get(REFRESH_COOKIE))
+    who = service.logout(db, request.cookies.get(REFRESH_COOKIE))
+    if who:
+        audit_auth(db, who, "auth.sign_out")
+        db.commit()
     response.delete_cookie(REFRESH_COOKIE, path=f"{settings.api_prefix}/auth")
 
 
@@ -127,3 +201,8 @@ def reset(data: PasswordResetIn, db: DB):
 def change(data: ChangePasswordIn, user: CurrentUser, db: DB, response: Response, request: Request):
     service.change_password(db, user, data.current_password, data.new_password)
     return _token_response(db, response, user, request)
+
+
+from app.modules.auth.google import router as google_router  # noqa: E402
+
+router.include_router(google_router)

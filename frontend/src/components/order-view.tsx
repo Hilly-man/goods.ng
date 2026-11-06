@@ -1,5 +1,6 @@
 "use client";
 
+import { TrackEvent } from "./consent";
 import Link from "next/link";
 import { useState } from "react";
 import { AlertTriangle, CheckCircle2, Circle, ImagePlus, PackageCheck, ShieldCheck, Star, Truck } from "lucide-react";
@@ -22,15 +23,24 @@ function Progress({ status }: { status: OrderDetail["status"] }) {
   const map: Record<string, number> = { pending_payment: 0, payment_confirmed: 1, funds_safeguarded: 1, awaiting_seller: 1, processing: 2, dispatched: 3, delivered: 4, awaiting_buyer_confirmation: 4, completed: 6 };
   const idx = map[status] ?? -1;
   if (idx < 0) return null;
+  const done = Math.min(idx, FLOW.length);
   return (
-    <ol className="grid grid-cols-6 gap-1">
-      {FLOW.map((_, i) => (
-        <li key={i} className="flex flex-col items-center gap-1 text-center">
-          <span className={clsx("h-1.5 w-full rounded-full", i < idx ? "bg-brand-600" : "bg-line")} />
-          <span className={clsx("text-[10px] sm:text-xs", i < idx ? "font-semibold text-brand-800" : "text-muted")}>{FLOW_LABEL[i]}</span>
-        </li>
-      ))}
-    </ol>
+    <div>
+      <ol className="grid grid-cols-6 gap-1" aria-label={`Order progress: ${done} of ${FLOW.length} steps done`}>
+        {FLOW.map((_, i) => (
+          <li key={i} className="flex flex-col items-center gap-1 text-center">
+            <span className={clsx("h-1.5 w-full rounded-full", i < idx ? "bg-brand-600" : "bg-line")} />
+            {/* Six labels don't fit side by side on a phone; the summary line below replaces them there. */}
+            <span className={clsx("hidden text-xs sm:block", i < idx ? "font-semibold text-brand-800" : "text-muted")}>{FLOW_LABEL[i]}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-1.5 text-xs text-muted sm:hidden">
+        {done >= FLOW.length
+          ? <span className="font-semibold text-brand-800">All {FLOW.length} steps done · Completed</span>
+          : <><span className="font-semibold text-brand-800">{done} of {FLOW.length} done</span> · Next: {FLOW_LABEL[done]}</>}
+      </p>
+    </div>
   );
 }
 
@@ -39,7 +49,7 @@ const DISPUTE_REASONS: Record<string, [string, string][]> = {
   seller: [["buyer_refuses_confirmation", "Buyer won't confirm valid delivery"], ["fraudulent_claim", "False buyer claim"], ["other", "Other"]],
 };
 
-export function OrderView({ id }: { id: string }) {
+export function OrderView({ id, justPaid = false }: { id: string; justPaid?: boolean }) {
   const { data: o, setData, error } = useApi<OrderDetail>(`/orders/${id}`);
   const toast = useToast();
   const [modal, setModal] = useState<null | "dispatch" | "delivered" | "dispute" | "decline" | "cancel" | "review" | "update">(null);
@@ -144,6 +154,10 @@ export function OrderView({ id }: { id: string }) {
         </section>
       </div>
 
+      {justPaid && o.role === "buyer" && (
+        <TrackEvent name="purchase" orderId={o.id} value={Number(o.total)}
+          items={o.items.map((i) => ({ id: i.product_id, price: i.unit_price, name: i.title }))} />
+      )}
       <aside className="space-y-3 lg:sticky lg:top-20 lg:self-start">
         <div className="card p-4 sm:p-5">
           <dl className="space-y-1.5 text-sm">

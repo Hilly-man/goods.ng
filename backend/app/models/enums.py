@@ -7,6 +7,11 @@ class UserRole(_S):
     SUPER_ADMIN = "super_admin"
 
 
+class AccountType(_S):
+    CUSTOMER = "customer"  # shoppers & sellers (self sign-up)
+    STAFF = "staff"  # Goods.ng administrators (created by a super admin only)
+
+
 class AdminPermission(_S):
     USERS_MANAGE = "users.manage"
     SELLERS_VERIFY = "sellers.verify"

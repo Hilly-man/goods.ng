@@ -21,6 +21,8 @@ dependencies = [
     "cryptography>=42",
     "nh3>=0.2.17",
     "python-slugify>=8.0",
+    "segno>=1.6.6",
+    "boto3>=1.43.125",
 ]
 
 [dependency-groups]

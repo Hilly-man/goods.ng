@@ -44,6 +44,12 @@ class LocalStorage:
         path.write_bytes(data)
         return key
 
+    def delete(self, key: str) -> None:
+        try:
+            (self.root / key).unlink()
+        except FileNotFoundError:
+            pass
+
 
 class S3Storage:  # pragma: no cover - requires cloud credentials
     def __init__(self):
@@ -61,6 +67,9 @@ class S3Storage:  # pragma: no cover - requires cloud credentials
         self.client.put_object(Bucket=self.bucket, Key=f"private/{key}", Body=data, ContentType=content_type,
                                ServerSideEncryption="AES256")
         return f"private/{key}"
+
+    def delete(self, key):
+        self.client.delete_object(Bucket=self.bucket, Key=key)
 
 
 def get_storage():
@@ -102,6 +111,13 @@ def store_image(data: bytes, folder: str) -> StoredImage:
     url = storage.put(f"{key}.webp", full, "image/webp")
     thumb_url = storage.put(f"{key}_t.webp", thumb, "image/webp")
     return StoredImage(key=key, url=url, thumb_url=thumb_url, width=w, height=h)
+
+
+def delete_stored_image(storage_key: str) -> None:
+    """Remove both the full image and its thumbnail (same key, different suffix)."""
+    storage = get_storage()
+    storage.delete(f"{storage_key}.webp")
+    storage.delete(f"{storage_key}_t.webp")
 
 
 def store_private_document(data: bytes, folder: str) -> str:

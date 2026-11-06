@@ -113,3 +113,13 @@
     animation: none;
   }
 }
+
+/* Auth screens (sign in / sign up) use the skyline as their own backdrop, so the site footer is hidden. */
+body:has([data-auth-screen]) .site-footer {
+  display: none;
+}
+
+/* The admin console has its own top bar and navigation; hide the public site chrome there. */
+body:has([data-admin-shell]) :is(.site-header, .site-footer, .site-mobile-nav) {
+  display: none;
+}

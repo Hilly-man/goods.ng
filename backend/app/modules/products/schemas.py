@@ -135,6 +135,7 @@ class ProductCard(BaseModel):
     protected_checkout_enabled: bool
     bnpl_enabled: bool
     is_favourite: bool = False
+    sponsored: bool = False  # paid placement — the UI must label it "Sponsored"
 
 
 class ProductDetail(ProductCard):

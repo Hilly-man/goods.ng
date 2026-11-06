@@ -4,6 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.core.security import CleanStr, StrongPassword
 from app.models.enums import OtpPurpose, UserRole, VerificationLevel
 from app.modules.common import Schema
 
@@ -23,22 +24,15 @@ def normalize_ng_phone(v: str) -> str:
 
 
 class RegisterIn(BaseModel):
-    full_name: str = Field(min_length=2, max_length=120)
+    full_name: CleanStr = Field(min_length=2, max_length=120)
     email: EmailStr
     phone: str | None = None
-    password: str = Field(min_length=8, max_length=128)
+    password: StrongPassword
 
     @field_validator("phone")
     @classmethod
     def _phone(cls, v):
         return normalize_ng_phone(v) if v else None
-
-    @field_validator("password")
-    @classmethod
-    def _strength(cls, v):
-        if not (re.search(r"[A-Za-z]", v) and re.search(r"\d", v)):
-            raise ValueError("Password must contain letters and numbers")
-        return v
 
     @field_validator("email")
     @classmethod
@@ -49,6 +43,7 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str = Field(max_length=128)
+    captcha_token: str | None = Field(None, max_length=4096)
 
 
 class OtpRequestIn(BaseModel):
@@ -73,12 +68,41 @@ class PasswordResetRequestIn(BaseModel):
 class PasswordResetIn(BaseModel):
     email: EmailStr
     code: str = Field(pattern=r"^\d{6}$")
-    new_password: str = Field(min_length=8, max_length=128)
+    new_password: StrongPassword
 
 
 class ChangePasswordIn(BaseModel):
     current_password: str
-    new_password: str = Field(min_length=8, max_length=128)
+    new_password: StrongPassword
+
+
+class MfaChallengeOut(BaseModel):
+    mfa_required: bool = True
+    mfa_ticket: str
+
+
+class MfaVerifyIn(BaseModel):
+    mfa_ticket: str = Field(min_length=20, max_length=2000)
+    code: str = Field(min_length=6, max_length=20)
+
+
+class TotpSetupOut(BaseModel):
+    secret: str
+    otpauth_url: str
+    qr_svg: str  # data: URI of an SVG QR code for the otpauth URL, rendered server-side (never by a third party)
+
+
+class TotpEnableIn(BaseModel):
+    code: str = Field(pattern=r"^\d{6}$")
+
+
+class TotpEnableOut(BaseModel):
+    recovery_codes: list[str]
+
+
+class TotpDisableIn(BaseModel):
+    password: str
+    code: str = Field(min_length=6, max_length=20)
 
 
 class SellerSummary(Schema):
@@ -98,8 +122,12 @@ class UserOut(Schema):
     admin_permissions: list[str]
     email_verified: bool
     phone_verified: bool
+    two_factor_enabled: bool = False
+    account_type: str = "customer"
+    admin_role_name: str | None = None
     created_at: datetime
     avatar_url: str | None = None
+    google_linked: bool = False
     state: str | None = None
     city: str | None = None
     seller: SellerSummary | None = None

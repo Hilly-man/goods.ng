@@ -58,7 +58,7 @@ export async function ListingResults({ sp, category, title }: { sp: SP; category
             <Link href="/search" className="mt-4 text-sm font-semibold text-brand-700 hover:underline">Clear all filters</Link>
           </div>
         ) : (
-          <ProductCollection items={data.items} eagerCount={4} />
+          <ProductCollection items={data.items} eagerCount={4} placement={category ? "category" : "search"} />
         )}
         {data.pages > 1 && (
           <nav aria-label="Pagination" className="mt-6 flex items-center justify-center gap-2">

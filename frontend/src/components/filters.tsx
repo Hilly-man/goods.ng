@@ -220,7 +220,6 @@ function FilterBody({ facets }: { facets: Facets }) {
 
       <Section title="Verified sellers">
         {flagRow("verified", "verified_only", "Verified sellers")}
-        {flagRow("premium", "premium_only", "Premium sellers")}
       </Section>
 
       <Section title="Deals & payment">

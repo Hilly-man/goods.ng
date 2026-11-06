@@ -5,6 +5,7 @@ import { MessageCircle } from "lucide-react";
 import clsx from "clsx";
 import { useState } from "react";
 import { RequireAuth } from "@/components/require-auth";
+import { Avatar } from "@/components/avatar";
 import { EmptyState, PageLoader, Tabs } from "@/components/ui";
 import { useApi, usePolling } from "@/lib/hooks";
 import { naira, timeAgo } from "@/lib/format";
@@ -29,9 +30,12 @@ function Inbox() {
           {data.map((c) => (
             <li key={c.id}>
               <Link href={`/messages/${c.id}`} className={clsx("flex gap-3 p-3 hover:bg-canvas", c.unread > 0 && "bg-brand-50/50")}>
-                <span className="size-14 shrink-0 overflow-hidden rounded-lg bg-canvas">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {c.product?.thumb_url && <img src={c.product.thumb_url} alt="" className="size-full object-cover" />}
+                <span className="relative size-14 shrink-0">
+                  <span className="block size-full overflow-hidden rounded-lg bg-canvas">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {c.product?.thumb_url && <img src={c.product.thumb_url} alt="" className="size-full object-cover" />}
+                  </span>
+                  <Avatar name={c.other_party.name} src={c.other_party.avatar_url} className="absolute -bottom-1 -right-1 size-7 text-[10px] ring-2 ring-white" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex justify-between gap-2"><span className={clsx("truncate", c.unread ? "font-bold" : "font-semibold")}>{c.other_party.name}</span><span className="shrink-0 text-xs text-muted">{timeAgo(c.last_message_at)}</span></span>

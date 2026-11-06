@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, File, UploadFile
 from pydantic import BaseModel, Field
 
+from app.core.cache import check_rate_limit
 from app.core.deps import DB, CurrentUser
 from app.core.security import clean_text
 from app.integrations.storage import store_image
@@ -42,11 +43,21 @@ def update_me(data: ProfileIn, user: CurrentUser, db: DB):
 
 @router.post("/me/avatar", response_model=UserOut)
 async def upload_avatar(user: CurrentUser, db: DB, file: UploadFile = File(...)):
+    """Optional profile photo. The image is validated, EXIF-stripped and re-encoded to WebP by store_image."""
+    check_rate_limit(f"avatar:{user.id}", 10, 3600)
     img = store_image(await file.read(), "avatars")
     if not user.profile:
         user.profile = Profile()
     user.profile.avatar_url = img.thumb_url
     db.commit()
+    return user_out(db, user)
+
+
+@router.delete("/me/avatar", response_model=UserOut)
+def remove_avatar(user: CurrentUser, db: DB):
+    if user.profile:
+        user.profile.avatar_url = None
+        db.commit()
     return user_out(db, user)
 
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Bell, ChevronDown, Heart, LayoutDashboard, LogOut, MapPin, MessageCircle, Plus, Search, Shield, Store, User } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
@@ -9,7 +9,9 @@ import { Logo } from "./logo";
 import { useAuth } from "./auth-provider";
 import { http } from "@/lib/api";
 import { usePolling } from "@/lib/hooks";
+import { useIsAdminArea } from "@/lib/admin-area";
 import { NG_STATES } from "@/lib/format";
+import { Avatar } from "./avatar";
 
 export function useCounts() {
   const { user } = useAuth();
@@ -98,7 +100,7 @@ function AccountMenu() {
         aria-expanded={open}
         className="flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2 text-white hover:bg-white/10"
       >
-        <span className="grid size-8 place-items-center rounded-full bg-white/15 text-sm font-bold">{user.full_name[0]}</span>
+        <Avatar name={user.full_name} src={user.avatar_url} className="size-8 bg-white/15 text-sm text-white ring-1 ring-white/30" />
         <ChevronDown className="size-4" aria-hidden />
         <span className="sr-only">Account menu</span>
       </button>
@@ -111,12 +113,12 @@ function AccountMenu() {
           <Link href="/account" className={item}><User className="size-4" />My account</Link>
           <Link href="/orders" className={item}><LayoutDashboard className="size-4" />My orders</Link>
           <Link href="/saved" className={item}><Heart className="size-4" />Saved items</Link>
-          {user.seller ? (
+          {user.account_type !== "staff" && (user.seller ? (
             <Link href="/seller" className={item}><Store className="size-4" />Seller dashboard</Link>
           ) : (
             <Link href="/seller/onboarding" className={item}><Store className="size-4" />Start selling</Link>
-          )}
-          {user.role !== "user" && <Link href="/admin" className={item}><Shield className="size-4" />Admin</Link>}
+          ))}
+          {user.role !== "user" && <a href={process.env.NEXT_PUBLIC_ADMIN_URL || "/admin"} className={item}><Shield className="size-4" />Admin</a>}
           <button
             className={clsx(item, "w-full text-red-600")}
             onClick={async () => {
@@ -135,27 +137,30 @@ function AccountMenu() {
 export function Header() {
   const { user, loading } = useAuth();
   const counts = useCounts();
-  const pathname = usePathname();
-  const compact = pathname.startsWith("/admin");
+  const compact = useIsAdminArea();
   return (
-    <header className="sticky top-0 z-40 bg-brand-800 text-white shadow-md">
+    <header className="site-header sticky top-0 z-40 bg-brand-800 text-white shadow-md">
       <div className="container-page flex h-14 items-center gap-3 md:h-16">
         <Logo light />
         {!compact && <SearchBar className="mx-auto hidden max-w-2xl md:flex" />}
         <nav className="ml-auto flex items-center gap-1" aria-label="Account">
           {!loading && user && (
             <>
-              <Link href="/messages" className="relative hidden rounded-full p-2 hover:bg-white/10 md:block" aria-label={`Messages (${counts.messages} unread)`}>
+{user.account_type !== "staff" && (
+                            <Link href="/messages" className="relative hidden rounded-full p-2 hover:bg-white/10 md:block" aria-label={`Messages (${counts.messages} unread)`}>
                 <MessageCircle className="size-5" />
                 {counts.messages > 0 && <Dot n={counts.messages} />}
               </Link>
+              )}
               <Link href="/notifications" className="relative rounded-full p-2 hover:bg-white/10" aria-label={`Notifications (${counts.notifications} unread)`}>
                 <Bell className="size-5" />
                 {counts.notifications > 0 && <Dot n={counts.notifications} />}
               </Link>
+              {user.account_type !== "staff" && (
               <Link href="/saved" className="hidden rounded-full p-2 hover:bg-white/10 md:block" aria-label="Saved items">
                 <Heart className="size-5" />
               </Link>
+              )}
               <div className="hidden md:block">
                 <AccountMenu />
               </div>
@@ -167,12 +172,12 @@ export function Header() {
               <Link href="/register" className="hidden rounded-lg px-3 py-2 hover:bg-white/10 sm:block">Register</Link>
             </div>
           )}
-          <Link
+          {user?.account_type !== "staff" && <Link
             href={user?.seller ? "/seller/products/new" : "/seller/onboarding"}
             className="ml-1 hidden h-10 items-center gap-1.5 rounded-lg bg-accent-500 px-4 text-sm font-bold text-ink shadow-sm transition hover:bg-accent-400 md:inline-flex"
           >
             <Plus className="size-4" /> SELL
-          </Link>
+          </Link>}
         </nav>
       </div>
       {!compact && (

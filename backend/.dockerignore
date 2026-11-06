@@ -6,3 +6,9 @@ media
 private
 tests
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+.coverage
+perf

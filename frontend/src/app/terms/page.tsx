@@ -22,6 +22,7 @@ export default function Page() {
       <p>Listing is free. Sellers pay a commission on completed Protected Checkout sales; buyers pay a protection fee shown at checkout. Premium Seller subscriptions and promotions are billed as displayed. Fees may change with notice.</p>
       <h2>6. Premium Seller</h2>
       <p>Premium status is a paid subscription giving additional features. It is separate from identity or business verification and is not an endorsement of a seller.</p>
+      <p>Premium listings may be given higher placement on Goods.ng, shown in promoted (&quot;Top&quot;) positions, and advertised by Goods.ng on other platforms such as Google and Facebook/Instagram, using the listing&apos;s title, photos, price and description. Goods.ng decides where and how its own advertising runs and pays for it; this doesn&apos;t guarantee any number of views, enquiries or sales.</p>
       <h2>7. Goods Flex</h2>
       <p>Goods Flex financing is provided by a licensed lending partner under its own agreement. Goods.ng does not lend money or make credit decisions. Your limit is calculated from the bank transactions you choose to share and from the verification steps you complete; it is not a promise that the lending partner will approve any particular purchase. You may have only one Goods Flex plan running at a time, and a new plan is only available after the previous plan is fully paid or cancelled.</p>
       <h2>8. Guarantors</h2>

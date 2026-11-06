@@ -88,6 +88,12 @@ class Cache:
         else:
             self._mem.setex(key, ttl, json.loads(json.dumps(value, default=str)))
 
+    def delete(self, key: str) -> None:
+        if self._redis:
+            self._redis.delete(key)
+        else:
+            self._mem.delete_prefix(key)
+
     def invalidate(self, prefix: str):
         if self._redis:
             for k in self._redis.scan_iter(f"{prefix}*"):
@@ -145,7 +151,10 @@ cache = Cache()
 
 
 def check_rate_limit(key: str, limit: int, window_seconds: int) -> None:
+    from app.core.config import settings
     from app.core.errors import RateLimited
 
-    if cache.hit(f"rl:{key}", window_seconds) > limit:
+    # Dev/test only: lets automated test runs from one IP (localhost) exceed human-scale limits.
+    # Production refuses to boot unless the multiplier is 1.
+    if cache.hit(f"rl:{key}", window_seconds) > limit * max(1, settings.rate_limit_multiplier):
         raise RateLimited("Too many requests. Please wait and try again.")

@@ -24,11 +24,13 @@ from app.models.flex import BankConnection, CreditAssessment, FlexProfile, Guara
 from app.models.ledger import LedgerAccount, LedgerEntry, LedgerTransaction
 from app.models.messaging import Conversation, Message, MessageReport, Negotiation, Offer
 from app.models.misc import (
+    AdEvent,
     AdminAuditLog,
     BnplApplication,
     City,
     FinancingAgreement,
     Installment,
+    InterestSignal,
     MockProviderRecord,
     Notification,
     OutboundMessage,
@@ -39,6 +41,6 @@ from app.models.misc import (
     ReviewReport,
 )
 from app.models.seller import SellerProfile, SellerVerification, Subscription, SubscriptionPlan
-from app.models.user import NotificationPreference, OtpCode, Profile, RefreshToken, User
+from app.models.user import AdminRole, NotificationPreference, OtpCode, Profile, RefreshToken, User
 
 __all__ = [n for n in dir() if not n.startswith("_")]

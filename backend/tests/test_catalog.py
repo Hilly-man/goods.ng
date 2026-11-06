@@ -95,6 +95,26 @@ def test_image_upload_validation(make_seller, make_product):
     assert bad.status_code == 400 and bad.json()["error"]["code"] == "invalid_image"
 
 
+def test_seller_photo_quota(make_seller, make_product, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "max_images_per_seller", 2)
+    s = make_seller()
+    p = make_product(s)
+    two = [("files", ("a.png", png_bytes(), "image/png")), ("files", ("b.png", png_bytes(), "image/png"))]
+    assert s.post(f"/seller/products/{p['id']}/images", files=two).status_code == 200
+    assert s.get("/sellers/me/dashboard").json()["images_used"] == 2
+    assert s.get("/sellers/me/dashboard").json()["images_limit"] == 2
+
+    over = s.post(f"/seller/products/{p['id']}/images", files=[("files", ("c.png", png_bytes(), "image/png"))])
+    assert over.status_code == 400 and over.json()["error"]["code"] == "seller_image_limit"
+
+    img_id = s.get(f"/seller/products/{p['id']}").json()["images"][0]["id"]
+    s.delete(f"/seller/products/{p['id']}/images/{img_id}")
+    again = s.post(f"/seller/products/{p['id']}/images", files=[("files", ("d.png", png_bytes(), "image/png"))])
+    assert again.status_code == 200
+
+
 def test_favourites(make_user, make_seller, make_product):
     s, u = make_seller(), make_user()
     p = make_product(s)
@@ -191,3 +211,20 @@ def test_new_filters_and_facets(client, db, make_seller, make_product):
     assert {b["name"]: b["count"] for b in f2["brands"]} == {"Samsung": 2, "Tecno": 1}
     assert f2["conditions"] == {"foreign_used": 1} and f2["total"] == 1
     _ = a
+
+
+def test_public_stats_reflect_new_listings(client, make_seller, make_product):
+    from app.core.cache import cache
+    from app.modules.stats.router import CACHE_KEY
+
+    cache.invalidate(CACHE_KEY)
+    before = client.get("/api/v1/stats/public").json()
+    assert {"live_ads", "new_ads_24h", "sellers", "verified_sellers", "completed_orders", "categories",
+            "states_with_ads", "cities_with_ads", "updated_at"} <= before.keys()
+    make_product(make_seller())
+    cache.invalidate(CACHE_KEY)
+    after = client.get("/api/v1/stats/public").json()
+    assert after["live_ads"] == before["live_ads"] + 1
+    assert after["new_ads_24h"] == before["new_ads_24h"] + 1
+    assert after["sellers"] == before["sellers"] + 1
+    assert after["categories"] == 17
