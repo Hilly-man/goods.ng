@@ -21,7 +21,7 @@ from sqlalchemy.orm import selectinload
 from app.core.config import settings
 from app.core.db import SessionLocal
 from app.core.time import utcnow
-from app.integrations.storage import store_image
+from app.integrations.storage import delete_stored_image, store_image
 from app.models import Product, ProductImage, SellerProfile
 
 PALETTES: dict[str, tuple[tuple[int, int, int], tuple[int, int, int]]] = {
@@ -133,6 +133,7 @@ def card(product: Product, seller: SellerProfile, variant: int) -> bytes:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--replace", action="store_true", help="regenerate images that already exist")
     args = parser.parse_args()
     if settings.environment not in ("development", "test"):
         raise SystemExit("Refusing to generate demo images outside development/test")
@@ -141,21 +142,28 @@ def main() -> int:
         products = db.scalars(select(Product).options(selectinload(Product.images), selectinload(Product.subcategory),
                                                       selectinload(Product.seller)).where(
             Product.deleted_at.is_(None)).order_by(Product.created_at)).all()
-        seeded = [p for p in products if not p.images and re.search(r"-\d{4}$", p.slug)]
+        seeded = [p for p in products if re.search(r"-\d{4}$", p.slug)]
+        if not args.replace:
+            seeded = [p for p in seeded if not p.images]
         if args.limit:
             seeded = seeded[: args.limit]
         made = 0
         for p in seeded:
+            if args.replace and p.images:
+                for img in list(p.images):
+                    delete_stored_image(img.storage_key)
+                p.images.clear()
             for variant in range(2):
                 stored = store_image(card(p, p.seller, variant), f"products/{p.id}",
-                                     watermark=f"{p.seller.store_name} · Goods.ng")
+                                     watermark=f"“{p.seller.store_name}” Listed on Goods.ng")
                 p.images.append(ProductImage(url=stored.url, thumb_url=stored.thumb_url, storage_key=stored.key,
                                              width=stored.width, height=stored.height, position=variant,
                                              created_at=utcnow()))
                 made += 1
             db.flush()
         db.commit()
-        print(f"Generated {made} photos for {len(seeded)} seeded listings.")
+        verb = "Regenerated" if args.replace else "Generated"
+        print(f"{verb} {made} photos for {len(seeded)} seeded listings.")
     return 0
 
 

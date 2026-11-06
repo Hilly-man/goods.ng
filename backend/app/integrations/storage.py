@@ -102,24 +102,38 @@ def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
 
 
 def _watermark(img: Image.Image, text: str) -> Image.Image:
-    """Tile a diagonal seller/brand watermark across the image (also applied to the thumbnail)."""
-    text = text[:80].strip()
+    """A single bold, centred seller/brand mark (also applied before the thumbnail resize)."""
+    text = text.strip()
     if not text:
         return img
     base = img.convert("RGBA")
     w, h = base.size
-    size = max(16, w // 26)
+    size = max(18, min(w // 18, 54))
     font = _font(size)
     layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
-    bbox = draw.textbbox((0, 0), text, font=font)
-    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    step_x, step_y = tw + size * 4, th + size * 6
-    for y in range(-h, h * 2, max(step_y, 1)):
-        for x in range(-w, w * 2, max(step_x, 1)):
-            draw.text((x, y), text, font=font, fill=(255, 255, 255, 80),
-                      stroke_width=max(1, size // 18), stroke_fill=(0, 0, 0, 55))
-    layer = layer.rotate(-30, resample=Image.BICUBIC, expand=False)
+
+    max_width = int(w * 0.78)
+    lines: list[str] = []
+    line = ""
+    for word in text.split():
+        candidate = f"{line} {word}".strip()
+        if draw.textlength(candidate, font=font) <= max_width or not line:
+            line = candidate
+        else:
+            lines.append(line)
+            line = word
+    if line:
+        lines.append(line)
+
+    line_height = size + int(size * 0.35)
+    y = (h - line_height * len(lines)) / 2
+    for line in lines:
+        width = draw.textlength(line, font=font)
+        draw.text(((w - width) / 2, y), line, font=font, fill=(255, 255, 255, 110),
+                  stroke_width=max(2, size // 14), stroke_fill=(0, 0, 0, 90))
+        y += line_height
+
     base.alpha_composite(layer)
     return base.convert("RGB")
 

@@ -192,7 +192,7 @@ async def upload_images(product_id: uuid.UUID, seller: CurrentSeller, db: DB, fi
         raise AppError(f"Upload at most {service.MAX_IMAGES} photos at once")
     # Check before writing files, so rejected uploads don't consume storage.
     service.ensure_image_capacity(db, seller, len(files))
-    mark = f"{seller.store_name} · Goods.ng"
+    mark = f"“{seller.store_name}” Listed on Goods.ng"
     stored = [store_image(await f.read(), f"products/{product_id}", watermark=mark) for f in files]
     service.add_images(db, seller, product_id, stored)
     return owner_detail(db, service.get_owned(db, seller, product_id))
