@@ -22,6 +22,7 @@ cp .env.example .env            # defaults work for local Postgres
 uv sync
 uv run alembic upgrade head
 uv run python -m app.seed --demo   # categories, plans, demo users and listings
+uv run python -m app.seed_images   # optional: generate watermarked demo photos
 uv run uvicorn app.main:app --reload --port 8000
 uv run python -m app.worker        # in another terminal: background jobs
 
