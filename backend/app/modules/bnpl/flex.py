@@ -258,7 +258,8 @@ def save_employment(db: Session, user: User, data: dict) -> tuple[FlexProfile, s
         p.work_email_token_expires = utcnow() + timedelta(hours=24)
         link = f"{settings.frontend_url}/flex/verify-work-email?token={token}"
         send_direct(db, "email", email, f"Confirm your workplace for Goods Flex: {link}\n\nIf you didn't request this, ignore this email.",
-                    subject="Confirm your work email")
+                    subject="Confirm your work email", event_type="flex_workplace", link=link,
+                    recipient_name=user.full_name)
     else:
         cac = (data.get("cac_number") or "").strip().upper()
         if not CAC_RE.match(cac):

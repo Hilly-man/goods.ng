@@ -75,7 +75,8 @@ def _send_invite(db, u: User, inviter: User) -> str:
                 f"Hello {u.full_name},\n\n{inviter.full_name} has invited you to the Goods.ng admin console as "
                 f"{role_name}.\n\nSet your password here (valid for {INVITE_TTL_HOURS} hours): {link}\n\n"
                 "If you weren't expecting this, ignore this email.",
-                subject="You've been invited to the Goods.ng admin console")
+                subject="You've been invited to the Goods.ng admin console",
+                event_type="staff_invite", link=link, recipient_name=u.full_name)
     return link
 
 

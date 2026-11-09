@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.time import utcnow
 from app.models import Notification, NotificationPreference, OutboundMessage, User
+from app.modules.notifications.email_templates import render_email, render_text
 
 log = logging.getLogger("goodsng.notify")
 
@@ -36,6 +37,7 @@ EVENTS: dict[str, dict[str, bool]] = {
     "guarantor_response": {"in_app": True, "email": True, "sms": True},
     "repayment_reminder": {"in_app": True, "email": True, "sms": True},
     "subscription": {"in_app": True, "email": True, "sms": False},
+    "promotion": {"in_app": True, "email": True, "sms": False},
     "verification": {"in_app": True, "email": True, "sms": False},
     "listing_moderation": {"in_app": True, "email": True, "sms": False},
     "review": {"in_app": True, "email": False, "sms": False},
@@ -70,8 +72,11 @@ def notify(
     if not user:
         return
     if ch.get("email") and user.email:
-        db.add(OutboundMessage(user_id=user_id, channel="email", recipient=user.email, subject=title,
-                               body=body, next_attempt_at=now, created_at=now))
+        db.add(OutboundMessage(
+            user_id=user_id, channel="email", recipient=user.email, subject=title,
+            body=render_text(title, body), html=render_email(event_type, title, body, link, user.full_name),
+            event_type=event_type, next_attempt_at=now, created_at=now,
+        ))
         db.info["outbox_dirty"] = True
     if ch.get("sms") and user.phone:
         db.add(OutboundMessage(user_id=user_id, channel="sms", recipient=user.phone, body=f"Goods.ng: {body}"[:480],
@@ -79,11 +84,28 @@ def notify(
         db.info["outbox_dirty"] = True
 
 
-def send_direct(db: Session, channel: str, recipient: str, body: str, subject: str | None = None) -> None:
+def send_direct(
+    db: Session,
+    channel: str,
+    recipient: str,
+    body: str,
+    subject: str | None = None,
+    *,
+    event_type: str | None = None,
+    link: str | None = None,
+    code: str | None = None,
+    recipient_name: str | None = None,
+) -> None:
     """For messages to unverified recipients (e.g. OTP) that bypass preferences."""
     now = utcnow()
-    db.add(OutboundMessage(channel=channel, recipient=recipient, subject=subject, body=body,
-                           next_attempt_at=now, created_at=now))
+    is_email = channel == "email"
+    db.add(OutboundMessage(
+        channel=channel, recipient=recipient, subject=subject,
+        body=render_text(subject or "Goods.ng", body) if is_email else body,
+        html=render_email(event_type or "notification", subject or "Goods.ng", body, link, recipient_name, code)
+        if is_email else None,
+        event_type=event_type, next_attempt_at=now, created_at=now,
+    ))
     db.info["outbox_dirty"] = True
 
 
@@ -138,12 +160,14 @@ class PostmarkSender:
         self.transport = transport
 
     def send(self, msg: OutboundMessage) -> None:
+        payload = {"From": self.from_addr, "To": msg.recipient, "Subject": msg.subject or "Goods.ng",
+                   "TextBody": msg.body, "MessageStream": "outbound"}
+        if msg.html:
+            payload["HtmlBody"] = msg.html
         try:
             with httpx.Client(timeout=15, transport=self.transport) as c:
                 r = c.post("https://api.postmarkapp.com/email", headers={
-                    "X-Postmark-Server-Token": self.token, "Accept": "application/json"}, json={
-                    "From": self.from_addr, "To": msg.recipient, "Subject": msg.subject or "Goods.ng",
-                    "TextBody": msg.body, "MessageStream": "outbound"})
+                    "X-Postmark-Server-Token": self.token, "Accept": "application/json"}, json=payload)
         except httpx.HTTPError as e:
             raise RuntimeError("Email provider unreachable") from e
         if r.status_code >= 400:
@@ -166,12 +190,14 @@ class ResendSender:
         self.transport = transport
 
     def send(self, msg: OutboundMessage) -> None:
+        payload = {"from": self.from_addr, "to": [msg.recipient], "subject": msg.subject or "Goods.ng",
+                   "text": msg.body}
+        if msg.html:
+            payload["html"] = msg.html
         try:
             with httpx.Client(timeout=15, transport=self.transport) as c:
                 r = c.post("https://api.resend.com/emails", headers={
-                    "Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}, json={
-                    "from": self.from_addr, "to": [msg.recipient], "subject": msg.subject or "Goods.ng",
-                    "text": msg.body})
+                    "Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}, json=payload)
         except httpx.HTTPError as e:
             raise RuntimeError("Email provider unreachable") from e
         if r.status_code >= 400:
@@ -198,6 +224,8 @@ class SmtpSender:
         m = EmailMessage()
         m["From"], m["To"], m["Subject"] = self.from_addr, msg.recipient, msg.subject or "Goods.ng"
         m.set_content(msg.body)
+        if msg.html:
+            m.add_alternative(msg.html, subtype="html")
         smtp = self.smtp_factory(self.host, self.port, timeout=15)
         try:
             smtp.starttls()

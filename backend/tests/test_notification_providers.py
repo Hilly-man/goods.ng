@@ -5,8 +5,10 @@ import json
 import httpx
 import pytest
 
+from app.core.config import settings
 from app.core.time import utcnow
 from app.models import OutboundMessage
+from app.modules.notifications.email_templates import render_email, render_text
 from app.modules.notifications.service import (
     PostmarkSender,
     ResendSender,
@@ -56,6 +58,51 @@ def test_postmark_email_payload():
     PostmarkSender(server_token="server-token", from_addr="notifications@goods.ng",
                    transport=httpx.MockTransport(handler)).send(
         msg("email", "buyer@example.com", "Order confirmed", "Your order"))
+
+
+def test_branded_email_template():
+    html = render_email("payment_confirmed", "Payment confirmed", "Your order is confirmed.", "/orders/123",
+                        "Ada Nwosu")
+    assert html.startswith("<!DOCTYPE html>")
+    assert "Goods<span" in html
+    assert "Hi Ada," in html
+    assert f"{settings.frontend_url}/orders/123" in html
+    assert "support@goods.ng" in html
+    assert "+234 201 330 0000" in html
+    assert "Lagos, Nigeria" in html
+
+
+def test_email_template_escapes_body():
+    html = render_email("new_message", "New message", "<script>alert(1)</script>", "/messages")
+    assert "<script>alert(1)</script>" not in html
+    assert "&lt;script&gt;" in html
+
+
+def test_password_reset_template_shows_code():
+    html = render_email("password_reset", "Reset your password", "Your code is 123456.", "/login", "Ada",
+                        code="123456")
+    assert "123456" in html
+    assert "Expires in" in html
+
+
+def test_plain_text_email_includes_contact_details():
+    text = render_text("Payment confirmed", "Your order is confirmed.")
+    assert "Payment confirmed" in text
+    assert "support@goods.ng" in text
+    assert f"{settings.frontend_url}/account/notifications" in text
+
+
+def test_resend_html_payload():
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert body["html"] == "<p>Order confirmed</p>"
+        assert body["text"] == "Order confirmed"
+        return httpx.Response(200, json={"id": "email_123"})
+
+    message = msg("email", "buyer@example.com", "Order confirmed", "Your order")
+    message.html = "<p>Order confirmed</p>"
+    ResendSender(api_key="re_test", from_addr="notifications@mail.goods.ng",
+                 transport=httpx.MockTransport(handler)).send(message)
 
 
 def test_resend_email_payload():

@@ -301,7 +301,11 @@ def request_password_reset(db: Session, email: str, ip: str) -> str | None:
     if not user:
         return None  # don't reveal account existence
     code = _create_otp(db, user.email, OtpPurpose.PASSWORD_RESET, user.id)
-    send_direct(db, "email", user.email, f"Your Goods.ng password reset code is {code}.", subject="Reset your password")
+    send_direct(
+        db, "email", user.email, f"Your Goods.ng password reset code is {code}.",
+        subject="Reset your password", event_type="password_reset",
+        link=f"{settings.frontend_url}/forgot-password", code=code, recipient_name=user.full_name,
+    )
     db.commit()
     return code
 

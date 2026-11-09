@@ -186,6 +186,8 @@ class OutboundMessage(UUIDPk, Base):
     recipient: Mapped[str] = mapped_column(String(255))
     subject: Mapped[str | None] = mapped_column(String(200))
     body: Mapped[str] = mapped_column(Text)
+    event_type: Mapped[str | None] = mapped_column(String(40))
+    html: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(15), default="pending")  # pending | sent | failed
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     next_attempt_at: Mapped[datetime]
