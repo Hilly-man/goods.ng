@@ -72,9 +72,11 @@ def notify(
     if ch.get("email") and user.email:
         db.add(OutboundMessage(user_id=user_id, channel="email", recipient=user.email, subject=title,
                                body=body, next_attempt_at=now, created_at=now))
+        db.info["outbox_dirty"] = True
     if ch.get("sms") and user.phone:
         db.add(OutboundMessage(user_id=user_id, channel="sms", recipient=user.phone, body=f"Goods.ng: {body}"[:480],
                                next_attempt_at=now, created_at=now))
+        db.info["outbox_dirty"] = True
 
 
 def send_direct(db: Session, channel: str, recipient: str, body: str, subject: str | None = None) -> None:
@@ -82,6 +84,7 @@ def send_direct(db: Session, channel: str, recipient: str, body: str, subject: s
     now = utcnow()
     db.add(OutboundMessage(channel=channel, recipient=recipient, subject=subject, body=body,
                            next_attempt_at=now, created_at=now))
+    db.info["outbox_dirty"] = True
 
 
 # ---------------- delivery (called by worker) ----------------
