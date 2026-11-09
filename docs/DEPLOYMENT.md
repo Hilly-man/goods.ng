@@ -41,7 +41,22 @@ and Key Value (Redis).
    production-ready**: before switching to `ENVIRONMENT=production`, configure real providers, S3
    storage, a captcha, SMS/email and `TRUSTED_PROXY_CIDRS` as described above.
 
-Notes specific to the current Blueprint:
+### Free-tier variant
+
+`render.free.yaml` runs a demo on Render's free plans: API + web (no worker, no disk), free
+Postgres and free Key Value. Select it as the **Blueprint Path** when creating the Blueprint.
+
+- No background worker, so escrow auto-release, unpaid-order expiry, notifications and promo
+  expiry do not run.
+- No persistent disk: photos are lost whenever the API sleeps (15 minutes idle) or redeploys.
+- Free Postgres expires 30 days after creation and has no backups.
+- Free services cannot receive private traffic, so the web app calls the API's public
+  `onrender.com` URL.
+- Migrations and seeding run on boot; set `SEED_DEMO=0` in `render.free.yaml` for an empty site.
+- Both web services sleep after 15 minutes idle (about a minute to wake), and the workspace gets
+  750 free instance hours per month.
+
+Notes specific to the paid Blueprint:
 
 - The media disk is attached only to the API. The worker cannot purge deleted listing photos from
   it; with `STORAGE_BACKEND=local` uploads also do not survive without the disk. Use S3

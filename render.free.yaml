@@ -1,0 +1,136 @@
+# Free-tier Render Blueprint for Goods.ng (demo only).
+#
+# Deploy: Render Dashboard → New → Blueprint → select this repo, set the Blueprint Path
+# to `render.free.yaml`, then Apply.
+#
+# Free-tier constraints this file works around:
+#   - No background worker: scheduled jobs (escrow release, unpaid-order expiry,
+#     notifications, promo expiry) do not run.
+#   - No pre-deploy command or Shell: the API migrates and seeds on boot.
+#   - No persistent disk: uploaded/generated photos are lost whenever the API sleeps
+#     (after 15 minutes idle) or redeploys. Attach S3 for durable media.
+#   - Free services cannot receive private traffic, so the web app reaches the API
+#     through its public onrender.com URL.
+#   - Free Postgres expires 30 days after creation and has no backups.
+#
+# Seed demo data is enabled with SEED_DEMO=1. Set it to 0 for an empty marketplace.
+
+envVarGroups:
+  - name: goodsng-free-shared
+    envVars:
+      - key: ENVIRONMENT
+        value: staging
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OTP_SECRET
+        generateValue: true
+      - key: DATA_ENCRYPTION_KEY
+        generateValue: true
+      - key: MOCK_PROVIDER_SECRET
+        generateValue: true
+      - key: RATE_LIMIT_MULTIPLIER
+        value: "1"
+      # One worker keeps the API inside the free 512 MB / 0.1 CPU instance.
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: DB_POOL_SIZE
+        value: "3"
+      - key: DB_MAX_OVERFLOW
+        value: "2"
+      - key: DB_POOL_TIMEOUT
+        value: "30"
+      - key: MAX_UPLOAD_MB
+        value: "4"
+      - key: STORAGE_BACKEND
+        value: local
+      - key: LOCAL_MEDIA_DIR
+        value: /app/data/media
+      - key: MEDIA_BASE_URL
+        value: /media
+      - key: SEED_DEMO
+        value: "1"
+      - key: PAYMENT_PROVIDER
+        value: mock
+      - key: ESCROW_PROVIDER
+        value: mock
+      - key: BNPL_PROVIDER
+        value: mock
+      - key: BANK_DATA_PROVIDER
+        value: mock
+      - key: SMS_PROVIDER
+        value: console
+      - key: EMAIL_PROVIDER
+        value: console
+      - key: ADMIN_2FA_REQUIRED
+        value: "false"
+
+services:
+  - type: web
+    name: goodsng-api-free
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: frankfurt
+    plan: free
+    healthCheckPath: /health/ready
+    # Migrations + reference/demo seed run on every boot (idempotent).
+    dockerCommand: /app/start-render-free.sh
+    envVars:
+      - fromGroup: goodsng-free-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: goodsng-db-free
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: goodsng-redis-free
+          type: keyvalue
+          property: connectionString
+      - key: FRONTEND_URL
+        fromService:
+          name: goodsng-web-free
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: CORS_ORIGINS
+        fromService:
+          name: goodsng-web-free
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: goodsng-web-free
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    region: frankfurt
+    plan: free
+    healthCheckPath: /
+    envVars:
+      # Free services cannot receive private-network traffic, so use the API's public URL.
+      - key: API_INTERNAL_URL
+        fromService:
+          name: goodsng-api-free
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_SITE_URL
+        fromService:
+          name: goodsng-web-free
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+
+  - type: keyvalue
+    name: goodsng-redis-free
+    region: frankfurt
+    plan: free
+    ipAllowList: []
+
+databases:
+  - name: goodsng-db-free
+    region: frankfurt
+    plan: free
+    postgresMajorVersion: "17"
+    ipAllowList: []
