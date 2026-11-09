@@ -20,6 +20,33 @@
 - **Upload limits:** each input is capped by `MAX_UPLOAD_MB` (8 MB), decoded with Pillow (40 MP decompression-bomb guard), and re-encoded to WebP at 1280px (thumbnail 400px). Listing photos are watermarked with the seller's business name and **Goods.ng** before encoding. `MAX_IMAGES_PER_SELLER` (default 200) caps total listing photos per seller, and the worker purges soft-deleted listings after `DELETED_LISTING_RETENTION_DAYS` (default 30).
 - **Secrets:** use a secret manager (not committed `.env` files). `DATA_ENCRYPTION_KEY` must be backed up separately — losing it makes encrypted KYC identifiers unreadable.
 
+## Deploy on Vercel
+
+Vercel hosts the Next.js app and the FastAPI API as two projects from the same repo (Vercel's
+Python runtime turns the ASGI app into a function). Postgres comes from the Neon Marketplace
+integration and media from Vercel Blob — all on the free Hobby plan.
+
+1. **API project:** root directory `backend`, framework preset **FastAPI**
+   (`backend/pyproject.toml` sets `tool.vercel.entrypoint`). Add a Neon store from the Vercel
+   Marketplace; it sets `DATABASE_URL`. Replace it with `DATABASE_URL_UNPOOLED`: Neon's pooler
+   rejects the app's `statement_timeout` startup parameter.
+2. **Web project:** root directory `frontend`, framework preset **Next.js**. Set
+   `API_INTERNAL_URL=https://<api-project>.vercel.app` and
+   `NEXT_PUBLIC_SITE_URL=https://<web-project>.vercel.app` (the latter is baked in at build time).
+3. **Media:** create a public Blob store (it sets `BLOB_READ_WRITE_TOKEN`), then set
+   `STORAGE_BACKEND=vercel-blob`. Add the store host to `OG_IMAGE_HOSTS` on the web project and
+   allow `https://*.blob.vercel-storage.com` in `next.config.ts`'s `img-src`.
+4. **Migrations and seed:** run them from a workstation against Neon —
+   `DATABASE_URL=... ENVIRONMENT=staging alembic upgrade head`, then
+   `DATABASE_URL=... ENVIRONMENT=staging python -m app.seed --demo` and
+   `STORAGE_BACKEND=vercel-blob python -m app.seed_images`.
+5. Set `ENVIRONMENT=staging`, provider mocks, `CAPTCHA_PROVIDER=off` for a demo, and
+   `DB_POOL_SIZE=1`/`DB_MAX_OVERFLOW=0` so serverless instances do not exhaust Neon connections.
+
+Limits: no background worker, in-memory rate limiting (no Redis), and the API function must finish
+within the plan's duration limit. Use a container platform (Render, Cloud Run, Fly) when those
+matter.
+
 ## Deploy on Render
 
 `render.yaml` at the repo root is a [Render Blueprint](https://render.com/docs/blueprints) that

@@ -18,7 +18,7 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://connect.mono.co ${CAPTCHA} ${ADS_SCRIPT}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: https://connect.mono.co https://*.mono.co ${ADS_IMG}`,
+  `img-src 'self' data: blob: https://connect.mono.co https://*.mono.co https://*.blob.vercel-storage.com ${ADS_IMG}`,
   "font-src 'self' data:",
   `connect-src 'self'${isDev ? " ws: wss:" : ""} https://connect.mono.co https://*.mono.co https://api.withmono.com ${CAPTCHA} ${ADS_CONNECT}`,
   `frame-src 'self' https://connect.mono.co https://link.mono.co ${CAPTCHA} https://www.facebook.com https://td.doubleclick.net`,

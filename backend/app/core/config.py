@@ -1,9 +1,10 @@
+import json
 from decimal import Decimal
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -17,7 +18,8 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     admin_url: str | None = None  # admin console origin, e.g. https://admin.goods.ng (used in staff invites)
     public_api_url: str = "http://localhost:8000"
-    cors_origins: list[str] = ["http://localhost:3000"]
+    # NoDecode: accept both comma-separated values and a JSON array (platform env vars vary).
+    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
 
     database_url: str = "postgresql+psycopg://localhost/goodsng_dev"
     # Per-process pool. Total connections = (pool_size + max_overflow) x workers x replicas,
@@ -84,7 +86,7 @@ class Settings(BaseSettings):
     postmark_from: str | None = None
 
     # Storage
-    storage_backend: Literal["local", "s3"] = "local"
+    storage_backend: Literal["local", "s3", "vercel-blob"] = "local"
     local_media_dir: str = "media"
     media_base_url: str = "/media"  # relative: served via the frontend rewrite; set to a CDN URL in production
     s3_bucket: str | None = None
@@ -113,7 +115,7 @@ class Settings(BaseSettings):
 
     # Only trust X-Forwarded-For when the direct peer is one of these CIDRs (your load balancer).
     # Empty means ignore the header entirely, which is the safe default.
-    trusted_proxy_cidrs: list[str] = []
+    trusted_proxy_cidrs: Annotated[list[str], NoDecode] = []
 
     # Refuse to let admins use the admin API until TOTP 2FA is enabled. Required in production.
     admin_2fa_required: bool = False
@@ -121,7 +123,10 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", "trusted_proxy_cidrs", mode="before")
     @classmethod
     def split_origins(cls, v):
-        if isinstance(v, str) and not v.startswith("["):
+        if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("["):
+                return json.loads(v)
             return [o.strip() for o in v.split(",") if o.strip()]
         return v
 

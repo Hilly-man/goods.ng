@@ -51,6 +51,33 @@ class LocalStorage:
             pass
 
 
+class VercelBlobStorage:
+    """Vercel Blob. Listing photos are public; KYC documents use an unguessable private/ path.
+
+    A Blob store has one access mode, so both kinds live in the public store. Private keys are
+    never returned to clients (only stored in the seller verification row), matching the S3
+    ``private/`` prefix behaviour.
+    """
+
+    def __init__(self):
+        from vercel.blob import sync as blob
+
+        self._blob = blob
+
+    def put(self, key: str, data: bytes, content_type: str) -> str:
+        result = self._blob.put_blob(key, data, access="public", content_type=content_type,
+                                     allow_overwrite=True)
+        return result.url
+
+    def put_private(self, key: str, data: bytes, content_type: str) -> str:
+        path = f"private/{key}"
+        self._blob.put_blob(path, data, access="public", content_type=content_type)
+        return path
+
+    def delete(self, key: str) -> None:
+        self._blob.delete_blob(key)
+
+
 class S3Storage:  # pragma: no cover - requires cloud credentials
     def __init__(self):
         import boto3
@@ -75,6 +102,8 @@ class S3Storage:  # pragma: no cover - requires cloud credentials
 def get_storage():
     if settings.storage_backend == "s3":
         return S3Storage()
+    if settings.storage_backend == "vercel-blob":
+        return VercelBlobStorage()
     return LocalStorage(settings.local_media_dir, settings.media_base_url)
 
 
