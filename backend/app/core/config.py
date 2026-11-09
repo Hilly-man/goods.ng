@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     mono_base_url: str = "https://api.withmono.com"
 
     # Notifications
-    email_provider: Literal["console", "smtp", "postmark"] = "console"
+    email_provider: Literal["console", "smtp", "postmark", "resend"] = "console"
     sms_provider: Literal["console", "termii"] = "console"
     termii_api_key: str | None = None
     termii_sender_id: str = "GoodsNG"
@@ -84,6 +84,8 @@ class Settings(BaseSettings):
     smtp_from: str | None = None
     postmark_server_token: str | None = None
     postmark_from: str | None = None
+    resend_api_key: str | None = None
+    resend_from: str | None = None
 
     # Storage
     storage_backend: Literal["local", "s3", "vercel-blob"] = "local"
@@ -201,11 +203,13 @@ class Settings(BaseSettings):
             elif self.sms_provider == "termii" and not self.termii_api_key:
                 problems.append("TERMII_API_KEY is required when SMS_PROVIDER=termii")
             if self.email_provider == "console":
-                problems.append("EMAIL_PROVIDER must be 'smtp' or 'postmark' in production")
+                problems.append("EMAIL_PROVIDER must be 'smtp', 'postmark' or 'resend' in production")
             elif self.email_provider == "smtp" and not (self.smtp_host and self.smtp_from):
                 problems.append("SMTP_HOST and SMTP_FROM are required when EMAIL_PROVIDER=smtp")
             elif self.email_provider == "postmark" and not self.postmark_server_token:
                 problems.append("POSTMARK_SERVER_TOKEN is required when EMAIL_PROVIDER=postmark")
+            elif self.email_provider == "resend" and not (self.resend_api_key and self.resend_from):
+                problems.append("RESEND_API_KEY and RESEND_FROM are required when EMAIL_PROVIDER=resend")
         if problems:
             raise RuntimeError("Unsafe configuration: " + "; ".join(problems))
 

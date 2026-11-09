@@ -7,7 +7,13 @@ import pytest
 
 from app.core.time import utcnow
 from app.models import OutboundMessage
-from app.modules.notifications.service import PostmarkSender, SmtpSender, TermiiSender, get_sender
+from app.modules.notifications.service import (
+    PostmarkSender,
+    ResendSender,
+    SmtpSender,
+    TermiiSender,
+    get_sender,
+)
 
 
 def msg(channel="sms", recipient="+2348012345678", body="Hello from Goods.ng", subject=None):
@@ -50,6 +56,30 @@ def test_postmark_email_payload():
     PostmarkSender(server_token="server-token", from_addr="notifications@goods.ng",
                    transport=httpx.MockTransport(handler)).send(
         msg("email", "buyer@example.com", "Order confirmed", "Your order"))
+
+
+def test_resend_email_payload():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/emails"
+        assert request.headers["authorization"] == "Bearer re_test"
+        body = json.loads(request.content)
+        assert body == {"from": "notifications@mail.goods.ng", "to": ["buyer@example.com"],
+                        "subject": "Your order", "text": "Order confirmed"}
+        return httpx.Response(200, json={"id": "email_123"})
+
+    ResendSender(api_key="re_test", from_addr="notifications@mail.goods.ng",
+                 transport=httpx.MockTransport(handler)).send(
+        msg("email", "buyer@example.com", "Order confirmed", "Your order"))
+
+
+def test_resend_email_error_is_raised():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(422, json={"message": "invalid from"})
+
+    with pytest.raises(RuntimeError):
+        ResendSender(api_key="re_test", from_addr="notifications@mail.goods.ng",
+                     transport=httpx.MockTransport(handler)).send(
+            msg("email", "buyer@example.com", "Order confirmed", "Your order"))
 
 
 class FakeSMTP:

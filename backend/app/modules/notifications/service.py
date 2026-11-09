@@ -150,6 +150,34 @@ class PostmarkSender:
             raise RuntimeError(f"Email provider error: {r.status_code}")
 
 
+class ResendSender:
+    """Resend transactional email adapter (HTTPS API; no SMTP ports needed)."""
+
+    name = "resend"
+
+    def __init__(self, api_key: str | None = None, from_addr: str | None = None,
+                 transport: httpx.BaseTransport | None = None):
+        self.api_key = api_key or settings.resend_api_key
+        if not self.api_key:
+            raise RuntimeError("RESEND_API_KEY is not configured")
+        self.from_addr = from_addr or settings.resend_from
+        if not self.from_addr:
+            raise RuntimeError("RESEND_FROM is not configured")
+        self.transport = transport
+
+    def send(self, msg: OutboundMessage) -> None:
+        try:
+            with httpx.Client(timeout=15, transport=self.transport) as c:
+                r = c.post("https://api.resend.com/emails", headers={
+                    "Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}, json={
+                    "from": self.from_addr, "to": [msg.recipient], "subject": msg.subject or "Goods.ng",
+                    "text": msg.body})
+        except httpx.HTTPError as e:
+            raise RuntimeError("Email provider unreachable") from e
+        if r.status_code >= 400:
+            raise RuntimeError(f"Email provider error: {r.status_code} {r.text[:200]}")
+
+
 class SmtpSender:
     """SMTP email adapter (e.g. SES, Postmark SMTP, Mailgun SMTP)."""
 
@@ -185,6 +213,8 @@ def get_sender(channel: str):
         return TermiiSender()
     if channel == "email" and settings.email_provider == "postmark":
         return PostmarkSender()
+    if channel == "email" and settings.email_provider == "resend":
+        return ResendSender()
     if channel == "email" and settings.email_provider == "smtp":
         return SmtpSender()
     return ConsoleSender()

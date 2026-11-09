@@ -102,7 +102,7 @@ Notes specific to the paid Blueprint:
 | `MONO_PUBLIC_KEY` | — | Mono public key (served to the browser only for the Connect widget) |
 | `BNPL_PROVIDER` | `mock` | licensed lender adapter (not bundled) |
 | `SMS_PROVIDER` | `console` | `termii` (`TERMII_API_KEY`, `TERMII_SENDER_ID`) |
-| `EMAIL_PROVIDER` | `console` | `postmark` (`POSTMARK_SERVER_TOKEN`) or `smtp` (`SMTP_HOST`, `SMTP_FROM`, credentials) |
+| `EMAIL_PROVIDER` | `console` | `resend` (`RESEND_API_KEY`, `RESEND_FROM`), `postmark` (`POSTMARK_SERVER_TOKEN`) or `smtp` (`SMTP_HOST`, `SMTP_FROM`, credentials) |
 
 The Mono secret key is used only by the API. Never prefix it with `NEXT_PUBLIC_` or expose it to the browser. The `bank_data_provider` boot guard refuses `mock` in production and requires `MONO_SECRET_KEY` when Mono is selected.
 
