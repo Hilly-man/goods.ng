@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Iterator
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
@@ -19,27 +19,20 @@ engine = create_engine(
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
-@event.listens_for(Session, "after_commit")
-def _flush_outbox_after_commit(session: Session) -> None:
-    """Send queued email/SMS before the request returns.
-
-    Serverless platforms (Vercel) have no long-running worker, so OTP and transactional messages
-    would otherwise sit in the outbox forever. The worker still drains anything that fails.
-    """
-    if not session.info.pop("outbox_dirty", False):
-        return
-    try:
-        from app.modules.notifications.service import drain_outbox
-
-        with SessionLocal() as db:
-            drain_outbox(db)
-    except Exception:  # never fail the caller's committed request because a provider is down
-        log.exception("outbox_flush_failed")
-
-
 def get_db() -> Iterator[Session]:
     db = SessionLocal()
     try:
         yield db
     finally:
+        # Serverless platforms (Vercel) have no long-running worker, so send queued email/SMS
+        # as the request finishes. Close this session first: the pool is intentionally small.
+        dirty = db.info.pop("outbox_dirty", False)
         db.close()
+        if dirty:
+            try:
+                from app.modules.notifications.service import drain_outbox
+
+                with SessionLocal() as outbox:
+                    drain_outbox(outbox)
+            except Exception:  # never fail a committed request because a provider is down
+                log.exception("outbox_flush_failed")
