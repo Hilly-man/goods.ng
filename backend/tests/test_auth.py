@@ -3,6 +3,13 @@ from tests.conftest import PASSWORD, Api
 CSRF = {"X-Requested-With": "goodsng"}
 
 
+def set_refresh_cookie(client, value: str) -> None:
+    """Replace the refresh cookie the way a browser would (same domain, not a second cookie)."""
+    domain = next((c.domain for c in client.cookies.jar if c.name == "gng_rt"), "testserver.local")
+    client.cookies.clear()
+    client.cookies.set("gng_rt", value, domain=domain, path="/api/v1/auth")
+
+
 def test_register_login_me(client):
     r = client.post("/api/v1/auth/register", json={"full_name": "Ada Obi", "email": "Ada@Example.com",
                                                    "phone": "0803 123 4567", "password": PASSWORD})
@@ -64,10 +71,10 @@ def test_refresh_rotation_and_reuse_detection(client, make_user):
         db.query(RefreshToken).filter(RefreshToken.revoked_at.isnot(None)).update(
             {"revoked_at": utcnow() - timedelta(minutes=5)})
         db.commit()
-    client.cookies.set("gng_rt", old_cookie, path="/api/v1/auth")
+    set_refresh_cookie(client, old_cookie)
     r = client.post("/api/v1/auth/refresh", headers=CSRF)
     assert r.status_code == 401 and r.json()["error"]["code"] == "refresh_reuse"
-    client.cookies.set("gng_rt", new_cookie, path="/api/v1/auth")
+    set_refresh_cookie(client, new_cookie)
     assert client.post("/api/v1/auth/refresh", headers=CSRF).status_code == 401
     _ = u
 
