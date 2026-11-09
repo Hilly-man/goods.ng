@@ -5,7 +5,6 @@ import { AdminPageHeader, FilterChips, StatusBadge } from "@/components/admin-ui
 import Link from "next/link";
 import { useState } from "react";
 import { AdminTable } from "@/components/admin-table";
-import { Badge } from "@/components/ui";
 import { date, naira, titleCase } from "@/lib/format";
 
 type A = { id: string; status: string; provider: string; credit_decision_ref: string | null; purchase_amount: string; tenor_months: number; decline_reason: string | null; order_id: string | null; created_at: string; outstanding: string | null };

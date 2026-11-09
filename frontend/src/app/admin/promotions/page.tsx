@@ -3,7 +3,6 @@
 import { Megaphone } from "lucide-react";
 import { AdminPageHeader, StatusBadge } from "@/components/admin-ui";
 import { AdminTable } from "@/components/admin-table";
-import { Badge } from "@/components/ui";
 import { date, titleCase } from "@/lib/format";
 
 type P = { id: string; product_id: string; kind: string; source: string; status: string; starts_at: string; ends_at: string };

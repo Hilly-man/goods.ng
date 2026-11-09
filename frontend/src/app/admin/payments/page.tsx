@@ -5,7 +5,6 @@ import { AdminPageHeader, FilterChips, StatusBadge } from "@/components/admin-ui
 import Link from "next/link";
 import { useState } from "react";
 import { AdminTable } from "@/components/admin-table";
-import { Badge } from "@/components/ui";
 import { date, naira, titleCase } from "@/lib/format";
 
 type P = { id: string; reference: string; provider: string; purpose: string; status: string; amount: string; amount_refunded: string; channel: string | null; failure_reason: string | null; order_id: string | null; verified_at: string | null; created_at: string };

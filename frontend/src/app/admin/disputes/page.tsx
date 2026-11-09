@@ -5,7 +5,7 @@ import { AdminPageHeader, FilterChips, StatusBadge } from "@/components/admin-ui
 import Link from "next/link";
 import { useState } from "react";
 import { AdminTable, askReason } from "@/components/admin-table";
-import { Badge, Button, useToast } from "@/components/ui";
+import { Button, useToast } from "@/components/ui";
 import { http, errorMessage } from "@/lib/api";
 import { date, naira, titleCase } from "@/lib/format";
 

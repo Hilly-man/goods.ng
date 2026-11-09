@@ -5,7 +5,7 @@ import { FilterChips, AdminPageHeader, StatusBadge } from "@/components/admin-ui
 import Link from "next/link";
 import { useState } from "react";
 import { AdminTable } from "@/components/admin-table";
-import { Alert, Badge, PageLoader } from "@/components/ui";
+import { Alert, PageLoader } from "@/components/ui";
 import { useApi } from "@/lib/hooks";
 import { date, naira, titleCase } from "@/lib/format";
 

@@ -25,7 +25,6 @@ export function useCounts() {
       .then(([m, n]) => setCounts({ messages: m.unread, notifications: n.unread }))
       .catch(() => {});
   };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [user]);
   usePolling(load, 30000, !!user);
   return user ? counts : { messages: 0, notifications: 0 };

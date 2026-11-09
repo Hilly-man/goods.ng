@@ -34,7 +34,7 @@ function Form() {
     <form onSubmit={save} className="space-y-4">
       <section className="card grid gap-4 p-5 sm:grid-cols-2">
         <div className="sm:col-span-2 flex items-center gap-4">
-          <span className="size-16 overflow-hidden rounded-xl bg-canvas">{/* eslint-disable-next-line @next/next/no-img-element */}{s.logo_url && <img src={s.logo_url} alt="" className="size-full object-cover" />}</span>
+          <span className="size-16 overflow-hidden rounded-xl bg-canvas">{s.logo_url && <img src={s.logo_url} alt="" className="size-full object-cover" />}</span>
           <label className="chip cursor-pointer">Upload logo<input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && upload("logo", e.target.files[0])} /></label>
           <Link href={`/store/${s.slug}`} className="ml-auto text-sm font-semibold text-brand-700">View store →</Link>
         </div>

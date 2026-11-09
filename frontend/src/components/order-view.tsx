@@ -80,7 +80,7 @@ export function OrderView({ id, justPaid = false }: { id: string; justPaid?: boo
   const EvidenceInput = (
     <div>
       <label className="chip cursor-pointer"><ImagePlus className="size-4" />Add photo<input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
-      {evidence.length > 0 && <div className="mt-2 flex gap-2">{evidence.map((u) => /* eslint-disable-next-line @next/next/no-img-element */ <img key={u} src={u} alt="Evidence" className="size-14 rounded object-cover" />)}</div>}
+      {evidence.length > 0 && <div className="mt-2 flex gap-2">{evidence.map((u) => <img key={u} src={u} alt="Evidence" className="size-14 rounded object-cover" />)}</div>}
     </div>
   );
 
@@ -94,7 +94,7 @@ export function OrderView({ id, justPaid = false }: { id: string; justPaid?: boo
           </div>
           <div className="mt-4"><Progress status={o.status} /></div>
           <div className="mt-4 flex gap-3 border-t border-line pt-4">
-            <span className="size-16 shrink-0 overflow-hidden rounded-lg bg-canvas">{/* eslint-disable-next-line @next/next/no-img-element */}{item.image_url && <img src={item.image_url} alt="" className="size-full object-cover" />}</span>
+            <span className="size-16 shrink-0 overflow-hidden rounded-lg bg-canvas">{item.image_url && <img src={item.image_url} alt="" className="size-full object-cover" />}</span>
             <div className="min-w-0 flex-1"><p className="font-medium">{item.title}</p><p className="text-sm text-muted">{item.quantity} × {naira(item.unit_price)}{o.negotiated && <span className="ml-1 text-brand-700">(negotiated)</span>}</p>
               <p className="text-sm text-muted">{o.role === "buyer" ? <>Seller: <Link href={`/store/${o.seller.slug}`} className="text-brand-700">{o.seller.store_name}</Link></> : <>Buyer: {o.buyer.name}</>}</p></div>
           </div>
@@ -114,7 +114,7 @@ export function OrderView({ id, justPaid = false }: { id: string; justPaid?: boo
             {!o.delivery_address && o.role === "seller" && <p className="mt-2 text-sm text-muted">The buyer&apos;s address will appear once payment is confirmed.</p>}
             {o.buyer_note && <p className="mt-2 rounded-lg bg-canvas p-2 text-sm"><span className="font-semibold">Buyer note:</span> {o.buyer_note}</p>}
             {o.delivery.updates.length > 0 && <ul className="mt-3 space-y-1 text-sm">{o.delivery.updates.map((u, i) => <li key={i}><span className="text-muted">{date(u.at, true)}</span> — {titleCase(u.status)}{u.note && `: ${u.note}`}</li>)}</ul>}
-            {o.delivery.evidence_urls.length > 0 && <div className="mt-2 flex gap-2">{o.delivery.evidence_urls.map((u) => <a key={u} href={u} target="_blank" rel="noopener noreferrer">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={u} alt="Delivery evidence" className="size-16 rounded object-cover" /></a>)}</div>}
+            {o.delivery.evidence_urls.length > 0 && <div className="mt-2 flex gap-2">{o.delivery.evidence_urls.map((u) => <a key={u} href={u} target="_blank" rel="noopener noreferrer"><img src={u} alt="Delivery evidence" className="size-16 rounded object-cover" /></a>)}</div>}
           </section>
         )}
 
@@ -124,7 +124,7 @@ export function OrderView({ id, justPaid = false }: { id: string; justPaid?: boo
             <ul className="mt-3 space-y-2">
               {d.messages.map((m, i) => (
                 <li key={i} className="rounded-lg bg-canvas p-3 text-sm"><p className="text-xs font-semibold capitalize text-muted">{m.author_role} · {date(m.created_at, true)}</p><p className="mt-1">{m.body}</p>
-                  {m.evidence_urls.length > 0 && <div className="mt-2 flex gap-2">{m.evidence_urls.map((u) => <a key={u} href={u} target="_blank" rel="noopener noreferrer">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={u} alt="Evidence" className="size-14 rounded object-cover" /></a>)}</div>}</li>
+                  {m.evidence_urls.length > 0 && <div className="mt-2 flex gap-2">{m.evidence_urls.map((u) => <a key={u} href={u} target="_blank" rel="noopener noreferrer"><img src={u} alt="Evidence" className="size-14 rounded object-cover" /></a>)}</div>}</li>
               ))}
             </ul>
             {d.resolution_notes && <Alert tone="info" className="mt-3" title="Resolution">{d.resolution_notes}</Alert>}

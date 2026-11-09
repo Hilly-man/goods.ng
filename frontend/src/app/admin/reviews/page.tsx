@@ -4,9 +4,8 @@ import { Star } from "lucide-react";
 import { AdminPageHeader, StatusBadge } from "@/components/admin-ui";
 import { useState } from "react";
 import { AdminTable, askReason } from "@/components/admin-table";
-import { Badge, Button, useToast } from "@/components/ui";
+import { Button, useToast } from "@/components/ui";
 import { http, errorMessage } from "@/lib/api";
-import { titleCase } from "@/lib/format";
 
 type R = { id: string; rating: number; title: string | null; comment: string | null; status: string; is_verified_purchase: boolean; reviewer: string; reports: number; created_at: string };
 

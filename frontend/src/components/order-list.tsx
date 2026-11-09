@@ -17,7 +17,7 @@ export function OrderList({ path, query, seller }: { path: string; query?: Recor
       {data.items.map((o) => (
         <li key={o.id}>
           <Link href={seller ? `/seller/orders/${o.id}` : `/orders/${o.id}`} className="flex items-center gap-3 p-3 hover:bg-canvas">
-            <span className="size-14 shrink-0 overflow-hidden rounded-lg bg-canvas">{/* eslint-disable-next-line @next/next/no-img-element */}{o.items[0]?.image_url && <img src={o.items[0].image_url} alt="" className="size-full object-cover" />}</span>
+            <span className="size-14 shrink-0 overflow-hidden rounded-lg bg-canvas">{o.items[0]?.image_url && <img src={o.items[0].image_url} alt="" className="size-full object-cover" />}</span>
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium">{o.items[0]?.title}</span>
               <span className="block text-xs text-muted">{o.order_number} · {date(o.created_at)} · {seller ? o.buyer.name : o.seller.store_name}</span>

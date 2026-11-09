@@ -27,7 +27,7 @@ function Products() {
   return (
     <><AdminPageHeader icon={Package} title="Listings" description="Approve new ads, feature great ones and take down anything that breaks the rules." />
     <AdminTable<P> path="/admin/products" query={{ status: status || undefined }} searchable filters={<FilterChips label="Status" value={status} onChange={setStatus} options={[{ value: "", label: "All" }, ...["active", "pending_review", "rejected", "inactive", "sold"].map((s) => ({ value: s, label: titleCase(s) }))]} />} columns={[
-      { key: "t", label: "Listing", render: (p) => <div className="flex gap-2">{/* eslint-disable-next-line @next/next/no-img-element */}{p.thumb_url ? <img src={p.thumb_url} alt="" className="size-10 rounded object-cover" /> : <span className="size-10 rounded bg-canvas" />}<div><Link href={`/item/${p.slug}`} className="font-medium text-brand-700">{p.title}</Link><p className="text-xs text-muted">{p.seller.store_name} · {p.category}</p></div></div> },
+      { key: "t", label: "Listing", render: (p) => <div className="flex gap-2">{p.thumb_url ? <img src={p.thumb_url} alt="" className="size-10 rounded object-cover" /> : <span className="size-10 rounded bg-canvas" />}<div><Link href={`/item/${p.slug}`} className="font-medium text-brand-700">{p.title}</Link><p className="text-xs text-muted">{p.seller.store_name} · {p.category}</p></div></div> },
       { key: "p", label: "Price", render: (p) => naira(p.price) },
       { key: "s", label: "Status", render: (p) => <><StatusBadge status={p.status} />{p.is_featured && <Badge tone="warn" className="ml-1">Featured</Badge>}{p.rejection_reason && <p className="mt-1 text-xs text-red-600">{p.rejection_reason}</p>}</> },
       { key: "d", label: "Listed", render: (p) => date(p.created_at) },
