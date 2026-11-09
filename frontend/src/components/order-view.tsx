@@ -167,7 +167,7 @@ export function OrderView({ id, justPaid = false }: { id: string; justPaid?: boo
             <div className="flex justify-between border-t border-line pt-1.5 font-bold"><dt>Total</dt><dd>{naira(o.total)}</dd></div>
             {o.role === "seller" && <><div className="flex justify-between text-muted"><dt>Commission</dt><dd>-{naira(o.platform_fees)}</dd></div><div className="flex justify-between font-bold text-brand-800"><dt>Your earnings</dt><dd>{naira(o.seller_earnings)}</dd></div></>}
           </dl>
-          {o.financing && <p className="mt-3 rounded-lg bg-violet-50 p-2.5 text-xs text-violet-900">Goods Flex · {o.financing.status}{o.financing.settlement ? ` · ${o.financing.settlement}` : ""}{o.financing.outstanding_balance ? ` · outstanding ${naira(o.financing.outstanding_balance)}` : ""}</p>}
+          {o.financing && <p className="mt-3 rounded-lg bg-accent-500/20 p-2.5 text-xs text-brand-900">Goods Flex · {o.financing.status}{o.financing.settlement ? ` · ${o.financing.settlement}` : ""}{o.financing.outstanding_balance ? ` · outstanding ${naira(o.financing.outstanding_balance)}` : ""}</p>}
           <div className="mt-4 space-y-2">
             {has("pay") && o.payment?.authorization_url && <Button block onClick={() => (window.location.href = o.payment!.authorization_url!)}>Complete payment</Button>}
             {has("pay") && !o.payment?.authorization_url && o.payment_method === "full" && <Button block onClick={async () => { try { const r = await http.post<{ authorization_url: string }>(`/orders/${o.id}/retry-payment`); window.location.href = r.authorization_url; } catch (e) { toast(errorMessage(e), "bad"); } }}>Retry payment</Button>}

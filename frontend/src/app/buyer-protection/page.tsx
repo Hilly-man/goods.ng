@@ -1,8 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ProsePage } from "@/components/prose";
+import { ogImageUrl, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Buyer & Seller Protection", alternates: { canonical: "/buyer-protection" } };
+export const metadata: Metadata = pageMetadata({
+  title: "Buyer & Seller Protection",
+  description:
+    "How Goods.ng Protected Checkout safeguards your money until delivery, how disputes work, and what buyers and sellers are covered for.",
+  path: "/buyer-protection",
+  image: ogImageUrl({
+    eyebrow: "Buyer protection",
+    title: "Your money is safeguarded until delivery",
+    subtitle: "Protected Checkout with disputes, evidence and refunds.",
+    badge: "Shop safely",
+  }),
+  keywords: ["buyer protection Nigeria", "escrow protection", "safe online shopping Nigeria", "Goods.ng Protected Checkout"],
+});
 
 export default function Page() {
   return (

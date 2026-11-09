@@ -1,8 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ProsePage } from "@/components/prose";
+import { ogImageUrl, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "How Goods.ng works", alternates: { canonical: "/how-it-works" } };
+export const metadata: Metadata = pageMetadata({
+  title: "How Goods.ng works",
+  description:
+    "Two ways to buy on Goods.ng: Protected Checkout through escrow, or direct contact with the seller. See the full step-by-step flow.",
+  path: "/how-it-works",
+  image: ogImageUrl({
+    eyebrow: "How it works",
+    title: "Two ways to buy on Goods.ng",
+    subtitle: "Protected Checkout or direct contact — you choose.",
+    badge: "Guide",
+  }),
+  keywords: ["how Goods.ng works", "protected checkout steps", "buy safely in Nigeria", "marketplace guide"],
+});
 
 export default function Page() {
   return (

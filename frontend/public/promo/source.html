@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Goods.ng — 60s promo</title>
+<style>
+  :root{
+    --bg:#18251D; --bg2:#0B120E; --panel:#1C2B22; --panel2:#233629;
+    --mint:#B7FF73; --mint2:#D3FFA3; --white:#F4F7F4; --muted:#A4B7A9;
+    --line:rgba(183,255,115,.18); --ink:#0F1611;
+    --u:1vmin;
+    --font:"Avenir Next","Helvetica Neue",Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg2)}
+  body{font-family:var(--font);color:var(--white);-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+  #stage{
+    position:relative;width:100vw;height:100vh;overflow:hidden;
+    background:radial-gradient(120% 120% at 18% 0%, #2A4232 0%, #18251D 46%, #0B120E 100%);
+  }
+  .bg-grid{
+    position:absolute;inset:0;opacity:.22;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:calc(var(--u)*8) calc(var(--u)*8);
+    -webkit-mask-image:radial-gradient(72% 72% at 50% 46%,#000 28%,transparent 100%);
+    mask-image:radial-gradient(72% 72% at 50% 46%,#000 28%,transparent 100%);
+  }
+  .blob{position:absolute;border-radius:50%;filter:blur(calc(var(--u)*9));will-change:transform;pointer-events:none}
+  .b1{width:calc(var(--u)*80);height:calc(var(--u)*80);left:-12%;top:-14%;background:rgba(183,255,115,.16);animation:floaty 14s ease-in-out infinite}
+  .b2{width:calc(var(--u)*70);height:calc(var(--u)*70);right:-10%;bottom:-18%;background:rgba(183,255,115,.10);animation:floaty 18s ease-in-out infinite reverse}
+  .b3{width:calc(var(--u)*40);height:calc(var(--u)*40);left:42%;top:58%;background:rgba(183,255,115,.08);animation:floaty 11s ease-in-out infinite}
+
+  .scene{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:calc(var(--u)*6.5);gap:calc(var(--u)*2.2);opacity:0;will-change:opacity;
+  }
+  .center{text-align:center}
+  .mint{color:var(--mint)}
+  .dim{color:var(--muted)}
+
+  .eyebrow{
+    font-size:calc(var(--u)*2.1);letter-spacing:.2em;text-transform:uppercase;font-weight:700;
+    color:var(--mint);margin:0;display:flex;align-items:center;gap:calc(var(--u)*1.2)
+  }
+  .eyebrow:before{content:"";width:calc(var(--u)*3.6);height:2px;background:var(--mint);display:inline-block;border-radius:2px}
+  .center .eyebrow{justify-content:center}
+  .center .eyebrow:before{display:none}
+
+  h1{font-size:calc(var(--u)*11);line-height:.96;letter-spacing:-.045em;margin:0;font-weight:800}
+  h2{font-size:calc(var(--u)*7.4);line-height:1.02;letter-spacing:-.038em;margin:0;font-weight:800;max-width:calc(var(--u)*130)}
+  .center h2{max-width:calc(var(--u)*150)}
+  .lead{font-size:calc(var(--u)*2.5);line-height:1.35;color:var(--muted);margin:0;max-width:calc(var(--u)*92)}
+  .center .lead{margin-left:auto;margin-right:auto}
+
+  /* ---------- intro ---------- */
+  .intro-logo{width:calc(var(--u)*17);height:calc(var(--u)*17);display:grid;place-items:center;position:relative}
+  .intro-logo:before{content:"";position:absolute;inset:-38%;border-radius:50%;background:radial-gradient(circle,rgba(183,255,115,.24),transparent 66%)}
+  .shield{width:100%;height:100%;filter:drop-shadow(0 calc(var(--u)*1.4) calc(var(--u)*3) rgba(0,0,0,.35))}
+  .wordmark{display:flex;align-items:center;gap:calc(var(--u)*2.6);font-size:calc(var(--u)*13);font-weight:800;letter-spacing:-.05em;line-height:1}
+  .wordmark .ng{color:var(--mint)}
+  .tag{font-size:calc(var(--u)*4.2);font-weight:700;letter-spacing:-.02em;margin:0}
+  .pills{display:flex;gap:calc(var(--u)*1.4);flex-wrap:wrap;justify-content:center;margin-top:calc(var(--u)*1)}
+  .pill{
+    display:inline-flex;align-items:center;gap:calc(var(--u)*.9);
+    padding:calc(var(--u)*1.1) calc(var(--u)*1.9);border-radius:999px;
+    border:1px solid var(--line);background:rgba(255,255,255,.04);
+    font-size:calc(var(--u)*1.95);font-weight:600;color:var(--white);white-space:nowrap
+  }
+  .pill svg{width:calc(var(--u)*2.4);height:calc(var(--u)*2.4);color:var(--mint)}
+
+  /* ---------- categories ---------- */
+  .cats{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*2);
+    width:100%;max-width:calc(var(--u)*124)
+  }
+  .cat{
+    background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.015));
+    border:1px solid rgba(255,255,255,.09);border-radius:calc(var(--u)*2.2);
+    padding:calc(var(--u)*2.3);display:flex;flex-direction:column;gap:calc(var(--u)*1.1);
+    min-height:calc(var(--u)*17)
+  }
+  .cat svg{width:calc(var(--u)*4.2);height:calc(var(--u)*4.2);color:var(--mint)}
+  .cat b{font-size:calc(var(--u)*2.45);letter-spacing:-.02em;font-weight:700}
+  .cat span{font-size:calc(var(--u)*1.75);color:var(--muted);margin-top:auto}
+
+  /* ---------- chat ---------- */
+  .split{display:flex;align-items:center;justify-content:center;gap:calc(var(--u)*7);width:100%;max-width:calc(var(--u)*156)}
+  .copy{display:flex;flex-direction:column;gap:calc(var(--u)*2);max-width:calc(var(--u)*62);align-items:flex-start}
+  .phone{
+    width:calc(var(--u)*36);border-radius:calc(var(--u)*3.6);
+    background:linear-gradient(180deg,#243A2B,#141F18 78%);
+    border:1px solid rgba(183,255,115,.3);
+    box-shadow:0 calc(var(--u)*5) calc(var(--u)*12) rgba(0,0,0,.5);
+    padding:calc(var(--u)*2);display:flex;flex-direction:column;position:relative;flex-shrink:0
+  }
+  .phone:before{
+    content:"";position:absolute;top:calc(var(--u)*1);left:50%;transform:translateX(-50%);
+    width:calc(var(--u)*10);height:calc(var(--u)*.7);border-radius:999px;background:rgba(255,255,255,.16)
+  }
+  .phead{display:flex;align-items:center;gap:calc(var(--u)*1.1);padding:calc(var(--u)*1.6) calc(var(--u)*.6) calc(var(--u)*1.2);border-bottom:1px solid rgba(255,255,255,.08)}
+  .avatar{width:calc(var(--u)*4.4);height:calc(var(--u)*4.4);border-radius:50%;background:var(--mint);color:var(--ink);display:grid;place-items:center;font-weight:800;font-size:calc(var(--u)*1.7);flex-shrink:0}
+  .phead b{font-size:calc(var(--u)*2.05);display:flex;align-items:center;gap:calc(var(--u)*.45)}
+  .phead b svg{width:calc(var(--u)*2);height:calc(var(--u)*2);color:var(--mint)}
+  .phead span{display:block;font-size:calc(var(--u)*1.45);color:var(--muted)}
+  .chat{display:flex;flex-direction:column;padding:calc(var(--u)*1.4) calc(var(--u)*.2);gap:calc(var(--u)*1.1)}
+  .bubble{
+    max-width:84%;padding:calc(var(--u)*1.35) calc(var(--u)*1.7);border-radius:calc(var(--u)*1.9);
+    font-size:calc(var(--u)*1.95);line-height:1.35;font-weight:500
+  }
+  .bubble b{display:block;font-size:calc(var(--u)*2.3);margin-top:calc(var(--u)*.25)}
+  .left{align-self:flex-start;background:#2B4233;border-bottom-left-radius:calc(var(--u)*.5)}
+  .right{align-self:flex-end;background:var(--mint);color:var(--ink);border-bottom-right-radius:calc(var(--u)*.5)}
+  .deal{
+    align-self:center;margin-top:calc(var(--u)*.8);display:inline-flex;align-items:center;gap:calc(var(--u)*.7);
+    background:rgba(183,255,115,.14);border:1px solid rgba(183,255,115,.4);color:var(--mint2);
+    border-radius:999px;padding:calc(var(--u)*.9) calc(var(--u)*1.6);font-size:calc(var(--u)*1.8);font-weight:700
+  }
+  .deal svg{width:calc(var(--u)*2);height:calc(var(--u)*2)}
+  .note{
+    display:flex;align-items:center;gap:calc(var(--u)*1.1);
+    background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);
+    border-radius:calc(var(--u)*1.6);padding:calc(var(--u)*1.4) calc(var(--u)*1.8);
+    font-size:calc(var(--u)*1.9);color:var(--white);max-width:calc(var(--u)*64)
+  }
+  .note svg{width:calc(var(--u)*2.6);height:calc(var(--u)*2.6);color:var(--mint);flex-shrink:0}
+  .note b{color:var(--mint)}
+
+  /* ---------- escrow ---------- */
+  .escrow{display:flex;align-items:center;gap:calc(var(--u)*7)}
+  .shield-hero{width:calc(var(--u)*30);height:calc(var(--u)*30);position:relative;display:grid;place-items:center;flex-shrink:0}
+  .shield-hero:before{content:"";position:absolute;inset:-14%;border-radius:50%;border:1px solid rgba(183,255,115,.22);animation:pulse 3.4s ease-in-out infinite}
+  .shield-hero:after{content:"";position:absolute;inset:-30%;border-radius:50%;border:1px solid rgba(183,255,115,.1);animation:pulse 3.4s ease-in-out infinite .6s}
+  .shield-hero svg{width:100%;height:100%;filter:drop-shadow(0 calc(var(--u)*1.5) calc(var(--u)*4) rgba(0,0,0,.4))}
+  .lockchip{
+    position:absolute;bottom:8%;right:2%;width:calc(var(--u)*9);height:calc(var(--u)*9);border-radius:50%;
+    background:var(--mint);display:grid;place-items:center;color:var(--ink);
+    box-shadow:0 calc(var(--u)*1.2) calc(var(--u)*3) rgba(0,0,0,.35)
+  }
+  .lockchip svg{width:calc(var(--u)*4.4);height:calc(var(--u)*4.4)}
+  .steps{display:flex;flex-direction:column;gap:calc(var(--u)*1.6);position:relative;min-width:calc(var(--u)*62)}
+  .step{
+    display:flex;gap:calc(var(--u)*1.6);align-items:flex-start;
+    background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.015));
+    border:1px solid rgba(255,255,255,.09);border-radius:calc(var(--u)*1.8);padding:calc(var(--u)*1.6) calc(var(--u)*2)
+  }
+  .step .n{
+    width:calc(var(--u)*3.8);height:calc(var(--u)*3.8);border-radius:50%;background:var(--mint);color:var(--ink);
+    display:grid;place-items:center;font-weight:800;font-size:calc(var(--u)*1.9);flex-shrink:0
+  }
+  .step b{display:block;font-size:calc(var(--u)*2.3);letter-spacing:-.01em}
+  .step span{font-size:calc(var(--u)*1.8);color:var(--muted)}
+  .safety{
+    display:inline-flex;align-items:center;gap:calc(var(--u)*1);color:var(--mint2);
+    font-size:calc(var(--u)*2);font-weight:600;margin-top:calc(var(--u)*.5)
+  }
+  .safety svg{width:calc(var(--u)*2.8);height:calc(var(--u)*2.8)}
+
+  /* ---------- flex ---------- */
+  .subline{font-size:calc(var(--u)*2.5);color:var(--muted);margin:0}
+  .flexcards{display:flex;gap:calc(var(--u)*2.6);margin-top:calc(var(--u)*1.2)}
+  .fcard{
+    width:calc(var(--u)*46);border-radius:calc(var(--u)*2.4);padding:calc(var(--u)*2.4) calc(var(--u)*2.6);
+    background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015));
+    border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:calc(var(--u)*1.5)
+  }
+  .fcard.hi{border-color:rgba(183,255,115,.55);background:linear-gradient(160deg,rgba(183,255,115,.16),rgba(183,255,115,.04))}
+  .ftop{display:flex;align-items:baseline;justify-content:space-between}
+  .fcard .months{font-size:calc(var(--u)*3.4);font-weight:800;letter-spacing:-.03em}
+  .fcard .per{font-size:calc(var(--u)*1.7);color:var(--muted)}
+  .bar{height:calc(var(--u)*1.4);border-radius:999px;background:rgba(255,255,255,.09);overflow:hidden;display:flex}
+  .bar i{display:block;height:100%;background:var(--mint);transform-origin:left}
+  .bar i.down{background:rgba(183,255,115,.45)}
+  .fcard p{font-size:calc(var(--u)*1.75);color:var(--muted);margin:0}
+  .fcard .amt{font-size:calc(var(--u)*2.6);font-weight:800}
+  .fine{font-size:calc(var(--u)*1.65);color:rgba(244,247,244,.5);margin-top:calc(var(--u)*.5)}
+
+  /* ---------- seller ---------- */
+  .seller{
+    width:calc(var(--u)*76);border-radius:calc(var(--u)*2.6);padding:calc(var(--u)*2.6);
+    background:linear-gradient(150deg,rgba(255,255,255,.07),rgba(255,255,255,.02));
+    border:1px solid rgba(183,255,115,.28);display:flex;gap:calc(var(--u)*2.2);align-items:center
+  }
+  .seller .bigavatar{
+    width:calc(var(--u)*10);height:calc(var(--u)*10);border-radius:calc(var(--u)*2);background:var(--mint);
+    color:var(--ink);display:grid;place-items:center;font-weight:800;font-size:calc(var(--u)*3.4);flex-shrink:0
+  }
+  .seller .info{display:flex;flex-direction:column;gap:calc(var(--u)*.7);min-width:0}
+  .seller .name{font-size:calc(var(--u)*2.9);font-weight:800;display:flex;align-items:center;gap:calc(var(--u)*.8)}
+  .seller .name svg{width:calc(var(--u)*2.8);height:calc(var(--u)*2.8);color:var(--mint)}
+  .badges{display:flex;gap:calc(var(--u)*.8);flex-wrap:wrap}
+  .badge{font-size:calc(var(--u)*1.55);font-weight:700;padding:calc(var(--u)*.5) calc(var(--u)*1.1);border-radius:999px;background:rgba(183,255,115,.14);color:var(--mint2);border:1px solid rgba(183,255,115,.3)}
+  .stars{display:flex;align-items:center;gap:calc(var(--u)*.5);color:var(--mint);font-size:calc(var(--u)*2.1);font-weight:700}
+  .stars svg{width:calc(var(--u)*2.2);height:calc(var(--u)*2.2)}
+  .seller .meta{font-size:calc(var(--u)*1.7);color:var(--muted)}
+  .chips{display:flex;gap:calc(var(--u)*1.2);flex-wrap:wrap;justify-content:center}
+  .chip{display:inline-flex;align-items:center;gap:calc(var(--u)*.8);font-size:calc(var(--u)*1.85);font-weight:600;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);border-radius:999px;padding:calc(var(--u)*.9) calc(var(--u)*1.6)}
+  .chip svg{width:calc(var(--u)*2.2);height:calc(var(--u)*2.2);color:var(--mint)}
+
+  /* ---------- end ---------- */
+  .endlogo{display:flex;align-items:center;gap:calc(var(--u)*1.6);font-size:calc(var(--u)*5);font-weight:800;letter-spacing:-.04em}
+  .endlogo svg{width:calc(var(--u)*7);height:calc(var(--u)*7)}
+  .cta{
+    display:inline-flex;align-items:center;gap:calc(var(--u)*1.4);
+    background:var(--mint);color:var(--ink);font-weight:800;font-size:calc(var(--u)*2.6);
+    border-radius:999px;padding:calc(var(--u)*1.8) calc(var(--u)*3.2);
+    box-shadow:0 calc(var(--u)*2) calc(var(--u)*5) rgba(0,0,0,.35)
+  }
+  .cta svg{width:calc(var(--u)*2.8);height:calc(var(--u)*2.8)}
+  .url{font-size:calc(var(--u)*2.4);letter-spacing:.14em;text-transform:uppercase;color:var(--mint);font-weight:700}
+  .endchips{display:flex;gap:calc(var(--u)*2.2);color:var(--muted);font-size:calc(var(--u)*1.75)}
+
+  /* ---------- animation primitives ---------- */
+  .anim{animation-duration:.8s;animation-timing-function:cubic-bezier(.2,.7,.2,1);animation-fill-mode:both;animation-play-state:paused}
+  .rise{animation-name:rise}
+  .pop{animation-name:pop;animation-duration:.7s}
+  .fade{animation-name:fade}
+  .slideL{animation-name:slideL}
+  .slideR{animation-name:slideR}
+  .grow{animation-name:grow;animation-timing-function:cubic-bezier(.25,.9,.25,1)}
+  @keyframes rise{from{opacity:0;transform:translateY(calc(var(--u)*3))}to{opacity:1;transform:none}}
+  @keyframes pop{from{opacity:0;transform:scale(.84)}to{opacity:1;transform:scale(1)}}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  @keyframes slideL{from{opacity:0;transform:translateX(calc(var(--u)*-4))}to{opacity:1;transform:none}}
+  @keyframes slideR{from{opacity:0;transform:translateX(calc(var(--u)*4))}to{opacity:1;transform:none}}
+  @keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes floaty{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,calc(var(--u)*-3),0)}}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.04);opacity:.5}}
+
+  #progress{position:absolute;left:0;bottom:0;height:calc(var(--u)*.55);width:100%;background:rgba(255,255,255,.08);z-index:50}
+  #progress i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--mint),var(--mint2));transform:scaleX(0);transform-origin:left}
+
+  @media (orientation:portrait){
+    .scene{padding:calc(var(--u)*7);gap:calc(var(--u)*2.6)}
+    h1{font-size:calc(var(--u)*12)}
+    h2{font-size:calc(var(--u)*7);max-width:100%}
+    .tag{font-size:calc(var(--u)*4.6)}
+    .wordmark{font-size:calc(var(--u)*12)}
+    .split{flex-direction:column;gap:calc(var(--u)*4)}
+    .copy{max-width:100%;align-items:center;text-align:center}
+    .copy .eyebrow{justify-content:center}
+    .copy .lead{text-align:center}
+    .escrow{flex-direction:column;gap:calc(var(--u)*3.5)}
+    .steps{min-width:100%}
+    .cats{grid-template-columns:repeat(2,1fr);max-width:100%}
+    .cat{min-height:calc(var(--u)*15)}
+    .phone{width:calc(var(--u)*62)}
+    .seller{width:100%}
+    .flexcards{flex-direction:column;gap:calc(var(--u)*1.8);width:100%}
+    .fcard{width:100%}
+    .blob{filter:blur(calc(var(--u)*12))}
+    .intro-logo{width:calc(var(--u)*20);height:calc(var(--u)*20)}
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-shield" viewBox="0 0 32 32">
+      <path d="M16 2 4 6.5v8.2C4 22.4 9.2 28.6 16 30c6.8-1.4 12-7.6 12-15.3V6.5L16 2Z" fill="#B7FF73"/>
+      <path d="m10.5 16.2 3.6 3.6 7.6-7.6" fill="none" stroke="#18251D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-shieldcheck" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3 8 3v7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 18h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M4.5 11 6 6.5A2 2 0 0 1 7.9 5h8.2a2 2 0 0 1 1.9 1.5L19.5 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M3 11h18v5H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="7" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-shirt" viewBox="0 0 24 24"><path d="M8.5 3 4 6l2 4 2-1v12h8V9l2 1 2-4-4.5-3-1.8 2h-3.4L8.5 3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-sofa" viewBox="0 0 24 24"><path d="M5 11V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 11h18v6H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M5 17v2M19 17v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="3" width="10" height="18" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="8" width="6" height="13" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 7h2M8 11h2M8 15h2M17 12h1M17 16h1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M18.5 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1Z" fill="currentColor"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 12a8.5 8.5 0 0 1-8.5 8.5H4l2-3A8.5 8.5 0 1 1 21 12Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.5 11h7M8.5 14h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="15.5" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7H5.5A2.5 2.5 0 0 1 5.5 2H18v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M3 5v14a2 2 0 0 0 2 2h15V7H5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16 13h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.2l2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.9-5.4 2.9 1-6L3.3 9.6l6-.9L12 3.2Z" fill="currentColor"/></symbol>
+    <symbol id="i-badge" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="m8.5 12 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-call" viewBox="0 0 24 24"><path d="M6.5 3.5 9 3l2 5-2.2 1.4a13 13 0 0 0 5.8 5.8L16 13l5 2-0.5 2.5a2 2 0 0 1-2.2 1.6C10.7 18.4 5.6 13.3 4.9 5.7A2 2 0 0 1 6.5 3.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6h10v10H3zM13 9h4l3 3v4h-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="7" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  </defs>
+</svg>
+
+<div id="stage">
+  <div class="bg-grid"></div>
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+
+  <!-- 1. Intro -->
+  <section class="scene center" id="s1">
+    <div class="intro-logo anim pop" style="animation-delay:.35s"><svg class="shield" aria-hidden="true"><use href="#i-shield"/></svg></div>
+    <div class="wordmark anim rise" style="animation-delay:.7s">Goods<span class="ng">.ng</span></div>
+    <p class="tag anim rise" style="animation-delay:1.05s">Buy. Sell. Trade with <span class="mint">Confidence.</span></p>
+    <div class="pills">
+      <span class="pill anim pop" style="animation-delay:1.8s"><svg><use href="#i-shieldcheck"/></svg>Escrow protection</span>
+      <span class="pill anim pop" style="animation-delay:1.95s"><svg><use href="#i-wallet"/></svg>Goods Flex</span>
+      <span class="pill anim pop" style="animation-delay:2.1s"><svg><use href="#i-badge"/></svg>Verified sellers</span>
+    </div>
+  </section>
+
+  <!-- 2. Categories -->
+  <section class="scene" id="s2">
+    <div class="scene-head center">
+      <p class="eyebrow anim fade" style="animation-delay:6.55s">One marketplace</p>
+      <h2 class="anim rise" style="animation-delay:6.7s">Everything you need,<br><span class="mint">all in one place.</span></h2>
+    </div>
+    <div class="cats">
+      <div class="cat anim pop" style="animation-delay:7.0s"><svg><use href="#i-phone"/></svg><b>Phones &amp; Tablets</b><span>New and UK used</span></div>
+      <div class="cat anim pop" style="animation-delay:7.15s"><svg><use href="#i-car"/></svg><b>Vehicles</b><span>Cars, bikes, parts</span></div>
+      <div class="cat anim pop" style="animation-delay:7.3s"><svg><use href="#i-shirt"/></svg><b>Fashion</b><span>Clothing &amp; shoes</span></div>
+      <div class="cat anim pop" style="animation-delay:7.45s"><svg><use href="#i-sofa"/></svg><b>Home &amp; Furniture</b><span>For every room</span></div>
+      <div class="cat anim pop" style="animation-delay:7.6s"><svg><use href="#i-building"/></svg><b>Property</b><span>Rent and buy</span></div>
+      <div class="cat anim pop" style="animation-delay:7.75s"><svg><use href="#i-spark"/></svg><b>Beauty &amp; Care</b><span>Everyday essentials</span></div>
+    </div>
+  </section>
+
+  <!-- 3. Chat & negotiate -->
+  <section class="scene" id="s3">
+    <div class="split">
+      <div class="copy">
+        <p class="eyebrow anim fade" style="animation-delay:14.95s">Chat &amp; negotiate</p>
+        <h2 class="anim rise" style="animation-delay:15.1s">Talk directly.<br><span class="mint">Agree on your price.</span></h2>
+        <p class="lead anim rise" style="animation-delay:15.5s">Message the seller, ask questions and make an offer — all inside Goods.ng.</p>
+        <div class="note anim rise" style="animation-delay:22.2s"><svg><use href="#i-call"/></svg><span><b>Premium sellers:</b> call or WhatsApp them directly.</span></div>
+      </div>
+      <div class="phone anim pop" style="animation-delay:15.6s">
+        <div class="phead">
+          <span class="avatar">CS</span>
+          <div><b>Chinedu Stores <svg><use href="#i-badge"/></svg></b><span>Verified business · Lagos</span></div>
+        </div>
+        <div class="chat">
+          <div class="bubble left anim slideL" style="animation-delay:16.3s">iPhone 15 Pro Max, 256GB<b>₦1,500,000</b></div>
+          <div class="bubble right anim slideR" style="animation-delay:17.7s">Can you do ₦1,250,000?</div>
+          <div class="bubble left anim slideL" style="animation-delay:19.3s">Deal. Let's do ₦1,250,000<b>Price agreed</b></div>
+          <div class="deal anim pop" style="animation-delay:20.9s"><svg><use href="#i-check"/></svg>Deal agreed</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Protected checkout -->
+  <section class="scene" id="s4">
+    <p class="eyebrow anim fade" style="animation-delay:25.75s">Protected Checkout</p>
+    <h2 class="anim rise center" style="animation-delay:25.9s;text-align:center">Your money is <span class="mint">held safely</span><br>until you confirm delivery.</h2>
+    <div class="escrow">
+      <div class="shield-hero anim pop" style="animation-delay:26.5s">
+        <svg><use href="#i-shield"/></svg>
+        <span class="lockchip"><svg><use href="#i-lock"/></svg></span>
+      </div>
+      <div class="steps">
+        <div class="step anim pop" style="animation-delay:27.3s"><span class="n">1</span><div><b>You pay</b><span>Your money enters secure escrow</span></div></div>
+        <div class="step anim pop" style="animation-delay:27.6s"><span class="n">2</span><div><b>Seller ships</b><span>Track your delivery every step</span></div></div>
+        <div class="step anim pop" style="animation-delay:27.9s"><span class="n">3</span><div><b>You confirm</b><span>Only then is the seller paid</span></div></div>
+      </div>
+    </div>
+    <div class="safety anim fade" style="animation-delay:32.2s"><svg><use href="#i-shieldcheck"/></svg>If something's wrong, our team steps in.</div>
+  </section>
+
+  <!-- 5. Goods Flex -->
+  <section class="scene center" id="s5">
+    <p class="eyebrow anim fade" style="animation-delay:35.9s">Goods Flex</p>
+    <h2 class="anim rise" style="animation-delay:36.05s">Buy now.<br><span class="mint">Pay small-small.</span></h2>
+    <p class="subline anim rise" style="animation-delay:36.5s">Spread the cost over 3 or 6 monthly instalments.</p>
+    <div class="flexcards">
+      <div class="fcard hi anim pop" style="animation-delay:37.0s">
+        <div class="ftop"><span class="months">3 months</span><span class="per">0% stress</span></div>
+        <div class="bar"><i class="down grow" style="animation-delay:37.7s;width:34%"></i><i class="grow" style="animation-delay:37.9s;width:66%"></i></div>
+        <span class="amt">Down payment</span><p>then 3 easy monthly payments</p>
+      </div>
+      <div class="fcard anim pop" style="animation-delay:37.2s">
+        <div class="ftop"><span class="months">6 months</span><span class="per">More breathing room</span></div>
+        <div class="bar"><i class="down grow" style="animation-delay:38.0s;width:22%"></i><i class="grow" style="animation-delay:38.2s;width:78%"></i></div>
+        <span class="amt">Smaller payments</span><p>spread over 6 months</p>
+      </div>
+    </div>
+    <p class="fine anim fade" style="animation-delay:40.6s">Subject to approval · one Flex plan at a time</p>
+  </section>
+
+  <!-- 6. Verified sellers -->
+  <section class="scene center" id="s6">
+    <p class="eyebrow anim fade" style="animation-delay:42.95s">Trust built in</p>
+    <h2 class="anim rise" style="animation-delay:43.1s">Verified sellers.<br><span class="mint">Real reviews.</span></h2>
+    <div class="seller anim pop" style="animation-delay:43.7s">
+      <div class="bigavatar">CS</div>
+      <div class="info">
+        <div class="name">Chinedu Stores <svg><use href="#i-badge"/></svg></div>
+        <div class="badges"><span class="badge">Verified business</span><span class="badge">Premium seller</span></div>
+        <div class="stars"><svg><use href="#i-star"/></svg><span id="rating">0.0</span><span class="dim">· <span id="sales">0</span> sales</span></div>
+        <div class="meta">Member since 2026 · Lagos</div>
+      </div>
+    </div>
+    <div class="chips">
+      <span class="chip anim pop" style="animation-delay:45.4s"><svg><use href="#i-shieldcheck"/></svg>Verified sellers</span>
+      <span class="chip anim pop" style="animation-delay:45.55s"><svg><use href="#i-star"/></svg>Real reviews</span>
+      <span class="chip anim pop" style="animation-delay:45.7s"><svg><use href="#i-message"/></svg>Human support</span>
+    </div>
+  </section>
+
+  <!-- 7. End card -->
+  <section class="scene center" id="s7">
+    <div class="endlogo anim pop" style="animation-delay:53.3s"><svg><use href="#i-shield"/></svg>Goods<span class="mint">.ng</span></div>
+    <h2 class="anim rise" style="animation-delay:53.7s">Buy. Sell. Trade with <span class="mint">Confidence.</span></h2>
+    <div class="cta anim pop" style="animation-delay:54.5s">Start buying and selling today <svg><use href="#i-arrow"/></svg></div>
+    <div class="url anim fade" style="animation-delay:55.2s">goods.ng</div>
+    <div class="endchips anim fade" style="animation-delay:55.6s"><span>Safe payments</span><span>·</span><span>Verified sellers</span><span>·</span><span>Nationwide delivery</span></div>
+  </section>
+
+  <div id="progress"><i></i></div>
+</div>
+
+<script>
+  const DUR = 60;
+  const scenes = [
+    ["s1", 0.00, 6.32],
+    ["s2", 6.32, 14.69],
+    ["s3", 14.69, 25.49],
+    ["s4", 25.49, 35.64],
+    ["s5", 35.64, 42.67],
+    ["s6", 42.67, 52.98],
+    ["s7", 52.98, 60.00],
+  ];
+  const sceneEls = scenes.map(([id, start, end]) => ({
+    el: document.getElementById(id), start, end,
+  }));
+  const progress = document.querySelector("#progress i");
+  const ratingEl = document.getElementById("rating");
+  const salesEl = document.getElementById("sales");
+  let anims = [];
+
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const mix = (a, b, x) => a + (b - a) * clamp(x, 0, 1);
+  const easeOut = (x) => 1 - Math.pow(1 - clamp(x, 0, 1), 3);
+
+  function prepare() {
+    anims = document.getAnimations();
+    anims.forEach((a) => { try { a.pause(); } catch (e) {} });
+    window.__duration = DUR;
+    window.render = render;
+    render(0);
+  }
+
+  function render(t) {
+    const ms = t * 1000;
+    for (const a of anims) { try { a.currentTime = ms; } catch (e) {} }
+
+    for (const s of sceneEls) {
+      const fade = 0.32;
+      const o = Math.min(
+        clamp((t - (s.start - fade)) / fade, 0, 1),
+        clamp(((s.end + fade) - t) / fade, 0, 1)
+      );
+      s.el.style.opacity = String(o);
+      s.el.style.pointerEvents = o > 0.5 ? "auto" : "none";
+    }
+
+    progress.style.transform = `scaleX(${clamp(t / DUR, 0, 1)})`;
+
+    // Verified-seller counters (start during scene 6)
+    const r = easeOut((t - 43.4) / 1.8) * 4.5;
+    if (ratingEl) ratingEl.textContent = r.toFixed(1);
+    const n = Math.round(easeOut((t - 43.5) / 3.0) * 318);
+    if (salesEl) salesEl.textContent = String(n);
+  }
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(prepare);
+  } else {
+    prepare();
+  }
+</script>
+</body>
+</html>

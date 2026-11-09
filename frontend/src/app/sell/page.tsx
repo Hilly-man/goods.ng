@@ -2,8 +2,21 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { BadgeCheck, BarChart3, Camera, Crown, Handshake, ShieldCheck, Wallet } from "lucide-react";
 import { ButtonLink } from "@/components/ui";
+import { ogImageUrl, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Sell on Goods.ng", description: "Post free ads, reach buyers across Nigeria and get paid safely.", alternates: { canonical: "/sell" } };
+export const metadata: Metadata = pageMetadata({
+  title: "Sell on Goods.ng",
+  description:
+    "Post free ads, reach buyers across Nigeria, negotiate in-app and get paid safely through Protected Checkout.",
+  path: "/sell",
+  image: ogImageUrl({
+    eyebrow: "Sell on Goods.ng",
+    title: "Reach buyers across Nigeria",
+    subtitle: "Post free ads, negotiate in-app and get paid safely.",
+    badge: "Start selling",
+  }),
+  keywords: ["sell online Nigeria", "post free ads Nigeria", "sell phones Nigeria", "sell cars Nigeria", "Goods.ng seller"],
+});
 
 const BENEFITS = [
   { icon: Camera, title: "Post free ads in minutes", body: "Add photos, set your price and choose delivery options. Listing is always free." },

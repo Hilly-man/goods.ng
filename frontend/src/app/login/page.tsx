@@ -3,7 +3,10 @@ import { Suspense } from "react";
 import { AuthShell } from "@/components/auth-shell";
 import { LoginForm } from "./form";
 
-export const metadata: Metadata = { title: "Sign in", robots: { index: false } };
+export const metadata: Metadata = {
+  title: "Sign in",
+  robots: { index: false, follow: true },
+};
 
 export default function LoginPage() {
   return (

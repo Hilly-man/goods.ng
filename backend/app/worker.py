@@ -9,7 +9,7 @@ import logging
 import time
 import zlib
 
-from sqlalchemy import select, text, update
+from sqlalchemy import or_, select, text, update
 
 from app.core.db import SessionLocal
 from app.core.logging import configure_logging
@@ -23,6 +23,7 @@ from app.modules.negotiation.service import expire_due as expire_negotiations
 from app.modules.notifications.service import drain_outbox
 from app.modules.orders.service import auto_release_due, expire_unpaid
 from app.modules.products.service import purge_deleted_listings
+from app.modules.promotions.service import bump_active_premium
 from app.modules.recommendations.router import purge_old_signals
 
 log = logging.getLogger("goodsng.worker")
@@ -37,9 +38,13 @@ def expire_subscriptions_and_features(db) -> dict:
                         .values(status=PromotionStatus.EXPIRED)).rowcount
     feats = db.execute(update(Product).where(Product.is_featured.is_(True), Product.featured_until <= now)
                        .values(is_featured=False)).rowcount
+    tiers = db.execute(update(Product).where(
+        Product.promoted_tier.isnot(None),
+        or_(Product.featured_until.is_(None), Product.featured_until <= now),
+    ).values(promoted_tier=None)).rowcount
     db.commit()
     _ = select
-    return {"subscriptions": subs, "promotions": promos, "featured": feats}
+    return {"subscriptions": subs, "promotions": promos, "featured": feats, "tiers_cleared": tiers}
 
 
 JOBS = {
@@ -49,6 +54,7 @@ JOBS = {
     "expire_negotiations": (60, expire_negotiations),
     "auto_release_escrow": (300, auto_release_due),
     "expire_subscriptions": (300, expire_subscriptions_and_features),
+    "refresh_promotion_bumps": (3600, bump_active_premium),
     "bnpl_reminders": (3600, mark_overdue_and_remind),
     "purge_interest_signals": (86400, purge_old_signals),
     "purge_deleted_listings": (86400, purge_deleted_listings),

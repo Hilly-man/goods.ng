@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Goods.ng — PRD, TAD &amp; FRD</title>
+<style>
+  :root{
+    --forest:#18251D; --forest-2:#22352A; --forest-3:#2E4636;
+    --mint:#B7FF73; --mint-2:#D3FFA3; --accent:#3F6B1A;
+    --ink:#1B1F1C; --muted:#5C6B60; --line:#DCE5D8; --bg:#F7FAF4;
+    --amber:#92400E; --amber-bg:#FEF3C7; --red:#991B1B; --red-bg:#FEE2E2;
+    --green:#166534; --green-bg:#DCFCE7; --grey:#374151; --grey-bg:#E5E7EB;
+  }
+  @page { size: A4; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    color:var(--ink); font-size:10pt; line-height:1.48; }
+  p{ margin:0 0 6px; }
+  strong{ color:var(--forest); }
+  a{ color:var(--accent); text-decoration:none; }
+  ul,ol{ margin:4px 0 8px 18px; padding:0; }
+  li{ margin:2px 0; }
+  h1,h2,h3,h4{ color:var(--forest); line-height:1.2; margin:0; page-break-after:avoid; }
+  h1{ font-size:26pt; letter-spacing:-0.4px; }
+  h2{ font-size:16pt; margin:14px 0 6px; padding-bottom:4px; border-bottom:2px solid var(--mint); }
+  h3{ font-size:12pt; margin:12px 0 4px; }
+  h4{ font-size:10.5pt; margin:9px 0 3px; }
+  .eyebrow{ font-size:8.5pt; font-weight:700; letter-spacing:1.6px; text-transform:uppercase; color:var(--accent); }
+  .muted{ color:var(--muted); }
+  .small{ font-size:8.6pt; }
+  .nowrap{ white-space:nowrap; }
+  .cover{ height:255mm; background:var(--forest); color:#fff; border-radius:10px;
+    padding:22mm 18mm; position:relative; overflow:hidden; page-break-after:always; }
+  .cover .glow{ position:absolute; width:150mm; height:150mm; border-radius:50%;
+    background:radial-gradient(circle, rgba(183,255,115,.28) 0%, rgba(183,255,115,0) 68%);
+    right:-40mm; top:-35mm; }
+  .cover .glow2{ position:absolute; width:110mm; height:110mm; border-radius:50%;
+    background:radial-gradient(circle, rgba(183,255,115,.14) 0%, rgba(183,255,115,0) 70%);
+    left:-35mm; bottom:-30mm; }
+  .cover .brand{ font-size:13pt; font-weight:800; letter-spacing:2px; color:var(--mint); position:relative; }
+  .cover .tagline{ font-size:9pt; color:#C9D6C9; margin-top:2px; position:relative; }
+  .cover h1{ color:#fff; font-size:31pt; margin:34mm 0 6mm; position:relative; }
+  .cover .sub{ font-size:13pt; color:#DCE8DA; max-width:135mm; position:relative; }
+  .cover .rule{ height:3px; width:42mm; background:var(--mint); margin:9mm 0; position:relative; }
+  .cover .meta{ position:relative; margin-top:22mm; display:flex; gap:8mm; flex-wrap:wrap; }
+  .cover .meta div{ min-width:38mm; }
+  .cover .meta .k{ font-size:7.5pt; letter-spacing:1.2px; text-transform:uppercase; color:#9FB39F; }
+  .cover .meta .v{ font-size:10pt; color:#fff; font-weight:600; margin-top:2px; }
+  .cover .footer{ position:absolute; left:18mm; right:18mm; bottom:14mm; font-size:7.6pt; color:#9FB39F;
+    display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,.16); padding-top:4mm; }
+  .part-cover{ page-break-before:always; background:var(--forest); color:#fff; border-radius:8px;
+    padding:30mm 16mm; min-height:232mm; position:relative; }
+  .part-cover .n{ font-size:9pt; letter-spacing:2px; text-transform:uppercase; color:var(--mint); }
+  .part-cover h1{ color:#fff; font-size:30pt; margin:8mm 0 5mm; }
+  .part-cover p{ color:#D7E3D5; font-size:11.5pt; max-width:140mm; }
+  .part-cover .rule{ height:3px; width:38mm; background:var(--mint); margin:8mm 0; }
+  .part-cover .toc{ margin-top:12mm; columns:2; column-gap:12mm; color:#E8F2E6; font-size:9.4pt; }
+  .part-cover .toc div{ break-inside:avoid; padding:2px 0; border-bottom:1px solid rgba(255,255,255,.09); }
+  table{ width:100%; border-collapse:collapse; font-size:8.5pt; margin:5px 0 10px; page-break-inside:auto; }
+  thead{ display:table-header-group; }
+  tr{ page-break-inside:avoid; }
+  th{ background:var(--forest); color:#fff; text-align:left; padding:5px 6px; font-weight:600; font-size:8.2pt; }
+  td{ padding:4px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tbody tr:nth-child(even) td{ background:#F4F8F0; }
+  td.num, th.num{ text-align:right; white-space:nowrap; }
+  .tight td, .tight th{ padding:3px 5px; }
+  .b{ display:inline-block; padding:1px 6px; border-radius:9px; font-size:7.4pt; font-weight:700;
+      letter-spacing:.2px; white-space:nowrap; }
+  .live{ background:var(--green-bg); color:var(--green); }
+  .config{ background:var(--amber-bg); color:var(--amber); }
+  .mock{ background:var(--red-bg); color:var(--red); }
+  .build{ background:var(--grey-bg); color:var(--grey); }
+  .opt{ background:#E0F2FE; color:#075985; }
+  .callout{ border-left:4px solid var(--accent); background:#F3F8EE; padding:8px 10px; margin:8px 0;
+    border-radius:0 5px 5px 0; font-size:9pt; page-break-inside:avoid; }
+  .callout.warn{ border-left-color:#B45309; background:#FFFBEB; }
+  .callout.risk{ border-left-color:#B91C1C; background:#FEF2F2; }
+  .callout .t{ font-weight:700; color:var(--forest); margin-bottom:2px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:6mm; }
+  .card{ border:1px solid var(--line); border-radius:6px; padding:8px 10px; background:#fff; page-break-inside:avoid; }
+  .card h4{ margin-top:0; }
+  .kpi{ display:flex; gap:4mm; flex-wrap:wrap; margin:6px 0; }
+  .kpi .box{ flex:1 1 28%; border:1px solid var(--line); border-radius:6px; padding:7px 9px; background:#fff; }
+  .kpi .v{ font-size:16pt; font-weight:800; color:var(--forest); }
+  .kpi .l{ font-size:7.8pt; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; }
+  .toc-page{ page-break-after:always; }
+  .toc-page h2{ margin-top:0; }
+  .toc-list{ columns:2; column-gap:12mm; font-size:9pt; }
+  .toc-list div{ padding:2.2px 0; border-bottom:1px dotted #CFDACB; break-inside:avoid; }
+  .toc-list .lvl{ font-weight:700; color:var(--forest); margin-top:5px; border-bottom:none; }
+  .toc-list .sub{ padding-left:9px; color:var(--muted); }
+  .page-break{ page-break-before:always; }
+  .avoid{ page-break-inside:avoid; }
+  .diagram{ background:var(--forest); color:#E9F4E5; border-radius:6px; padding:10px 12px;
+    font-family:"SFMono-Regular",Consolas,Menlo,monospace; font-size:7.8pt; line-height:1.5;
+    white-space:pre; overflow:hidden; page-break-inside:avoid; }
+  .doc-meta td{ border-bottom:1px solid var(--line); }
+  .doc-meta td:first-child{ width:34mm; color:var(--muted); font-weight:600; }
+  .req{ font-family:"SFMono-Regular",Consolas,Menlo,monospace; font-size:8pt; color:var(--accent); white-space:nowrap; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="glow"></div><div class="glow2"></div>
+  <div class="brand">GOODS.NG</div>
+  <div class="tagline">Buy. Sell. Trade with Confidence.</div>
+  <h1>Product, Architecture &amp; Functional Requirements</h1>
+  <div class="rule"></div>
+  <div class="sub">A single go-live documentation set for the Goods.ng marketplace: Product Requirements Document (PRD), Technical Architecture Document (TAD), and Functional Requirements Document (FRD).</div>
+  <div class="meta">
+    <div><div class="k">Version</div><div class="v">1.0</div></div>
+    <div><div class="k">Date</div><div class="v">8 November 2026</div></div>
+    <div><div class="k">Status</div><div class="v">Go-live planning baseline</div></div>
+    <div><div class="k">Market</div><div class="v">Nigeria · NGN</div></div>
+  </div>
+  <div class="footer">
+    <span>Confidential — internal product &amp; engineering document</span>
+    <span>goods.ng</span>
+  </div>
+</div>
+
+<div style="page-break-after:always">
+  <div class="eyebrow">Document control</div>
+  <h2>About this document</h2>
+  <p>This document consolidates three deliverables that are normally maintained separately. They are bound together because the launch decision depends on all three: what the product must do (PRD), how the system is built and operated (TAD), and the testable behaviour expected of each feature (FRD). The appendix contains the integration go-live checklist.</p>
+  <table class="doc-meta tight">
+    <tbody>
+      <tr><td>Product</td><td>Goods.ng — multi-vendor marketplace for Nigeria</td></tr>
+      <tr><td>Owner</td><td>Product &amp; Engineering, Goods.ng</td></tr>
+      <tr><td>Audience</td><td>Founders, product, engineering, QA, security, operations, compliance, and integration partners</td></tr>
+      <tr><td>Source of truth</td><td>Repository <span class="req">docs/</span>, application code, migrations and automated tests as of 8 November 2026</td></tr>
+      <tr><td>Verification baseline</td><td>205 backend tests, 5 frontend unit tests, 6 Playwright E2E scenarios, ruff/eslint/tsc clean, production build passing</td></tr>
+      <tr><td>Change control</td><td>Any change to scope, architecture or an external provider requires a version bump and a launch-gate review</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Status vocabulary used throughout</h3>
+  <table class="tight">
+    <thead><tr><th style="width:22mm">Badge</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><span class="b live">LIVE</span></td><td>Implemented in code and covered by automated tests; runs against mock or local infrastructure in development.</td></tr>
+      <tr><td><span class="b config">CONFIG</span></td><td>Implemented, but production requires credentials, a commercial account, DNS, or a provider dashboard step before it is live.</td></tr>
+      <tr><td><span class="b mock">MOCK</span></td><td>Only a mock adapter exists. A licensed partner adapter and contract are required before live use.</td></tr>
+      <tr><td><span class="b build">NOT BUILT</span></td><td>No implementation yet; required or recommended for launch.</td></tr>
+      <tr><td><span class="b opt">OPTIONAL</span></td><td>Not required for first launch; planned for growth or scale.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <div class="t">Important launch caveat</div>
+    Goods.ng does not hold customer funds. Protected Checkout and Goods Flex currently run against <strong>mock escrow and mock lending partners</strong>. Production boot explicitly refuses mock financial providers. The product must not be described as holding funds or lending until licensed partner adapters are signed, implemented and certified.
+  </div>
+</div>
+
+<div class="toc-page">
+  <h2>Contents</h2>
+  <div class="toc-list">
+    <div class="lvl">Part I — Product Requirements Document</div>
+    <div class="sub">1. Purpose and scope</div>
+    <div class="sub">2. Executive summary</div>
+    <div class="sub">3. Vision, mission and goals</div>
+    <div class="sub">4. Market context and problem</div>
+    <div class="sub">5. Personas</div>
+    <div class="sub">6. Product scope</div>
+    <div class="sub">7. Value proposition</div>
+    <div class="sub">8. Business model</div>
+    <div class="sub">9. Key user journeys</div>
+    <div class="sub">10. Functional epics and priorities</div>
+    <div class="sub">11. Success metrics and launch gates</div>
+    <div class="sub">12. Assumptions, dependencies and risks</div>
+    <div class="sub">13. Roadmap</div>
+    <div class="sub">14. Compliance and legal</div>
+
+    <div class="lvl">Part II — Technical Architecture Document</div>
+    <div class="sub">1. Principles</div>
+    <div class="sub">2. System context</div>
+    <div class="sub">3. Technology stack</div>
+    <div class="sub">4. Deployment topology</div>
+    <div class="sub">5. Backend architecture</div>
+    <div class="sub">6. Data architecture</div>
+    <div class="sub">7. API architecture</div>
+    <div class="sub">8. Identity and access</div>
+    <div class="sub">9. Payments, escrow and ledger</div>
+    <div class="sub">10. Goods Flex</div>
+    <div class="sub">11. Search and discovery</div>
+    <div class="sub">12. Messaging and negotiation</div>
+    <div class="sub">13. Frontend architecture</div>
+    <div class="sub">14. Media pipeline</div>
+    <div class="sub">15. Background processing</div>
+    <div class="sub">16. Caching and performance</div>
+    <div class="sub">17. Security architecture</div>
+    <div class="sub">18. Observability and operations</div>
+    <div class="sub">19. Integration architecture and go-live readiness</div>
+    <div class="sub">20. Scalability plan</div>
+    <div class="sub">21. Architecture decisions</div>
+    <div class="sub">22. Technical risks</div>
+
+    <div class="lvl">Part III — Functional Requirements Document</div>
+    <div class="sub">1. Conventions and actors</div>
+    <div class="sub">2. Authentication and accounts</div>
+    <div class="sub">3. Sellers and verification</div>
+    <div class="sub">4. Catalog and listings</div>
+    <div class="sub">5. Search and discovery</div>
+    <div class="sub">6. Messaging and negotiation</div>
+    <div class="sub">7. Payments and protected checkout</div>
+    <div class="sub">8. Orders, delivery, disputes and refunds</div>
+    <div class="sub">9. Goods Flex</div>
+    <div class="sub">10. Reviews, notifications and trust</div>
+    <div class="sub">11. Subscriptions and promotions</div>
+    <div class="sub">12. Ads, feeds and analytics</div>
+    <div class="sub">13. Administration</div>
+    <div class="sub">14. State machines</div>
+    <div class="sub">15. Non-functional requirements</div>
+    <div class="sub">16. Integration requirements</div>
+    <div class="sub">17. Acceptance scenarios</div>
+
+    <div class="lvl">Appendix</div>
+    <div class="sub">A. Integration go-live checklist</div>
+    <div class="sub">B. Environment variables</div>
+    <div class="sub">C. Glossary</div>
+  </div>
+</div>
+
+<div class="part-cover">
+  <div class="n">Part I</div>
+  <h1>Product Requirements Document</h1>
+  <div class="rule"></div>
+  <p>What Goods.ng is, who it serves, what is in the first release, how it makes money, and the measurable gates that must be met before launch.</p>
+  <div class="toc">
+    <div>1. Purpose and scope</div><div>2. Executive summary</div>
+    <div>3. Vision and goals</div><div>4. Market context</div>
+    <div>5. Personas</div><div>6. Product scope</div>
+    <div>7. Value proposition</div><div>8. Business model</div>
+    <div>9. Key journeys</div><div>10. Epics and priorities</div>
+    <div>11. Success metrics</div><div>12. Assumptions and risks</div>
+    <div>13. Roadmap</div><div>14. Compliance</div>
+  </div>
+</div>
+
+<div>
+  <h2>1. Purpose and scope</h2>
+  <p>This PRD defines the first production release of Goods.ng, a Nigeria-first, multi-vendor marketplace that combines classifieds-style discovery with in-app chat, price negotiation, identity and business verification, escrow-protected checkout, and a buy-now-pay-later product called <strong>Goods Flex</strong>. It is written for the team that will take the product from a working development build to a licensed, operated, revenue-generating service.</p>
+  <p>The PRD covers product intent, users, scope, economics, journeys, priorities and launch gates. Implementation detail belongs in the TAD; testable feature behaviour belongs in the FRD. Where the three documents disagree, the FRD is the acceptance authority, the TAD is the implementation authority, and the PRD is the priority authority.</p>
+
+  <h2>2. Executive summary</h2>
+  <p>Nigerian online commerce is split between classifieds platforms where buyers and sellers transact directly — with high fraud, no payment protection and no accountability — and traditional e-commerce sites that control inventory but offer limited negotiation, weak local-seller tooling and little flexibility on payment. Goods.ng occupies the middle: a trusted marketplace where every listing can be discussed, negotiated and paid for through a protected flow, while sellers keep their independence and build a verifiable reputation.</p>
+  <p>The product is already broad and functionally deep: 20 backend modules, 185 REST endpoints, 54 database tables, 17 root categories (91 total), protected checkout with a double-entry ledger, negotiation, messaging, seller verification, reviews, subscriptions, per-listing promotions, advertising feeds, and a 20-area admin console. The launch gap is not feature breadth; it is the <strong>external integration layer</strong> (licensed escrow and lending partners, payment certification, KYC, SMS/email, observability, payouts, logistics) and the legal/operational readiness that goes with it.</p>
+  <div class="kpi">
+    <div class="box"><div class="v">205</div><div class="l">Backend tests passing</div></div>
+    <div class="box"><div class="v">185</div><div class="l">REST endpoints</div></div>
+    <div class="box"><div class="v">54</div><div class="l">Database tables</div></div>
+    <div class="box"><div class="v">17 / 91</div><div class="l">Root / total categories</div></div>
+  </div>
+
+  <h2>3. Vision, mission and goals</h2>
+  <p><strong>Vision.</strong> Make everyday trade in Nigeria safe enough to do online without fear.</p>
+  <p><strong>Mission.</strong> Give buyers and sellers the tools to discover, agree and complete a transaction with confidence: real listings, real people, protected money and a reputation that follows both sides.</p>
+  <h3>Product goals for the first release</h3>
+  <ol>
+    <li><strong>Trust:</strong> a buyer can pay through Goods.ng without losing money if the item is not delivered as described.</li>
+    <li><strong>Liquidity:</strong> enough quality inventory and seller activity in the launch categories for a buyer to find something worth buying.</li>
+    <li><strong>Conversion:</strong> reduce the friction between "I am interested" and "paid" through chat, offers, a protected checkout and instalment payments.</li>
+    <li><strong>Repeatability:</strong> sellers return because the tools (storefront, analytics, promotions, verification) produce measurable sales.</li>
+    <li><strong>Operability:</strong> the business can be run safely by a small team with audit trails, reconciliation and clear escalation paths.</li>
+  </ol>
+
+  <h2>4. Market context and problem</h2>
+  <table>
+    <thead><tr><th style="width:38mm">Problem</th><th>Current reality</th><th style="width:52mm">Goods.ng response</th></tr></thead>
+    <tbody>
+      <tr><td>Fraud and non-delivery</td><td>Buyers send bank transfers to strangers; sellers ship to buyers who dispute after delivery. Evidence is weak and recovery is rare.</td><td>Protected Checkout with a licensed escrow partner, server-side payment verification, delivery evidence, auto-release and a dispute workflow.</td></tr>
+      <tr><td>Price negotiation is informal</td><td>Haggling happens on WhatsApp with no record; agreed prices are disputed and stale screenshots are unreliable.</td><td>Structured offers and counters with expiry, turn-taking, a 10-round cap and a checkout locked to the accepted offer.</td></tr>
+      <tr><td>Sellers are anonymous</td><td>Anyone can post a listing; reputation is a profile picture and a phone number.</td><td>Phone, identity and business verification tiers; verified badges; reviews only from delivered orders.</td></tr>
+      <tr><td>Payment inflexibility</td><td>Buyers must pay in full; sellers wait for settlement; no formal instalment option exists for everyday goods.</td><td>Goods Flex: credit assessment from open-banking data, a mandatory guarantor, transparent instalments, and one running plan per customer.</td></tr>
+      <tr><td>Discovery is noisy</td><td>Feeds are dominated by spam and repeat posts; filters are shallow and search misses synonyms.</td><td>PostgreSQL full-text search with weighted fields and prefix matching, category facets, premium ranking, and quality-gated sponsored placements.</td></tr>
+      <tr><td>Seller growth is manual</td><td>No analytics, no promotion products, no way to buy visibility for a single listing.</td><td>Seller dashboard, per-listing TOP and Boost Premium packages, subscriptions with featured credits, and advertising feeds.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5. Personas</h2>
+  <table>
+    <thead><tr><th style="width:30mm">Persona</th><th>Needs</th><th>Success looks like</th><th style="width:34mm">Key surfaces</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Adaeze — buyer</strong><br><span class="small muted">Lagos, 29, salaried</span></td><td>Find a genuine phone or appliance at a fair price, ask questions, negotiate, pay safely, and know when it will arrive.</td><td>Buys within one session; item matches the listing; money is released only after delivery.</td><td>Home, search, item, chat, offers, checkout, orders</td></tr>
+      <tr><td><strong>Chinedu — business seller</strong><br><span class="small muted">Ikeja, phone shop</span></td><td>List stock quickly, look credible, answer buyers, close sales, promote individual products without a full subscription.</td><td>Verified badge, steady enquiries, measurable views, repeat buyers, paid promotions that pay back.</td><td>Seller dashboard, products, orders, analytics, promotions, storefront</td></tr>
+      <tr><td><strong>Aisha — fashion seller</strong><br><span class="small muted">Abuja, made-to-order</span></td><td>Sell unique pieces, manage custom orders, build a brand, use WhatsApp for relationship selling.</td><td>Storefront visits convert to chats; premium contact controls drive direct sales.</td><td>Storefront, listings, chat, subscription</td></tr>
+      <tr><td><strong>Ngozi — premium seller</strong><br><span class="small muted">Port Harcourt, appliances</span></td><td>Priority visibility, analytics, featured credits and a trustworthy checkout for high-ticket items.</td><td>Premium ranking, more qualified leads, lower dispute rate.</td><td>Premium, analytics, ads, promotions</td></tr>
+      <tr><td><strong>Tunde — auto dealer</strong><br><span class="small muted">Lekki, vehicles</span></td><td>High-value listings, inspection-driven trust, serious buyers only.</td><td>Qualified enquiries; protected checkout for large transactions; clear delivery/collection terms.</td><td>Listing editor, chat, orders, verification</td></tr>
+      <tr><td><strong>Guarantor</strong><br><span class="small muted">Friend or family of a Flex buyer</span></td><td>Understand exactly what they are guaranteeing, for how long, and how to withdraw.</td><td>Informed consent, a capped amount, SMS notification and a clear record.</td><td>Guarantor consent link</td></tr>
+      <tr><td><strong>Operations admin</strong><br><span class="small muted">Support, trust &amp; safety</span></td><td>Resolve disputes, moderate listings, verify sellers, reconcile money, investigate abuse.</td><td>Every action is permissioned, audited and reversible where appropriate.</td><td>Admin console (20 areas)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6. Product scope</h2>
+  <div class="grid2">
+    <div class="card">
+      <h4>In scope — first release</h4>
+      <ul class="small">
+        <li>Mobile-first public marketplace with SSR/SEO.</li>
+        <li>17 root categories, 91 categories, 36 states + FCT.</li>
+        <li>Seller onboarding, verification tiers, storefronts.</li>
+        <li>Listing creation, image pipeline, moderation, stock.</li>
+        <li>Search, filters, facets, favourites, recommendations.</li>
+        <li>Product-linked chat and structured negotiation.</li>
+        <li>Protected Checkout, escrow state machine, ledger.</li>
+        <li>Orders, delivery updates, evidence, auto-release.</li>
+        <li>Disputes, refunds and four-eyes approval.</li>
+        <li>Goods Flex with guarantor and open-banking assessment.</li>
+        <li>Reviews from delivered orders only.</li>
+        <li>In-app notifications + email/SMS outbox.</li>
+        <li>Subscriptions and per-listing promotions.</li>
+        <li>Google/Meta product feeds and tracking.</li>
+        <li>Admin console with RBAC and audit logs.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Out of scope — first release</h4>
+      <ul class="small">
+        <li>Native iOS/Android apps (responsive web and PWA-ready only).</li>
+        <li>Goods.ng-owned inventory or first-party warehousing.</li>
+        <li>In-house wallet, stored value or direct fund custody.</li>
+        <li>International shipping and multi-currency checkout.</li>
+        <li>Live video shopping or livestream auctions.</li>
+        <li>Full logistics network; manual tracking initially.</li>
+        <li>Automated seller payouts (partner-dependent).</li>
+        <li>Partial refunds in the UI (model supports amounts).</li>
+        <li>Dedicated search engine (Postgres FTS is sufficient).</li>
+        <li>WebSocket messaging (5-second polling initially).</li>
+        <li>Fraud-scoring vendor and address verification.</li>
+        <li>Business accounting or invoicing suite.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>7. Value proposition</h2>
+  <table>
+    <thead><tr><th style="width:34mm">For</th><th>Value</th><th style="width:52mm">Proof point in the product</th></tr></thead>
+    <tbody>
+      <tr><td>Buyers</td><td>Shop strangers safely, negotiate transparently, pay in a way that protects the money, and get recourse.</td><td>Protected Checkout, verified sellers, structured offers, delivery evidence, disputes, reviews.</td></tr>
+      <tr><td>Sellers</td><td>A credible storefront, qualified buyers, tools to grow, and a path to higher visibility without giving up independence.</td><td>Verification badges, analytics, premium placement, per-listing promotions, storefront and chat.</td></tr>
+      <tr><td>Flex customers</td><td>Afford everyday purchases through instalments with clear terms and a human guarantor model.</td><td>Six-month bank assessment, transparent schedule, mandatory guarantor consent, one-plan rule.</td></tr>
+      <tr><td>Partners</td><td>A regulated-ready marketplace that routes protected transactions to licensed escrow and lending partners with clean reconciliation.</td><td>Provider interfaces, append-only ledger, webhook verification, reconciliation reports.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>8. Business model</h2>
+  <table>
+    <thead><tr><th style="width:44mm">Revenue stream</th><th>Mechanism</th><th class="num" style="width:34mm">Default</th><th style="width:44mm">Status</th></tr></thead>
+    <tbody>
+      <tr><td>Marketplace commission</td><td>Percentage of the item subtotal on a completed protected order, deducted before seller settlement.</td><td class="num">5.0%</td><td><span class="b live">LIVE</span> mock settlement</td></tr>
+      <tr><td>Buyer protection fee</td><td>Percentage of subtotal, capped per order, shown separately at checkout.</td><td class="num">1.5% · cap ₦5,000</td><td><span class="b live">LIVE</span> mock settlement</td></tr>
+      <tr><td>Premium subscriptions</td><td>Monthly, quarterly and annual seller plans with featured credits and premium tools.</td><td class="num">₦15k / ₦40k / ₦150k</td><td><span class="b live">LIVE</span> mock payments</td></tr>
+      <tr><td>Per-listing promotions</td><td>One-off TOP 7-day, TOP 30-day, or Boost Premium 28-day visibility for a single listing.</td><td class="num">₦3,099 / ₦9,999 / ₦31,999</td><td><span class="b live">LIVE</span> mock payments</td></tr>
+      <tr><td>Advertising</td><td>Promoted placements and catalog ads on Google/Meta; tracking and product feeds.</td><td class="num">Campaign-defined</td><td><span class="b config">CONFIG</span></td></tr>
+    </tbody>
+  </table>
+  <div class="callout">
+    <div class="t">Pricing governance</div>
+    Commission, protection fee and cap are environment defaults and can be overridden in Platform Settings. Promotion package prices are server-side and overridable through the <span class="req">promotion_packages</span> setting. Client-supplied prices are always ignored.
+  </div>
+
+  <h2>9. Key user journeys</h2>
+  <h3>9.1 Buyer: discover → agree → pay → receive</h3>
+  <ol class="small">
+    <li>Lands on home or a category; searches or browses; filters by state, price, condition and brand.</li>
+    <li>Opens an item page with photos, seller verification, delivery options and protection terms.</li>
+    <li>Starts a product-linked chat or makes an offer. Counter-offers are structured and time-boxed.</li>
+    <li>Accepts the price (or the seller accepts the offer); checkout is locked to that accepted offer for 24 hours.</li>
+    <li>Chooses delivery, sees the subtotal, delivery fee, protection fee and total; pays through the licensed provider.</li>
+    <li>Goods.ng verifies the payment server-to-server; the escrow partner holds the funds; the seller is notified.</li>
+    <li>Seller accepts, processes and dispatches with evidence; buyer confirms delivery or the order auto-releases after the configured window.</li>
+    <li>Buyer leaves a review; seller is paid through the partner; the ledger records commission and protection fee.</li>
+  </ol>
+  <h3>9.2 Seller: onboard → list → sell</h3>
+  <ol class="small">
+    <li>Creates an account, becomes a seller, adds store name, location and contact details.</li>
+    <li>Completes phone, identity or business verification; uploads supporting documents privately.</li>
+    <li>Creates a listing with images, condition, price, stock, delivery options and BNPL eligibility; auto-title suggests a keyword-rich title.</li>
+    <li>Receives enquiries and offers; responds in chat; accepts or declines orders.</li>
+    <li>Tracks views, favourites, enquiries and earnings; optionally buys a promotion or a subscription.</li>
+  </ol>
+  <h3>9.3 Goods Flex: assess → guarantee → apply → repay</h3>
+  <ol class="small">
+    <li>Customer verifies phone and BVN, connects a bank account read-only, and receives an affordability assessment.</li>
+    <li>Names a guarantor, who receives an SMS link, sees the amount and terms, and consents explicitly.</li>
+    <li>Applies for a plan; the licensed lender returns a decision and terms; the customer accepts.</li>
+    <li>Pays the down payment; the partner disburses; the order follows the same protected checkout path.</li>
+    <li>Repays instalments; reminders and overdue states are handled by the worker; only one plan can run at a time.</li>
+  </ol>
+  <h3>9.4 Admin: trust and money operations</h3>
+  <ol class="small">
+    <li>Moderates listings and reviews; verifies sellers; suspends abusive accounts.</li>
+    <li>Resolves disputes with evidence, issues refunds under four-eyes approval, and reconciles payments, escrow and ledger.</li>
+    <li>Grants subscriptions, adjusts platform settings, manages staff roles, and reviews the append-only activity log.</li>
+  </ol>
+
+  <h2>10. Functional epics and priorities</h2>
+  <table>
+    <thead><tr><th style="width:36mm">Epic</th><th>Outcome</th><th style="width:18mm">Priority</th><th style="width:38mm">Launch state</th></tr></thead>
+    <tbody>
+      <tr><td>Authentication &amp; account</td><td>Secure sign-up, login, OTP, password reset, 2FA, sessions.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Catalog &amp; listings</td><td>Categories, listing lifecycle, images, stock, moderation.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Search &amp; discovery</td><td>Full-text search, facets, ranking, favourites, recommendations.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Messaging</td><td>Product-linked conversations, unread counts, reports.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Negotiation</td><td>Offers, counters, expiry, accepted-price checkout.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Payments</td><td>Provider abstraction, verification, webhooks, refunds.</td><td>P0</td><td><span class="b config">CONFIG</span></td></tr>
+      <tr><td>Protected checkout &amp; escrow</td><td>Funds held by a licensed partner; release/refund state machine.</td><td>P0</td><td><span class="b mock">MOCK</span></td></tr>
+      <tr><td>Orders &amp; delivery</td><td>Seller acceptance, dispatch, evidence, auto-release.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Disputes &amp; refunds</td><td>Evidence, admin resolution, four-eyes refund approval.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Seller verification</td><td>Phone, identity, business tiers; private document review.</td><td>P0</td><td><span class="b config">CONFIG</span></td></tr>
+      <tr><td>Goods Flex</td><td>Credit assessment, guarantor, lender decision, instalments.</td><td>P1</td><td><span class="b mock">MOCK</span></td></tr>
+      <tr><td>Reviews</td><td>Verified-purchase reviews, replies, moderation.</td><td>P1</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Notifications</td><td>In-app inbox, preferences, email/SMS outbox.</td><td>P1</td><td><span class="b config">CONFIG</span></td></tr>
+      <tr><td>Subscriptions</td><td>Premium plans, featured credits, admin grants.</td><td>P1</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Promotions</td><td>Per-listing TOP and Boost Premium packages.</td><td>P1</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Ads &amp; feeds</td><td>Google/Meta catalog feeds, pixel events, CAPI.</td><td>P2</td><td><span class="b config">CONFIG</span></td></tr>
+      <tr><td>Admin &amp; staff</td><td>20 areas, granular RBAC, audit, reconciliation.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Trust &amp; safety</td><td>Moderation, reports, direct-contact warning, suspension.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2>11. Success metrics and launch gates</h2>
+  <h3>North-star and supporting metrics</h3>
+  <table>
+    <thead><tr><th style="width:42mm">Metric</th><th>Definition</th><th style="width:34mm">First-90-day target</th></tr></thead>
+    <tbody>
+      <tr><td>Protected GMV</td><td>Value of orders paid through Protected Checkout, excluding refunds.</td><td>Baseline set in staging; grow week-on-week</td></tr>
+      <tr><td>Order completion rate</td><td>Completed orders ÷ paid orders.</td><td>≥ 90%</td></tr>
+      <tr><td>Dispute rate</td><td>Orders with a dispute ÷ paid orders.</td><td>&lt; 3%</td></tr>
+      <tr><td>Time to first response</td><td>Median seller response to a new enquiry.</td><td>&lt; 30 minutes in business hours</td></tr>
+      <tr><td>Listing quality</td><td>Share of active listings with 3+ photos and a 60+ character description.</td><td>≥ 80%</td></tr>
+      <tr><td>Verified seller share</td><td>Active sellers at identity or business tier.</td><td>≥ 60%</td></tr>
+      <tr><td>Flex repayment health</td><td>Instalments paid on time ÷ due instalments.</td><td>≥ 95%</td></tr>
+      <tr><td>Search success</td><td>Sessions with a search and an item view ÷ search sessions.</td><td>≥ 45%</td></tr>
+      <tr><td>p95 API latency</td><td>Read endpoints at target concurrency.</td><td>&lt; 500 ms</td></tr>
+      <tr><td>Error rate</td><td>5xx responses ÷ total API responses.</td><td>&lt; 0.5%</td></tr>
+    </tbody>
+  </table>
+  <h3>Launch gates (all must be true)</h3>
+  <table>
+    <thead><tr><th style="width:12mm">#</th><th>Gate</th><th style="width:30mm">Owner</th></tr></thead>
+    <tbody>
+      <tr><td>G1</td><td>Licensed escrow/payment partner contract signed; adapter implemented and certified in sandbox; production boot passes.</td><td>Finance / Eng</td></tr>
+      <tr><td>G2</td><td>Licensed lender contract signed; FinancingProvider adapter implemented; FCCPC and legal review complete.</td><td>Risk / Legal</td></tr>
+      <tr><td>G3</td><td>Primary payment provider (Paystack or Flutterwave) certified in sandbox and live; webhooks, settlement and reconciliation verified.</td><td>Finance / Eng</td></tr>
+      <tr><td>G4</td><td>KYC provider live for BVN/NIN; consent and data-retention copy approved.</td><td>Compliance</td></tr>
+      <tr><td>G5</td><td>SMS and email providers live; sender ID/domain authenticated; OTP and transactional delivery proven.</td><td>Eng</td></tr>
+      <tr><td>G6</td><td>Managed Postgres with PITR, managed Redis, S3 + CDN, and at least two API instances deployed.</td><td>Platform</td></tr>
+      <tr><td>G7</td><td>Sentry/error tracking, structured logs, uptime checks and alerts live; on-call rota agreed.</td><td>Platform</td></tr>
+      <tr><td>G8</td><td>External penetration test complete; critical/high findings closed.</td><td>Security</td></tr>
+      <tr><td>G9</td><td>Legal review of Terms, Privacy, Refund &amp; Dispute, Goods Flex and guarantor consent complete.</td><td>Legal</td></tr>
+      <tr><td>G10</td><td>Staging end-to-end: sign-up → listing → offer → payment → escrow → delivery → release → review, with real provider sandboxes.</td><td>QA</td></tr>
+    </tbody>
+  </table>
+
+  <h2>12. Assumptions, dependencies and risks</h2>
+  <h3>Assumptions</h3>
+  <ul class="small">
+    <li>Goods.ng will operate as a marketplace and agent, not as a bank, lender or escrow provider.</li>
+    <li>A licensed partner is available and commercially viable for escrow and for BNPL.</li>
+    <li>Buyers and sellers have smartphones and intermittent connectivity; the web experience must stay lightweight.</li>
+    <li>NGN is the only currency and Nigeria the only market at launch.</li>
+    <li>Sellers will accept a 5% commission and a buyer-paid protection fee in exchange for trust and demand.</li>
+  </ul>
+  <h3>Dependencies</h3>
+  <ul class="small">
+    <li>Escrow/lending partner contracts, sandbox access and legal sign-off.</li>
+    <li>Payment provider approval and settlement account.</li>
+    <li>KYC and open-banking provider approval, including NDPA-compliant consent.</li>
+    <li>Termii sender ID approval and email domain authentication.</li>
+    <li>Cloud accounts, DNS and SSL for goods.ng and admin.goods.ng.</li>
+  </ul>
+  <h3>Top risks</h3>
+  <table>
+    <thead><tr><th style="width:42mm">Risk</th><th>Impact</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Escrow partner not signed in time</td><td>Protected Checkout cannot launch; core differentiator unavailable.</td><td>Start partner diligence immediately; keep a fallback licensed payment partner; do not launch unprotected checkout under the "Protected" brand.</td></tr>
+      <tr><td>BNPL regulatory friction</td><td>Goods Flex cannot launch or must be re-scoped.</td><td>Launch Flex behind a feature flag after FCCPC review; keep the product usable without it.</td></tr>
+      <tr><td>Fraud at onboarding</td><td>Chargebacks, fake listings, reputational damage.</td><td>Verification tiers, KYC, moderation, device/rate limits, delivery evidence, manual review for high-value orders.</td></tr>
+      <tr><td>Seller liquidity</td><td>Buyers find nothing to buy.</td><td>Seed launch categories with verified sellers; run supply acquisition before paid marketing.</td></tr>
+      <tr><td>Payment webhook outages</td><td>Orders stuck unpaid or unfulfilled.</td><td>Verify-before-trust, buyer return-page re-verification, expiry job that re-checks the provider, reconciliation alerts.</td></tr>
+      <tr><td>Operational overload</td><td>Disputes and KYC queues grow faster than the team.</td><td>Admin SLAs, canned responses, audit trails, four-eyes refunds, staffing plan for launch.</td></tr>
+      <tr><td>Data breach</td><td>Regulatory and reputational harm.</td><td>Encryption at rest, private KYC storage, least privilege, pen test, incident response, NDPA records.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>13. Roadmap</h2>
+  <table>
+    <thead><tr><th style="width:26mm">Phase</th><th>Scope</th><th style="width:38mm">Exit criteria</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Now → launch</strong></td><td>Integration layer, legal/compliance, observability, deployment, pen test, staging E2E.</td><td>All ten launch gates met.</td></tr>
+      <tr><td><strong>Launch + 30 days</strong></td><td>Operate, monitor, fix funnel friction, tune ranking and fees, grow verified supply.</td><td>Stable error rate, dispute rate &lt; 3%, completion ≥ 90%.</td></tr>
+      <tr><td><strong>Launch + 90 days</strong></td><td>Payout automation, logistics partners, partial refunds, push notifications, saved searches.</td><td>Seller payout cycle &lt; T+1 after release; at least one carrier integrated.</td></tr>
+      <tr><td><strong>Scale</strong></td><td>Dedicated search, WebSockets/SSE, fraud scoring, mobile apps, more cities/categories.</td><td>Search p95 stable at 10× traffic; messaging no longer polling-bound.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>14. Compliance and legal</h2>
+  <ul class="small">
+    <li><strong>NDPA 2023:</strong> lawful basis, privacy notice, cookie consent, data-subject requests, retention schedule, DPO appointment, processor agreements.</li>
+    <li><strong>FCCPC digital lending:</strong> transparent charges, affordability, responsible collections, complaint handling, no dark patterns.</li>
+    <li><strong>CBN-licensed partner:</strong> funds held by a licensed escrow/payment partner; Goods.ng is not a deposit-taking institution.</li>
+    <li><strong>Guarantor law:</strong> enforceability, disclosures, cooling-off and withdrawal rights reviewed by counsel.</li>
+    <li><strong>Consumer protection:</strong> clear refund and dispute policy, seller obligations, prohibited items, takedown process.</li>
+    <li><strong>Advertising:</strong> claims must match the licensed reality; no "insured", "guaranteed" or "bank" language without partner approval.</li>
+  </ul>
+</div>
+
+<div class="part-cover">
+  <div class="n">Part II</div>
+  <h1>Technical Architecture Document</h1>
+  <div class="rule"></div>
+  <p>How the system is structured, deployed, secured and operated, and the exact state of every external integration required for go-live.</p>
+  <div class="toc">
+    <div>1. Principles</div><div>2. System context</div>
+    <div>3. Technology stack</div><div>4. Deployment topology</div>
+    <div>5. Backend architecture</div><div>6. Data architecture</div>
+    <div>7. API architecture</div><div>8. Identity and access</div>
+    <div>9. Payments and escrow</div><div>10. Goods Flex</div>
+    <div>11. Search</div><div>12. Messaging and negotiation</div>
+    <div>13. Frontend</div><div>14. Media pipeline</div>
+    <div>15. Background processing</div><div>16. Caching and performance</div>
+    <div>17. Security</div><div>18. Observability</div>
+    <div>19. Integrations and go-live</div><div>20. Scalability</div>
+    <div>21. Decisions</div><div>22. Technical risks</div>
+  </div>
+</div>
+
+<div>
+  <h2>1. Architecture principles</h2>
+  <ol>
+    <li><strong>Modular monolith first.</strong> One deployable API with clear module boundaries and a single database. Scale the process horizontally before splitting services.</li>
+    <li><strong>Provider interfaces at every regulated or external boundary.</strong> Payments, escrow, lending, open banking, identity, storage, SMS and email are behind Protocols so a partner can be replaced without touching domain logic.</li>
+    <li><strong>Verify before trust.</strong> A payment is real only after a server-to-server verification with an exact amount and currency match. Webhooks trigger verification; redirects and screenshots never do.</li>
+    <li><strong>The database is the source of truth.</strong> Financial invariants are enforced by constraints, row locks, unique keys and triggers, not only by application code.</li>
+    <li><strong>Idempotency everywhere.</strong> Checkout, webhooks, settlement, refunds, promotions and BNPL payments can be retried safely.</li>
+    <li><strong>Same-origin API.</strong> The browser talks only to the Next.js origin, which proxies <span class="req">/api/v1</span> and <span class="req">/media</span> to the backend. This keeps the refresh cookie first-party and removes CORS from the production path.</li>
+    <li><strong>Operate what you build.</strong> Structured logs, request IDs, health checks, reconciliation and audit trails are part of the feature, not an afterthought.</li>
+  </ol>
+
+  <h2>2. System context</h2>
+  <div class="diagram"> Browser (mobile-first, SEO public pages)
+   │  same-origin /api/v1/* and /media/*
+   ▼
+ Next.js 16 (Vercel)  ── rewrite ──▶  FastAPI (stateless, N pods)
+   │  SSR / PPR public pages            /api/v1 REST · JWT + RBAC
+   │  client dashboards                 modules/* domain services
+   ▼                                          │            │
+ PostgreSQL 15+ (source of truth) ◀───────────┘            │
+ Redis (cache, rate limits, single-flight) ◀───────────────┘
+   ▲
+ Worker (python -m app.worker): outbox, expiry, auto-release, reminders, feeds, CAPI
+
+ External, behind interfaces:
+   PaymentProvider (mock | Paystack | Flutterwave)
+   EscrowProvider (mock only today)
+   FinancingProvider (mock only today)
+   BankDataProvider (mock | Mono, untested)
+   IdentityProvider (mock only today)
+   Object storage (local | S3-compatible)
+   SMS (console | Termii) · Email (console | SMTP | Postmark)
+   Google OAuth · reCAPTCHA/Turnstile · Meta CAPI</div>
+
+  <h2>3. Technology stack</h2>
+  <table>
+    <thead><tr><th style="width:30mm">Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Frontend</td><td>Next.js 16.4 (App Router, Cache Components/PPR), React 19.3, TypeScript 5, Tailwind 4</td><td>System fonts, streaming SSR, client dashboards on a central API client.</td></tr>
+      <tr><td>Backend</td><td>Python 3.12, FastAPI, Pydantic 2, SQLAlchemy 2, Alembic</td><td>185 REST endpoints, 20 modules, OpenAPI only in dev/test.</td></tr>
+      <tr><td>Database</td><td>PostgreSQL 15+</td><td>54 tables, full-text search, partial unique indexes, append-only triggers, deferred balance check.</td></tr>
+      <tr><td>Cache / limits</td><td>Redis 5+</td><td>Required in production. In-memory fallback in development. Rate limits and single-flight locks.</td></tr>
+      <tr><td>Worker</td><td>Same image, <span class="req">python -m app.worker</span></td><td>Postgres advisory locks make multiple replicas safe.</td></tr>
+      <tr><td>Storage</td><td>Local (dev) or S3-compatible + CDN</td><td>Pillow decode, WebP re-encode, watermark, private KYC prefix.</td></tr>
+      <tr><td>Tests</td><td>pytest, Vitest, Playwright, ruff, eslint, tsc</td><td>205 backend, 5 unit, 6 E2E; CI runs migrations round-trip and build.</td></tr>
+      <tr><td>Deploy</td><td>Vercel (frontend) + container platform (API/worker) + managed Postgres/Redis</td><td>Dockerfiles and Compose exist; not yet deployed.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4. Deployment topology</h2>
+  <table>
+    <thead><tr><th style="width:32mm">Component</th><th>Production shape</th><th style="width:52mm">Scaling / resilience</th></tr></thead>
+    <tbody>
+      <tr><td>Frontend</td><td>Vercel, root <span class="req">frontend/</span>, <span class="req">pnpm build</span>; rewrites <span class="req">/api/v1</span> and <span class="req">/media</span> to the API.</td><td>CDN edge, static/PPR pages, per-request streaming for data.</td></tr>
+      <tr><td>API</td><td>Container image from <span class="req">backend/Dockerfile</span>, ≥ 2 instances behind HTTPS.</td><td>Stateless; horizontal scale. Pool: (10 + 20) × workers × replicas.</td></tr>
+      <tr><td>Worker</td><td>Same image, separate command, ≥ 1 replica.</td><td>Advisory locks prevent duplicate job execution; scale horizontally.</td></tr>
+      <tr><td>Database</td><td>Managed Postgres 15+, TLS, PITR, private network; PgBouncer (transaction pooling) as replicas grow.</td><td>Read replicas for browse/search before write saturation; 15 s statement timeout.</td></tr>
+      <tr><td>Redis</td><td>Managed Redis, private network.</td><td>Cache, rate limits, single-flight. Boot fails without it in production.</td></tr>
+      <tr><td>Storage</td><td>S3-compatible bucket, versioning, CDN for public media, no public access for <span class="req">private/</span>.</td><td>Signed URLs for KYC; lifecycle rules; cross-region replication for private data.</td></tr>
+      <tr><td>DNS</td><td>goods.ng, admin.goods.ng; SSL managed by the platform.</td><td>Admin host carries <span class="req">X-Robots-Tag: noindex</span>; optional edge IP allow-list.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout">
+    <div class="t">Connection budget</div>
+    Each API process opens up to <span class="req">DB_POOL_SIZE + DB_MAX_OVERFLOW</span> connections. Total = that × <span class="req">WEB_CONCURRENCY</span> × replicas. Size this against <span class="req">max_connections</span>, or put PgBouncer in front. This is the first thing to tune when adding pods.
+  </div>
+
+  <h2>5. Backend architecture</h2>
+  <p>The API is a modular monolith. Each module owns its router and business logic; cross-module coupling goes through service functions and the payment purpose registry. The payments module never imports orders, subscriptions or BNPL directly.</p>
+  <table>
+    <thead><tr><th style="width:30mm">Layer</th><th>Responsibility</th><th>Examples</th></tr></thead>
+    <tbody>
+      <tr><td><span class="req">core/</span></td><td>Config, DB session, security primitives, errors, JSON logging with request IDs, cache/rate limiter, auth/RBAC dependencies.</td><td>Argon2, JWT, Fernet, Redis, trusted proxy IP resolution.</td></tr>
+      <tr><td><span class="req">models/</span></td><td>SQLAlchemy mappings and constraints.</td><td>Users, sellers, catalog, messaging, commerce, ledger, misc.</td></tr>
+      <tr><td><span class="req">integrations/</span></td><td>External provider Protocols and adapters.</td><td>Payments, escrow, BNPL, bank data, identity, storage.</td></tr>
+      <tr><td><span class="req">modules/</span></td><td>Domain services, routers, state machines, policies.</td><td>auth, users, sellers, categories, products, subscriptions, messaging, negotiation, payments, orders, promotions, bnpl, reviews, notifications, admin, staff, stats, recommendations, ads, marketing.</td></tr>
+      <tr><td><span class="req">worker.py</span></td><td>Scheduled jobs with advisory locks.</td><td>Outbox, expiry, auto-release, subscription/promotion expiry, BNPL reminders, feed/CAPI, purge.</td></tr>
+    </tbody>
+  </table>
+  <h3>Payment purpose registry</h3>
+  <p>A single payment can satisfy different business purposes: an order, a subscription, a listing promotion, or a BNPL instalment. The payments module activates the correct handler on verified success. This keeps payment verification independent of the domain that initiated it.</p>
+  <table>
+    <thead><tr><th style="width:40mm">Purpose</th><th>Effect on verified success</th><th>Ledger posting</th></tr></thead>
+    <tbody>
+      <tr><td>Order / Protected Checkout</td><td>Confirm payment, fund escrow, reserve stock already held, move order to funds safeguarded.</td><td>Debit provider receipts / credit escrow obligations (via partner mirror).</td></tr>
+      <tr><td>Subscription</td><td>Activate plan, grant featured credits, set period.</td><td>Debit provider receipts / credit subscription revenue.</td></tr>
+      <tr><td>Promotion</td><td>Activate listing promotion, set tier/featured window.</td><td>Debit provider receipts / credit promotion revenue.</td></tr>
+      <tr><td>BNPL instalment</td><td>Mark instalment paid, update plan status, notify.</td><td>Recorded against the financing partner's position.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6. Data architecture</h2>
+  <p>54 tables in six domains. Money is <span class="req">Decimal</span> with at most two decimal places and is serialised as a string; it never touches floats. The database enforces the invariants that matter most.</p>
+  <table>
+    <thead><tr><th style="width:34mm">Domain</th><th>Core tables</th><th>Key guarantees</th></tr></thead>
+    <tbody>
+      <tr><td>Identity &amp; access</td><td>users, profiles, refresh_tokens, otp_codes, two_factor, admin roles/permissions, staff invitations, audit logs</td><td>Token rotation and reuse detection; append-only audit; granular RBAC.</td></tr>
+      <tr><td>Seller &amp; catalog</td><td>seller_profiles, verifications, categories, products, product_images, favourites, reports</td><td>One seller profile per user; slug uniqueness; image ownership; verification tiers.</td></tr>
+      <tr><td>Messaging &amp; negotiation</td><td>conversations, messages, read receipts, negotiations, offers</td><td>One live negotiation per buyer/product (partial unique index); stale-offer rejection.</td></tr>
+      <tr><td>Commerce</td><td>orders, order_items, payments, escrow_records, escrow_events, refunds, disputes, disputes_messages, reviews</td><td>Total = subtotal + delivery + protection; one active refund; append-only escrow events.</td></tr>
+      <tr><td>Growth</td><td>subscription_plans, subscriptions, promotions, platform_settings, ads/events, interest signals</td><td>Premium derived from an active period; promotion tier mirrors an active paid promotion.</td></tr>
+      <tr><td>Flex &amp; ledger</td><td>credit_profiles, bank_connections, credit_assessments, guarantors, applications, agreements, instalments, ledger_accounts, ledger_transactions, ledger_entries</td><td>One running plan; guarantor cap; immutable assessment snapshots; balanced ledger at commit.</td></tr>
+    </tbody>
+  </table>
+  <h3>Ledger design</h3>
+  <p>The ledger is double-entry and append-only. A deferred constraint trigger rejects any unbalanced transaction at commit. Database triggers block updates and deletes on ledger, escrow-event and audit tables.</p>
+  <table>
+    <thead><tr><th>Event</th><th>Debit</th><th>Credit</th></tr></thead>
+    <tbody>
+      <tr><td>Escrow funded</td><td><span class="req">asset:escrow_partner_holding</span></td><td><span class="req">liability:escrow_obligations</span></td></tr>
+      <tr><td>Released to seller</td><td><span class="req">liability:escrow_obligations</span></td><td><span class="req">liability:seller_payable:&lt;seller&gt;</span>, <span class="req">revenue:platform_commission</span>, <span class="req">revenue:protection_fees</span></td></tr>
+      <tr><td>Refunded</td><td><span class="req">liability:escrow_obligations</span></td><td><span class="req">asset:escrow_partner_holding</span></td></tr>
+      <tr><td>Subscription</td><td><span class="req">asset:provider_receipts</span></td><td><span class="req">revenue:subscriptions</span></td></tr>
+      <tr><td>Promotion</td><td><span class="req">asset:provider_receipts</span></td><td><span class="req">revenue:promotions</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2>7. API architecture</h2>
+  <ul class="small">
+    <li><strong>Style:</strong> REST under <span class="req">/api/v1</span>; JSON; 185 endpoints; OpenAPI in development/test only.</li>
+    <li><strong>Auth:</strong> Bearer access token (15 min) plus an httpOnly refresh cookie scoped to <span class="req">/api/v1/auth</span>; CSRF header on cookie-authenticated endpoints.</li>
+    <li><strong>Idempotency:</strong> <span class="req">Idempotency-Key</span> on checkout; unique <span class="req">(provider, event_key)</span> on webhooks; unique ledger keys on settlement.</li>
+    <li><strong>Errors:</strong> consistent <span class="req">{error:{code,message,details}}</span>; resource ownership failures return 404 to avoid existence leaks.</li>
+    <li><strong>Rate limits:</strong> per user/device and a coarse per-IP ceiling (20× by default) for carrier NAT; stricter per-action limits on login, OTP, offers, messages, uploads, checkout and Flex.</li>
+    <li><strong>Webhooks:</strong> <span class="req">POST /api/v1/payments/webhooks/{provider}/webhook</span>; signatures verified (Paystack HMAC-SHA512, Flutterwave <span class="req">verif-hash</span>); invalid signatures return 403; events de-duplicated.</li>
+    <li><strong>Health:</strong> <span class="req">/health</span> for liveness, <span class="req">/health/ready</span> checks the database and reports providers outside production.</li>
+  </ul>
+
+  <h2>8. Identity and access</h2>
+  <table>
+    <thead><tr><th style="width:34mm">Control</th><th>Implementation</th></tr></thead>
+    <tbody>
+      <tr><td>Passwords</td><td>Argon2id; automatic re-hash on login; 8+ characters with letters and digits; timing-safe login for unknown emails.</td></tr>
+      <tr><td>Access tokens</td><td>Short-lived JWT (15 min) kept in memory; algorithm pinned to HS256/384/512; per-user token version revokes all on password/role/status change.</td></tr>
+      <tr><td>Refresh tokens</td><td>Opaque, hashed at rest, rotated on every use; reuse revokes the family; httpOnly, SameSite=Lax, Secure outside development.</td></tr>
+      <tr><td>OTP</td><td>6 digits, HMAC-peppered, 10-minute TTL, 5 attempts, 3 sends/10 min and 10/day per number.</td></tr>
+      <tr><td>2FA</td><td>TOTP with single-use recovery codes and replay protection; required for admins in production; staff cannot use Google sign-in.</td></tr>
+      <tr><td>Captcha</td><td>reCAPTCHA v2 or Turnstile, enforced before the password check for new devices (24 h) or after 3 wrong passwords.</td></tr>
+      <tr><td>Google sign-in</td><td>OIDC web flow; mock consent in development; hidden in production when credentials are absent.</td></tr>
+      <tr><td>RBAC</td><td>Granular admin permissions; only super admins change roles; every admin route has a permission dependency; audit log is append-only.</td></tr>
+      <tr><td>Proxy trust</td><td><span class="req">X-Forwarded-For</span> ignored unless the peer is in <span class="req">TRUSTED_PROXY_CIDRS</span>; chain walked right-to-left.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>9. Payments, escrow and ledger</h2>
+  <p>Goods.ng does not hold funds. A licensed escrow/payment partner holds them; Goods.ng instructs release or refund based on the order state machine. The ledger mirrors the partner's position.</p>
+  <div class="diagram">pending_payment ─▶ payment_confirmed ─▶ funds_safeguarded ─▶ awaiting_seller ─▶ processing ─▶ dispatched
+      │                                                            │                │              │
+      ▼                                                            ▼                ▼              ▼
+  cancelled                                              refund_pending ◀── (decline/cancel)   delivered
+                                                               │                               │
+                                                               ▼                               ▼
+                                                           refunded       completed ◀─ awaiting_buyer_confirmation
+                                                                              ▲                │
+                                                       disputed ──────────────┘ (admin)        │ (auto-release after N days)</div>
+  <ul class="small">
+    <li><strong>Verify before trust:</strong> server-to-server verify with exact amount and currency; webhook signature; redirects never trusted.</li>
+    <li><strong>No double settlement:</strong> state machine + row locks + unique <span class="req">escrow:&lt;id&gt;:settle</span> ledger key; a five-thread concurrency test asserts one settlement.</li>
+    <li><strong>Server-side pricing:</strong> totals from the listing or an accepted negotiation owned by the buyer; DB check constraint on the total.</li>
+    <li><strong>Stock:</strong> reserved atomically at checkout; restored on unpaid expiry or pre-dispatch refund; late payment honoured if stock remains, otherwise auto-refunded.</li>
+    <li><strong>Refunds:</strong> automatic pre-dispatch for cancellation/decline; dispute refunds need a second, different admin; one active refund per order.</li>
+    <li><strong>Reconciliation:</strong> <span class="req">/admin/reconciliation</span> cross-checks payments, escrow states and ledger postings.</li>
+  </ul>
+
+  <h2>10. Goods Flex</h2>
+  <p>Flex is a credit product, not a wallet. Before applying, the customer builds a credit profile: verified phone → BVN (Fernet-encrypted, keyed fingerprint to prevent reuse) → read-only bank connection → mandatory guarantor consent → optional workplace verification. Without a guarantor, the limit is zero and no application can start.</p>
+  <table>
+    <thead><tr><th style="width:34mm">Step</th><th>Rule</th></tr></thead>
+    <tbody>
+      <tr><td>Bank assessment</td><td>Six months of transactions; salary detection or 70% of median eligible inflow; deduct existing repayments; risk factor from volatility, missing months, betting share and failed debits.</td></tr>
+      <tr><td>Limit</td><td><span class="req">min(statement limit, verification-tier cap, repayment-history cap, lender maximum)</span>; zero without phone + BVN + bank + consented guarantor.</td></tr>
+      <tr><td>Guarantor</td><td>Sees borrower, relationship, amount and expiry; explicit consent; consent time, IP and BVN reference recorded; amount caps the limit; at most 3 active guarantees per person; withdrawal drops the limit to zero.</td></tr>
+      <tr><td>Decision</td><td>Partner decision stored with reference; offer terms stored verbatim; buyer explicitly accepts.</td></tr>
+      <tr><td>One plan</td><td>Only one of approved/accepted/active/defaulted at a time, enforced in the service under a row lock and by a partial unique index.</td></tr>
+      <tr><td>Funds</td><td>Down payment via the payment layer; partner disburses; order funded through the same escrow path; refund cancels the agreement.</td></tr>
+      <tr><td>Repayment</td><td>Instalments via the payment layer; worker marks overdue and reminds; defaulted plans can still be paid off.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>11. Search and discovery</h2>
+  <ul class="small">
+    <li><strong>Engine:</strong> PostgreSQL full-text search; generated weighted <span class="req">tsvector</span> (title A, brand/model B, description C) with a GIN index and prefix matching (<span class="req">iph</span> matches iPhone).</li>
+    <li><strong>Ranking:</strong> featured first, then premium sellers, then text rank, then recency.</li>
+    <li><strong>Filters/facets:</strong> state, category, price, condition, brand, BNPL, delivery, verification; counts computed for the current result set.</li>
+    <li><strong>Sponsored:</strong> premium sellers and Boost Premium listings enter a quality-gated sponsored pool; TOP promotes a single listing.</li>
+    <li><strong>Seam:</strong> <span class="req">products.service.search()</span> is the single place to swap in a dedicated engine later.</li>
+    <li><strong>Recommendations:</strong> interest signals and a "for you" feed; purge job keeps signal tables bounded.</li>
+  </ul>
+
+  <h2>12. Messaging and negotiation</h2>
+  <table>
+    <thead><tr><th style="width:34mm">Area</th><th>Behaviour</th></tr></thead>
+    <tbody>
+      <tr><td>Conversations</td><td>Product-linked; one thread per buyer/seller/product context; read receipts and unread counts; 5-second polling while visible, paused when hidden.</td></tr>
+      <tr><td>Safety</td><td>Direct-contact warning gate; message reporting; rate limits; HTML stripped.</td></tr>
+      <tr><td>Negotiation</td><td>One live negotiation per buyer/product; turn-taking; counter direction; minimum offer 10% of list; 48-hour offer expiry; 24-hour checkout after acceptance; 10-round cap.</td></tr>
+      <tr><td>Concurrency</td><td>Every response locks the negotiation row and must name the pending offer; stale/double clicks get <span class="req">409 stale_offer</span>.</td></tr>
+      <tr><td>Price integrity</td><td>The public listing price never changes; the accepted offer becomes the checkout price for that buyer only.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>13. Frontend architecture</h2>
+  <ul class="small">
+    <li><strong>Public pages</strong> (home, search, category, item, store, info) are server-rendered with streaming and PPR; static shells are prerendered; JSON-LD, canonical URLs, OG metadata, sitemap and robots are included.</li>
+    <li><strong>Dashboards</strong> (account, orders, messages, seller, admin) are client components on a central API client: in-memory access token, silent refresh through the httpOnly cookie with a CSRF header, one retry on 401.</li>
+    <li><strong>Performance:</strong> system fonts, backend WebP thumbnails (400 px) and full images (1280 px), lazy loading, skeletons, Redis-cached feeds, bottom navigation on phones.</li>
+    <li><strong>Admin host:</strong> <span class="req">frontend/src/proxy.ts</span> serves the console on <span class="req">admin.goods.ng</span>, redirects <span class="req">/admin/...</span>, and adds <span class="req">X-Robots-Tag: noindex</span>. Sessions are per host.</li>
+    <li><strong>Resilience:</strong> no client-side price trust, no direct provider secrets, and no analytics scripts before marketing consent.</li>
+  </ul>
+
+  <h2>14. Media pipeline</h2>
+  <ol class="small">
+    <li>Input capped at <span class="req">MAX_UPLOAD_MB</span> (8 MB) and 40 MP (decompression-bomb guard).</li>
+    <li>Decoded with Pillow; extension and MIME are not trusted.</li>
+    <li>Re-encoded to WebP: full at 1280 px, thumbnail at 400 px; EXIF/GPS and embedded payloads stripped.</li>
+    <li>Listing photos watermarked with the seller business name and Goods.ng.</li>
+    <li>Stored under random keys; public media to S3 + CDN; KYC documents to the private prefix with server-side encryption and short-lived signed URLs.</li>
+    <li>Per-seller cap <span class="req">MAX_IMAGES_PER_SELLER</span> (200); soft-deleted listings purged after 30 days.</li>
+  </ol>
+
+  <h2>15. Background processing</h2>
+  <table>
+    <thead><tr><th style="width:44mm">Job</th><th class="num" style="width:20mm">Interval</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><span class="req">outbox</span></td><td class="num">10 s</td><td>Drain queued email/SMS notifications.</td></tr>
+      <tr><td><span class="req">expire_unpaid_orders</span></td><td class="num">60 s</td><td>Expire unpaid orders, restore stock, re-check late payments with the provider.</td></tr>
+      <tr><td><span class="req">expire_negotiations</span></td><td class="num">60 s</td><td>Expire stale offers and accepted-offer checkout windows.</td></tr>
+      <tr><td><span class="req">auto_release_escrow</span></td><td class="num">300 s</td><td>Release funds after the buyer-confirmation window.</td></tr>
+      <tr><td><span class="req">expire_subscriptions</span></td><td class="num">300 s</td><td>Expire plans, clear promoted tiers and features.</td></tr>
+      <tr><td><span class="req">refresh_promotion_bumps</span></td><td class="num">3600 s</td><td>Refresh Boost Premium top placement.</td></tr>
+      <tr><td><span class="req">bnpl_reminders</span></td><td class="num">3600 s</td><td>Mark overdue instalments and send reminders.</td></tr>
+      <tr><td><span class="req">meta_capi_purchases</span></td><td class="num">300 s</td><td>Send consented purchase events to Meta Conversions API.</td></tr>
+      <tr><td><span class="req">purge_interest_signals</span></td><td class="num">86400 s</td><td>Keep recommendation signals bounded.</td></tr>
+      <tr><td><span class="req">purge_deleted_listings</span></td><td class="num">86400 s</td><td>Hard-delete listings and media after retention.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>16. Caching and performance</h2>
+  <ul class="small">
+    <li><strong>Cache:</strong> Redis with an in-memory development fallback; anonymous search cached for 15 s; public feeds cached; single-flight locks prevent stampedes.</li>
+    <li><strong>Rate limiting:</strong> per user/device and a coarse per-IP ceiling; hot paths use constant-time checks.</li>
+    <li><strong>Database:</strong> 15 s statement timeout, 60 s idle-in-transaction timeout, pooled connections, indexes for search and browse.</li>
+    <li><strong>Measurement:</strong> k6 realistic mix; single dev worker plateaus at ~182 req/s. Add workers/replicas and PgBouncer before that becomes the ceiling.</li>
+  </ul>
+  <table>
+    <thead><tr><th>Scenario</th><th class="num">Throughput</th><th class="num">p95</th><th class="num">Errors</th></tr></thead>
+    <tbody>
+      <tr><td>Home feed smoke (20 concurrent)</td><td class="num">~300 req/s</td><td class="num">~220 ms</td><td class="num">0</td></tr>
+      <tr><td>Search smoke (20 concurrent)</td><td class="num">~240 req/s</td><td class="num">~125 ms</td><td class="num">0</td></tr>
+      <tr><td>k6 mix, 120 VUs</td><td class="num">—</td><td class="num">41 ms</td><td class="num">0</td></tr>
+      <tr><td>k6 mix, 400 VUs</td><td class="num">182 req/s</td><td class="num">553 ms</td><td class="num">0</td></tr>
+      <tr><td>k6 mix, 800 VUs</td><td class="num">~182 req/s (plateau)</td><td class="num">~1.9 s</td><td class="num">0</td></tr>
+    </tbody>
+  </table>
+
+  <h2>17. Security architecture</h2>
+  <table>
+    <thead><tr><th style="width:36mm">Area</th><th>Control</th></tr></thead>
+    <tbody>
+      <tr><td>Transport &amp; headers</td><td>TLS everywhere; HSTS in staging/production; CSP, nosniff, frame DENY, referrer policy, Permissions-Policy, COOP; <span class="req">no-store</span> on auth/admin responses; no Server header in production.</td></tr>
+      <tr><td>Secrets</td><td>Secret manager only; production boot rejects dev defaults, short JWT secrets, http origins, missing Redis, local storage, mock financial providers, missing proxy CIDRs and admin 2FA off.</td></tr>
+      <tr><td>Input/output</td><td>Pydantic validation; HTML stripped with nh3; React escaping; JSON-LD escaped; user URLs restricted to http(s); parameterised queries only.</td></tr>
+      <tr><td>Files</td><td>Decode-and-re-encode; random keys; private KYC prefix; signed URLs; malware scanning still outstanding.</td></tr>
+      <tr><td>Financial</td><td>Append-only ledger/escrow/audit; balance check at commit; row locks; idempotency; four-eyes refunds; reconciliation.</td></tr>
+      <tr><td>Privacy</td><td>KYC identifiers encrypted; masked in API; admin reveal audited; marketing cookies gated; NDPA workflows partially outstanding.</td></tr>
+      <tr><td>Audit</td><td>Every staff sign-in/out/failure, 2FA failure, admin action, permission refusal and console page view; CSV export; immutable rows.</td></tr>
+      <tr><td>Outstanding</td><td>Malware scanning, licensed KYC provider, external pen test, DPO/data-subject workflow, NDPA record of processing.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>18. Observability and operations</h2>
+  <ul class="small">
+    <li><strong>Logs:</strong> structured JSON on stdout with <span class="req">request_id</span> on every line and in the <span class="req">x-request-id</span> response header; ship to a log platform.</li>
+    <li><strong>Health:</strong> <span class="req">/health</span> (liveness) and <span class="req">/health/ready</span> (DB, cache, providers outside production).</li>
+    <li><strong>Error tracking:</strong> Sentry SDK for FastAPI and Next.js is <strong>not wired yet</strong>; add DSNs via secrets and extend CSP allowlists.</li>
+    <li><strong>Alerting:</strong> 5xx rate, p95 latency, readiness failures, worker job failures, payment amount mismatch, invalid webhook signatures, non-empty reconciliation, overdue BNPL growth, guarantor limit spikes, provider errors, bank-connection drop.</li>
+    <li><strong>Backups:</strong> managed PITR 7–35 days plus encrypted daily logical dumps to a separate account/region; quarterly restore drill into staging and ledger reconciliation.</li>
+    <li><strong>Rollback:</strong> redeploy the previous immutable image tag; prefer forward database fixes; never blindly downgrade financial tables.</li>
+  </ul>
+
+  <h2>19. Integration architecture and go-live readiness</h2>
+  <p>This section is the architecture-level view of the integration gaps. Appendix A is the detailed checklist with owners and acceptance criteria.</p>
+  <table>
+    <thead><tr><th style="width:34mm">Integration</th><th>Interface / state today</th><th style="width:18mm">Go-live</th><th>What remains</th></tr></thead>
+    <tbody>
+      <tr><td>Escrow partner</td><td><span class="req">EscrowProvider</span>; mock only</td><td><span class="b mock">BLOCKER</span></td><td>Licensed contract; implement create_hold/release/refund; sandbox certification; payout API; webhooks; reconciliation.</td></tr>
+      <tr><td>Lending partner (Flex)</td><td><span class="req">FinancingProvider</span>; mock only</td><td><span class="b mock">BLOCKER</span></td><td>Licensed lender; decision/disbursement/repayment APIs; terms; FCCPC review; collections.</td></tr>
+      <tr><td>Payments</td><td>Paystack and Flutterwave adapters; mock active</td><td><span class="b config">REQUIRED</span></td><td>Sandbox → live certification; webhook secrets; settlement account; refunds; reconciliation.</td></tr>
+      <tr><td>Open banking</td><td>Mono adapter; mock active</td><td><span class="b config">REQUIRED</span></td><td>Mono sandbox test; Connect widget keys; production approval; connection webhooks.</td></tr>
+      <tr><td>KYC / BVN</td><td><span class="req">IdentityProvider</span>; mock only</td><td><span class="b mock">REQUIRED</span></td><td>Licensed provider adapter (Dojah/Prembly/Smile ID/Youverify); consent; encryption; webhook; manual fallback.</td></tr>
+      <tr><td>SMS</td><td>Termii adapter; console active</td><td><span class="b config">REQUIRED</span></td><td>Sender ID approval; templates; delivery reports; DND; sandbox OTP test.</td></tr>
+      <tr><td>Email</td><td>Postmark/SMTP adapters; console active</td><td><span class="b config">REQUIRED</span></td><td>Domain + SPF/DKIM/DMARC; templates; bounce/complaint handling; sandbox test.</td></tr>
+      <tr><td>Object storage / CDN</td><td>Local + S3 adapter; local active</td><td><span class="b config">REQUIRED</span></td><td>Bucket, IAM, CORS, CDN, lifecycle, versioning, private KYC prefix, signed URLs.</td></tr>
+      <tr><td>Captcha</td><td>reCAPTCHA/Turnstile; mock active</td><td><span class="b config">REQUIRED</span></td><td>Production keys and domains; CSP already allows providers.</td></tr>
+      <tr><td>Google OAuth</td><td>Implemented; mock in dev</td><td><span class="b config">CONFIG</span></td><td>OAuth client, consent screen, redirect URIs, publish app.</td></tr>
+      <tr><td>Redis</td><td>Optional in dev; required in prod</td><td><span class="b config">BLOCKER</span></td><td>Managed instance, private network, TLS, monitoring.</td></tr>
+      <tr><td>Sentry / observability</td><td>Not wired</td><td><span class="b build">REQUIRED</span></td><td>SDKs, DSNs, release tracking, alerts, on-call, log platform, uptime.</td></tr>
+      <tr><td>Deployment platform</td><td>Dockerfiles/Compose; not deployed</td><td><span class="b build">BLOCKER</span></td><td>Vercel, container platform, managed Postgres PITR, PgBouncer, DNS/SSL.</td></tr>
+      <tr><td>Seller payouts</td><td>Ledger only (<span class="req">seller_payable</span>)</td><td><span class="b build">REQUIRED</span></td><td>Partner payout API; bank account verification; payout scheduling; UI; reconciliation.</td></tr>
+      <tr><td>Logistics / tracking</td><td>Manual tracking fields</td><td><span class="b build">RECOMMENDED</span></td><td>At least one carrier; labels; tracking webhooks; delivery status mapping.</td></tr>
+      <tr><td>Malware scanning</td><td>Not implemented</td><td><span class="b build">REQUIRED</span></td><td>ClamAV/cloud scanner on upload; quarantine; KYC document handling.</td></tr>
+      <tr><td>Google Merchant / Ads</td><td>Feed endpoint implemented</td><td><span class="b config">GROWTH</span></td><td>Merchant Center, domain claim, scheduled fetch, Ads link, campaign.</td></tr>
+      <tr><td>Meta Pixel / Catalog / CAPI</td><td>Pixel events, feed and CAPI implemented</td><td><span class="b config">GROWTH</span></td><td>Business Manager, catalog, domain verification, pixel ID, CAPI token, campaign.</td></tr>
+      <tr><td>GA4 / Google Ads tags</td><td>Admin settings + consent gating</td><td><span class="b config">GROWTH</span></td><td>Property/tag IDs; conversion labels; consent-mode check.</td></tr>
+      <tr><td>Push notifications</td><td>Not implemented</td><td><span class="b opt">OPTIONAL</span></td><td>FCM/APNs, device tokens, preferences; needed for native apps.</td></tr>
+      <tr><td>WhatsApp Business API</td><td>Deep links only</td><td><span class="b opt">OPTIONAL</span></td><td>Cloud API, templates, opt-in, handoff to human agents.</td></tr>
+      <tr><td>Dedicated search</td><td>Postgres FTS</td><td><span class="b opt">SCALE</span></td><td>OpenSearch/Meilisearch behind <span class="req">service.search()</span>.</td></tr>
+      <tr><td>WebSockets / SSE</td><td>5-second polling</td><td><span class="b opt">SCALE</span></td><td>Replace polling if load or latency demands.</td></tr>
+      <tr><td>Fraud / risk scoring</td><td>Rules + verification only</td><td><span class="b opt">OPTIONAL</span></td><td>Vendor scoring, device fingerprint, velocity rules.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>20. Scalability plan</h2>
+  <ol class="small">
+    <li><strong>Horizontal API:</strong> add replicas; keep the app stateless; move sessions/tokens as already designed.</li>
+    <li><strong>Database:</strong> PgBouncer transaction pooling; read replicas for browse/search; partition large event tables if needed; then shard only as a last resort.</li>
+    <li><strong>Cache:</strong> increase Redis capacity; add per-entity cache invalidation; cache anonymous feeds and facets.</li>
+    <li><strong>Search:</strong> move to a dedicated engine when Postgres FTS p95 or query complexity becomes the bottleneck.</li>
+    <li><strong>Messaging:</strong> WebSockets/SSE or a managed pub/sub when polling at scale becomes expensive.</li>
+    <li><strong>Media:</strong> CDN offload, responsive variants, signed URLs; keep origin egress low.</li>
+    <li><strong>Worker:</strong> more replicas are safe; split jobs by queue if contention appears.</li>
+  </ol>
+
+  <h2>21. Architecture decisions</h2>
+  <table>
+    <thead><tr><th style="width:12mm">ADR</th><th>Decision</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td>001</td><td>Modular monolith, not microservices</td><td>Small team, shared transactions, fast iteration; module seams allow later extraction.</td></tr>
+      <tr><td>002</td><td>PostgreSQL as the only source of truth</td><td>Strong constraints, transactions, FTS and operational simplicity; ledger integrity is paramount.</td></tr>
+      <tr><td>003</td><td>Provider interfaces for regulated services</td><td>Partners change; the domain must not. Production refuses mocks.</td></tr>
+      <tr><td>004</td><td>Same-origin API via Next.js rewrite</td><td>First-party refresh cookie, no CORS, simpler CSP, better mobile reliability.</td></tr>
+      <tr><td>005</td><td>Double-entry ledger with DB triggers</td><td>Money correctness cannot depend on application discipline alone.</td></tr>
+      <tr><td>006</td><td>Verify-before-trust payments</td><td>Webhooks and redirects are signals, not proof.</td></tr>
+      <tr><td>007</td><td>Premium is derived, not stored</td><td>An active subscription period is the only truth; clients cannot self-grant.</td></tr>
+      <tr><td>008</td><td>Per-listing promotions separate from subscriptions</td><td>Lowers the barrier: a seller can buy visibility for one product without a plan.</td></tr>
+      <tr><td>009</td><td>Postgres FTS first</td><td>Sufficient at launch; one seam to replace later.</td></tr>
+      <tr><td>010</td><td>Polling messaging first</td><td>Simpler operations; WebSockets can replace without API changes.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>22. Technical risks</h2>
+  <table>
+    <thead><tr><th style="width:42mm">Risk</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Escrow/lending adapter surprises in sandbox</td><td>Contract-first adapter tests; certify in staging before production; keep mock for regression tests.</td></tr>
+      <tr><td>Webhook storms or missed events</td><td>Idempotency, de-duplication, buyer-return verification, expiry job re-check, alerting.</td></tr>
+      <tr><td>Database connection exhaustion</td><td>Pool math, PgBouncer, load tests, connection alerts.</td></tr>
+      <tr><td>Large-image abuse</td><td>Size and pixel caps, re-encode, per-seller quota, malware scan.</td></tr>
+      <tr><td>KYC data breach</td><td>Private storage, encryption, signed URLs, least privilege, audit, pen test.</td></tr>
+      <tr><td>Provider outage</td><td>Retries with backoff, status page, manual reconciliation, graceful buyer messaging.</td></tr>
+      <tr><td>Search relevance drift</td><td>Ranking tests, stable weights, search success metric.</td></tr>
+      <tr><td>Polling load at scale</td><td>Visibility-aware polling, backoff, then WebSockets/SSE.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="part-cover">
+  <div class="n">Part III</div>
+  <h1>Functional Requirements Document</h1>
+  <div class="rule"></div>
+  <p>Testable behaviour for every module: actors, requirements, business rules, state machines, non-functional targets, integration requirements and end-to-end acceptance scenarios.</p>
+  <div class="toc">
+    <div>1. Conventions and actors</div><div>2. Authentication</div>
+    <div>3. Sellers and verification</div><div>4. Catalog and listings</div>
+    <div>5. Search</div><div>6. Messaging and negotiation</div>
+    <div>7. Payments and checkout</div><div>8. Orders and disputes</div>
+    <div>9. Goods Flex</div><div>10. Reviews and notifications</div>
+    <div>11. Subscriptions and promotions</div><div>12. Ads and feeds</div>
+    <div>13. Administration</div><div>14. State machines</div>
+    <div>15. Non-functional</div><div>16. Integration requirements</div>
+    <div>17. Acceptance scenarios</div>
+  </div>
+</div>
+
+<div>
+  <h2>1. Conventions and actors</h2>
+  <p>Requirements use stable IDs: <span class="req">FR-&lt;AREA&gt;-&lt;NNN&gt;</span>. Priority is <strong>P0</strong> (launch blocker), <strong>P1</strong> (launch-critical but degradable), <strong>P2</strong> (post-launch) or <strong>P3</strong> (optional). Each requirement is written so that it can become a test case. "Must" is mandatory; "should" is expected unless a documented exception exists.</p>
+  <table>
+    <thead><tr><th style="width:34mm">Actor</th><th>Description</th><th>Capabilities</th></tr></thead>
+    <tbody>
+      <tr><td>Guest</td><td>Unauthenticated visitor.</td><td>Browse, search, view listings/stores/reviews, register, sign in.</td></tr>
+      <tr><td>Buyer</td><td>Any authenticated user.</td><td>Chat, negotiate, checkout, order, review, favourite, apply for Flex.</td></tr>
+      <tr><td>Seller</td><td>A user with a seller profile.</td><td>List, manage stock, answer, accept/decline, dispatch, view analytics, buy promotions.</td></tr>
+      <tr><td>Premium seller</td><td>Seller with an active subscription.</td><td>Premium badge, contact buttons, banner, analytics, featured credits, priority ranking.</td></tr>
+      <tr><td>Guarantor</td><td>Person consenting to a Flex guarantee.</td><td>View terms, consent/decline, withdraw; no marketplace account required.</td></tr>
+      <tr><td>Admin</td><td>Staff with granular permissions.</td><td>Moderate, verify, resolve, refund, reconcile, configure, audit.</td></tr>
+      <tr><td>Super admin</td><td>Staff with all permissions.</td><td>Everything, including role changes and staff management.</td></tr>
+      <tr><td>System</td><td>Worker/scheduler.</td><td>Expiry, release, reminders, outbox, feeds, CAPI, purge.</td></tr>
+    </tbody>
+  </table>
+  <h3>Priority definitions</h3>
+  <table class="tight">
+    <thead><tr><th style="width:18mm">Priority</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><strong>P0</strong></td><td>Cannot launch without it; security, money or core journey.</td></tr>
+      <tr><td><strong>P1</strong></td><td>Launch-critical; may launch in a limited mode with a documented workaround.</td></tr>
+      <tr><td><strong>P2</strong></td><td>Post-launch enhancement.</td></tr>
+      <tr><td><strong>P3</strong></td><td>Optional / scale.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. Authentication and accounts (FR-AUTH)</h2>
+  <table>
+    <thead><tr><th style="width:26mm">ID</th><th>Requirement</th><th style="width:14mm">Priority</th><th>Acceptance criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="req">FR-AUTH-001</td><td>Register with email, phone, name and password.</td><td>P0</td><td>Valid input creates account; duplicate email/phone rejected; password policy enforced; response does not leak existence.</td></tr>
+      <tr><td class="req">FR-AUTH-002</td><td>Verify phone with a 6-digit OTP.</td><td>P0</td><td>OTP expires in 10 min; 5 attempts; resend limits 3/10 min and 10/day; success marks phone verified.</td></tr>
+      <tr><td class="req">FR-AUTH-003</td><td>Sign in with email + password.</td><td>P0</td><td>Correct credentials return access + refresh; wrong password increments lockout; 5 failures lock 15 min.</td></tr>
+      <tr><td class="req">FR-AUTH-004</td><td>Captcha challenge for new devices or after failures.</td><td>P0</td><td>Required when no valid device marker within 24 h or after 3 wrong passwords; verified server-side before password check.</td></tr>
+      <tr><td class="req">FR-AUTH-005</td><td>Rotating refresh tokens with reuse detection.</td><td>P0</td><td>Refresh rotates; reuse revokes the family; cookie httpOnly/SameSite=Lax/Secure in prod; CSRF header required.</td></tr>
+      <tr><td class="req">FR-AUTH-006</td><td>Password reset without account enumeration.</td><td>P0</td><td>Same response for known/unknown email; token single-use and expiring; reset revokes sessions.</td></tr>
+      <tr><td class="req">FR-AUTH-007</td><td>TOTP 2FA with recovery codes.</td><td>P1</td><td>Setup returns secret + QR; enable requires a valid code; recovery codes single-use; replay rejected; disable requires password/code.</td></tr>
+      <tr><td class="req">FR-AUTH-008</td><td>Google sign-in.</td><td>P2</td><td>OIDC flow; no staff accounts; 2FA still required; button hidden when not configured.</td></tr>
+      <tr><td class="req">FR-AUTH-009</td><td>Session revocation.</td><td>P0</td><td>Password change, role change, account disable or logout invalidates access via token version and refresh family.</td></tr>
+      <tr><td class="req">FR-AUTH-010</td><td>Admin 2FA enforcement.</td><td>P0</td><td>With <span class="req">ADMIN_2FA_REQUIRED=true</span>, staff without 2FA cannot use admin APIs; boot fails if off in production.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. Sellers and verification (FR-SEL)</h2>
+  <table>
+    <thead><tr><th style="width:26mm">ID</th><th>Requirement</th><th style="width:14mm">Priority</th><th>Acceptance criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="req">FR-SEL-001</td><td>Become a seller.</td><td>P0</td><td>One seller profile per user; store name, slug, state, city, contact; duplicate slug handled.</td></tr>
+      <tr><td class="req">FR-SEL-002</td><td>Storefront and branding.</td><td>P1</td><td>Public store page with logo, banner, about, listings, reviews and verification badge.</td></tr>
+      <tr><td class="req">FR-SEL-003</td><td>Verification tiers.</td><td>P0</td><td>Phone → identity → business; documents stored privately; admin decision; tier visible on listings.</td></tr>
+      <tr><td class="req">FR-SEL-004</td><td>BVN lookup and name match.</td><td>P1</td><td>Encrypted BVN; keyed fingerprint prevents reuse; lenient name match; failure reason recorded.</td></tr>
+      <tr><td class="req">FR-SEL-005</td><td>Seller analytics.</td><td>P1</td><td>Views, favourites, enquiries, orders, earnings, conversion; premium-only depth gated server-side.</td></tr>
+      <tr><td class="req">FR-SEL-006</td><td>Seller suspension.</td><td>P0</td><td>Admin can suspend; listings hidden; sessions revoked; audit entry written.</td></tr>
+      <tr><td class="req">FR-SEL-007</td><td>Premium contact controls.</td><td>P1</td><td>WhatsApp/phone buttons only for active premium; server-enforced; client flags ignored.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4. Catalog and listings (FR-CAT, FR-LST)</h2>
+  <table>
+    <thead><tr><th style="width:26mm">ID</th><th>Requirement</th><th style="width:14mm">Priority</th><th>Acceptance criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="req">FR-CAT-001</td><td>Category tree.</td><td>P0</td><td>17 roots, 91 categories; two levels; slug unique; active/inactive; admin reorder.</td></tr>
+      <tr><td class="req">FR-CAT-002</td><td>Locations.</td><td>P0</td><td>36 states + FCT; cities per state; listing state must be valid.</td></tr>
+      <tr><td class="req">FR-LST-001</td><td>Create a listing.</td><td>P0</td><td>Title, category, condition, price, stock, description, location, delivery options; validation errors are specific.</td></tr>
+      <tr><td class="req">FR-LST-002</td><td>Image upload and ordering.</td><td>P0</td><td>Up to per-seller cap; re-encode to WebP; watermark; reorder; delete; first image is cover.</td></tr>
+      <tr><td class="req">FR-LST-003</td><td>Auto-title suggestions.</td><td>P2</td><td>Deterministic suggestions from brand/model/condition/category; detects year, storage, colour, size; does not invent facts.</td></tr>
+      <tr><td class="req">FR-LST-004</td><td>Listing lifecycle.</td><td>P0</td><td>Draft/active/paused/sold/removed; soft delete; purge after 30 days; views and favourites counted.</td></tr>
+      <tr><td class="req">FR-LST-005</td><td>Stock and availability.</td><td>P0</td><td>Quantity decremented atomically at checkout; restored on expiry/refund; zero-stock blocks checkout.</td></tr>
+      <tr><td class="req">FR-LST-006</td><td>Delivery options.</td><td>P0</td><td>Pickup, courier, seller delivery; fee and ETA; buyer selects at checkout; server validates the choice.</td></tr>
+      <tr><td class="req">FR-LST-007</td><td>Moderation.</td><td>P0</td><td>Admin approve/reject with reason; rejected listings hidden; seller notified; audit.</td></tr>
+      <tr><td class="req">FR-LST-008</td><td>Promotion badges.</td><td>P1</td><td>TOP and Premium badges reflect active promotions only; cleared automatically on expiry.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5. Search and discovery (FR-SRC)</h2>
+  <table>
+    <thead><tr><th style="width:26mm">ID</th><th>Requirement</th><th style="width:14mm">Priority</th><th>Acceptance criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="req">FR-SRC-001</td><td>Keyword search.</td><td>P0</td><td>Prefix matching (e.g. "iph" → iPhone); weighted title/brand/description; empty query returns a browse feed.</td></tr>
+      <tr><td class="req">FR-SRC-002</td><td>Filters and sorting.</td><td>P0</td><td>State, category, price range, condition, brand, BNPL, delivery; sort by relevance, newest, price.</td></tr>
+      <tr><td class="req">FR-SRC-003</td><td>Facets.</td><td>P1</td><td>Counts for the current result set; selecting a facet updates results without losing context.</td></tr>
+      <tr><td class="req">FR-SRC-004</td><td>Ranking.</td><td>P1</td><td>Featured → premium → text rank → recency; no paid placement that fails quality gates.</td></tr>
+      <tr><td class="req">FR-SRC-005</td><td>Favourites and saved items.</td><td>P1</td><td>Toggle favourite; count on listing; buyer-only list; idempotent.</td></tr>
+      <tr><td class="req">FR-SRC-006</td><td>Recommendations.</td><td>P2</td><td>"For you" from interest signals; excludes inactive/blocked listings; bounded signal storage.</td></tr>
+      <tr><td class="req">FR-SRC-007</td><td>Cache safety.</td><td>P1</td><td>Anonymous search cache TTL 15 s; no user-specific data in shared cache; invalidation on listing changes.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6. Messaging and negotiation (FR-MSG, FR-NEG)</h2>
+  <table>
+    <thead><tr><th style="width:26mm">ID</th><th>Requirement</th><th style="width:14mm">Priority</th><th>Acceptance criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="req">FR-MSG-001</td><td>Start a product-linked chat.</td><td>P0</td><td>Buyer and seller only; one thread per context; non-participants get 404; rate limited.</td></tr>
+      <tr><td class="req">FR-MSG-002</td><td>Send and read messages.</td><td>P0</td><td>Text sanitised; pagination; read receipts; unread counts; polling every 5 s while visible.</td></tr>
+      <tr><td class="req">FR-MSG-003</td><td>Report a message.</td><td>P0</td><td>Report created; admin queue; reporter confirmation; no retaliation exposure.</td></tr>
+      <tr><td class="req">FR-MSG-004</td><td>Direct-contact warning.</td><td>P0</td><td>Buyer sees a warning before off-platform contact; acknowledgement recorded; premium contact still gated.</td></tr>
+      <tr><td class="req">FR-NEG-001</td><td>Make an offer.</td><td>P0</td><td>Offer ≥ 10% of list price; one live negotiation per buyer/product; 48 h expiry; seller notified.</td></tr>
+      <tr><td class="req">FR-NEG-002</td><td>Counter-offer.</td><td>P0</td><td>Turn-taking enforced; counter direction enforced; 10-round cap; stale offer ID returns 409.</td></tr>
+      <tr><td class="req">FR-NEG-003</td><td>Accept and checkout.</td><td>P0</td><td>Accepted offer locks the price for that buyer for 24 h; checkout uses the agreed price; listing price unchanged.</td></tr>
+      <tr><td class="req">FR-NEG-004</td><td>Expiry and withdrawal.</td><td>P0</td><td>Expired offers cannot be accepted; withdrawal notifies the other party; expired negotiation frees the slot.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>7. Payments and protected checkout (FR-PAY, FR-CHK)</h2>
+  <table>
+    <thead><tr><th style="width:26mm">ID</th><th>Requirement</th><th style="width:14mm">Priority</th><th>Acceptance criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="req">FR-PAY-001</td><td>Provider abstraction.</td><td>P0</td><td>Mock, Paystack and Flutterwave implement initialize/verify/refund/webhook; active provider selected by env.</td></tr>
+      <tr><td class="req">FR-PAY-002</td><td>Server-side verification.</td><td>P0</td><td>Success requires exact amount and currency from the provider; underpayment never funds an order.</td></tr>
+      <tr><td class="req">FR-PAY-003</td><td>Webhook security.</td><td>P0</td><td>Signature verified; invalid → 403; events de-duplicated by <span class="req">(provider, event_key)</span>; webhook only triggers verification.</td></tr>
+      <tr><td class="req">FR-PAY-004</td><td>Idempotent checkout.</td><td>P0</td><td>Same <span class="req">Idempotency-Key</span> returns the same payment/order; duplicate clicks do not double-charge.</td></tr>
+      <tr><td class="req">FR-PAY-005</td><td>Refunds.</td><td>P0</td><td>Full or amount-based refund via provider; one active refund per order; status reconciled.</td></tr>
+      <tr><td class="req">FR-CHK-001</td><td>Checkout quote.</td><td>P0</td><td>Subtotal + delivery + protection fee = total; server-computed; protection capped; DB constraint enforces the sum.</td></tr>
+      <tr><td class="req">FR-CHK-002</td><td>Create order and reserve stock.</td><td>P0</td><td>Atomic stock decrement; failure returns a clear out-of-stock error; unpaid order expires in 60 min.</td></tr>
+      <tr><td class="req">FR-CHK-003</td><td>Escrow hold.</td><td>P0</td><td>On verified payment, partner creates a hold; funds are not released until the order state allows it.</td></tr>
+      <tr><td class="req">FR-CHK-004</td><td>Late payment.</td><td>P0</td><td>After expiry, re-check provider; honour if stock remains, otherwise auto-refund.</td></tr>
+      <tr><td class="req">FR-CHK-005</td><td>Reconciliation.</td><td>P0</td><td>Admin report cross-checks payments, escrow and ledger; mismatches are surfaced, not silently corrected.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>8. Orders, delivery, disputes and refunds (FR-ORD, FR-DSP)</h2>
+  <table>
+    <thead><tr><th style="width:26mm">ID</th><th>Requirement</th><th style="width:14mm">Priority</th><th>Acceptance criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="req">FR-ORD-001</td><td>Seller accepts or declines.</td><td>P0</td><td>Only the seller can act; decline triggers refund; accept moves to processing.</td></tr>
+      <tr><td class="req">FR-ORD-002</td><td>Dispatch and tracking.</td><td>P0</td><td>Carrier, tracking number/URL and updates recorded; buyer notified; status order enforced.</td></tr>
+      <tr><td class="req">FR-ORD-003</td><td>Delivery evidence.</td><td>P0</td><td>Photos/notes attached; visible to buyer/admin; audit trail.</td></tr>
+      <tr><td class="req">FR-ORD-004</td><td>Buyer confirmation and auto-release.</td><td>P0</td><td>Buyer confirms → completed; otherwise auto-release after 3 days; no release while disputed.</td></tr>
+      <tr><td class="req">FR-ORD-005</td><td>Cancellation.</td><td>P0</td><td>Pre-dispatch cancellation refunds automatically; post-dispatch requires a dispute.</td></tr>
+      <tr><td class="req">FR-DSP-001</td><td>Open a dispute.</td><td>P0</td><td>Buyer opens within the allowed window; reason + evidence; seller notified; order frozen.</td></tr>
+      <tr><td class="req">FR-DSP-002</td><td>Dispute conversation.</td><td>P0</td><td>Buyer/seller/admin messages; evidence; timeline; no participant can delete history.</td></tr>
+      <tr><td class="req">FR-DSP-003</td><td>Resolution.</td><td>P0</td><td>Admin resolves with release or refund; refund needs a second, different admin; audit entry.</td></tr>
+      <tr><td class="req">FR-DSP-004</td><td>Partial refunds.</td><td>P2</td><td>Model supports amounts; UI and flow to be added post-launch.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>9. Goods Flex (FR-FLX)</h2>
+  <table>
+    <thead><tr><th style="width:26mm">ID</th><th>Requirement</th><th style="width:14mm">Priority</th><th>Acceptance criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="req">FR-FLX-001</td><td>Credit profile.</td><td>P1</td><td>Verified phone, BVN, connected bank, consented guarantor, optional employment; missing any required step leaves the limit at zero.</td></tr>
+      <tr><td class="req">FR-FLX-002</td><td>Affordability assessment.</td><td>P1</td><td>Six months classified; income detected; repayments deducted; risk factor applied; snapshot stored immutably with expiry.</td></tr>
+      <tr><td class="req">FR-FLX-003</td><td>Guarantor consent.</td><td>P1</td><td>SMS link; borrower, relationship, amount, expiry shown; explicit consent; IP/time/BVN ref recorded; decline/withdraw supported; max 3 active.</td></tr>
+      <tr><td class="req">FR-FLX-004</td><td>Apply and accept.</td><td>P1</td><td>Partner decision stored; terms shown verbatim; explicit acceptance; unpaid offer expires in 24 h.</td></tr>
+      <tr><td class="req">FR-FLX-005</td><td>One running plan.</td><td>P1</td><td>Approved/accepted/active/defaulted blocks a new plan; enforced under lock and by partial unique index.</td></tr>
+      <tr><td class="req">FR-FLX-006</td><td>Down payment and disbursement.</td><td>P1</td><td>Down payment via payment layer; partner disburses; order funded through escrow; refund cancels the agreement.</td></tr>
+      <tr><td class="req">FR-FLX-007</td><td>Instalments.</td><td>P1</td><td>Schedule shown; pay via payment layer; duplicate/excess payments auto-refunded; one open payment per instalment.</td></tr>
+      <tr><td class="req">FR-FLX-008</td><td>Overdue handling.</td><td>P1</td><td>Worker marks overdue and reminds; defaulted plans can still be paid off; no double reminders.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>10. Reviews, notifications and trust (FR-REV, FR-NOT, FR-TRS)</h2>
+  <table>
+    <thead><tr><th style="width:26mm">ID</th><th>Requirement</th><th style="width:14mm">Priority</th><th>Acceptance criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="req">FR-REV-001</td><td>Review eligibility.</td><td>P1</td><td>Only a buyer with a completed/delivered order can review; one review per order/item.</td></tr>
+      <tr><td class="req">FR-REV-002</td><td>Rating and content.</td><td>P1</td><td>1–5 stars; text sanitised; seller reply; report; admin moderation.</td></tr>
+      <tr><td class="req">FR-REV-003</td><td>Aggregates.</td><td>P1</td><td>Seller rating average/count updated; no review hidden without a moderation record.</td></tr>
+      <tr><td class="req">FR-NOT-001</td><td>In-app inbox.</td><td>P0</td><td>Unread counts; read/unread; read-all; pagination; per-user isolation.</td></tr>
+      <tr><td class="req">FR-NOT-002</td><td>Preferences.</td><td>P1</td><td>Per-channel opt-in; transactional messages still delivered; unsubscribe respected.</td></tr>
+      <tr><td class="req">FR-NOT-003</td><td>Email/SMS outbox.</td><td>P0</td><td>Queued transactionally; worker retries; console provider in dev; Termii/Postmark/SMTP in production.</td></tr>
+      <tr><td class="req">FR-TRS-001</td><td>Listing moderation.</td><td>P0</td><td>Reported listings queued; take down with reason; repeat offenders suspended.</td></tr>
+      <tr><td class="req">FR-TRS-002</td><td>Prohibited items.</td><td>P0</td><td>Policy page; report flow; admin removal; audit.</td></tr>
+      <tr><td class="req">FR-TRS-003</td><td>Account suspension.</td><td>P0</td><td>Immediate session revocation; listings hidden; appeal path recorded.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>11. Subscriptions and promotions (FR-SUB, FR-PRO)</h2>
+  <table>
+    <thead><tr><th style="width:26mm">ID</th><th>Requirement</th><th style="width:14mm">Priority</th><th>Acceptance criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="req">FR-SUB-001</td><td>Plans.</td><td>P1</td><td>Monthly ₦15,000/30d/3 credits; Quarterly ₦40,000/90d/10; Annual ₦150,000/365d/50; admin can edit.</td></tr>
+      <tr><td class="req">FR-SUB-002</td><td>Purchase and activation.</td><td>P1</td><td>Payment verified server-side; period set; credits granted; premium derived from active period.</td></tr>
+      <tr><td class="req">FR-SUB-003</td><td>Featured credits.</td><td>P1</td><td>Spend a credit to feature a listing; balance decremented atomically; expiry respected.</td></tr>
+      <tr><td class="req">FR-SUB-004</td><td>Admin grant/cancel.</td><td>P1</td><td>Grant creates an active period; cancel sets end; both audited.</td></tr>
+      <tr><td class="req">FR-PRO-001</td><td>Packages.</td><td>P1</td><td>TOP 7 days ₦3,099; TOP 30 days ₦9,999; Boost Premium 28 days ₦31,999; server-priced.</td></tr>
+      <tr><td class="req">FR-PRO-002</td><td>Purchase.</td><td>P1</td><td>Creates a promotion payment; activation only after verified success; idempotent.</td></tr>
+      <tr><td class="req">FR-PRO-003</td><td>Eligibility.</td><td>P1</td><td>Boost Premium requires verified seller, 3+ photos and 60+ char description; TOP has no such gate.</td></tr>
+      <tr><td class="req">FR-PRO-004</td><td>Expiry.</td><td>P1</td><td>Worker clears tier/featured after the window; badges disappear; no stale premium placement.</td></tr>
+      <tr><td class="req">FR-PRO-005</td><td>Extend.</td><td>P2</td><td>Seller can extend an active promotion; price and window are server-computed.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>12. Ads, feeds and analytics (FR-ADS)</h2>
+  <table>
+    <thead><tr><th style="width:26mm">ID</th><th>Requirement</th><th style="width:14mm">Priority</th><th>Acceptance criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="req">FR-ADS-001</td><td>Google product feed.</td><td>P2</td><td>XML at <span class="req">/feeds/google.xml</span>; only Premium listings with verified seller, 3+ photos and real description; property/vehicles/jobs/services excluded by default.</td></tr>
+      <tr><td class="req">FR-ADS-002</td><td>Meta catalog feed.</td><td>P2</td><td>CSV at <span class="req">/feeds/meta.csv</span>; same eligibility.</td></tr>
+      <tr><td class="req">FR-ADS-003</td><td>Optional feed token.</td><td>P3</td><td>When <span class="req">FEED_TOKEN</span> is set, requests without it are rejected.</td></tr>
+      <tr><td class="req">FR-ADS-004</td><td>Meta CAPI purchases.</td><td>P2</td><td>Only consented buyers; emails/phones SHA-256 hashed; worker retries; token from env only.</td></tr>
+      <tr><td class="req">FR-ADS-005</td><td>Consent gating.</td><td>P0</td><td>No marketing scripts before consent; cookie settings available in footer; NDPA copy.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>13. Administration (FR-ADM)</h2>
+  <table>
+    <thead><tr><th style="width:26mm">ID</th><th>Requirement</th><th style="width:14mm">Priority</th><th>Acceptance criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="req">FR-ADM-001</td><td>Granular permissions.</td><td>P0</td><td>Every admin route requires a permission; missing permission returns 403 and is audited.</td></tr>
+      <tr><td class="req">FR-ADM-002</td><td>Staff management.</td><td>P0</td><td>Invite by email; no self-signup; role assignment only by super admin; invite expires.</td></tr>
+      <tr><td class="req">FR-ADM-003</td><td>Audit log.</td><td>P0</td><td>Append-only; actor/IP/device; filters; CSV export; export itself audited.</td></tr>
+      <tr><td class="req">FR-ADM-004</td><td>Platform settings.</td><td>P0</td><td>Fees, caps, moderation switch, feeds, tracking IDs, promotion packages; validated and audited.</td></tr>
+      <tr><td class="req">FR-ADM-005</td><td>Reconciliation.</td><td>P0</td><td>Payments vs escrow vs ledger; mismatch list; no silent mutation.</td></tr>
+      <tr><td class="req">FR-ADM-006</td><td>Moderation queues.</td><td>P0</td><td>Listings, reviews, reports, verifications, disputes, refunds; SLA fields; assignment.</td></tr>
+      <tr><td class="req">FR-ADM-007</td><td>Admin subdomain.</td><td>P1</td><td><span class="req">admin.goods.ng</span>; redirects; noindex; separate session; optional IP allow-list.</td></tr>
+      <tr><td class="req">FR-ADM-008</td><td>First super admin.</td><td>P0</td><td>CLI creates the first account with a one-time invite; refuses if an active super admin exists unless forced.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>14. State machines</h2>
+  <h3>14.1 Order / escrow</h3>
+  <div class="diagram">pending_payment → payment_confirmed → funds_safeguarded → awaiting_seller → processing → dispatched → delivered → awaiting_buyer_confirmation → completed
+        │                 │                    │                 │              │            │
+        ▼                 ▼                    ▼                 ▼              ▼            ▼
+     cancelled        refund_pending ←────────┴─────────────────┴──────────────┘        disputed → refunded / completed</div>
+  <p class="small">Only <span class="req">modules/orders/escrow.py</span> changes these statuses. Release/refund are guarded by row locks, a unique ledger key and the state machine.</p>
+  <h3>14.2 Payment</h3>
+  <table class="tight">
+    <thead><tr><th style="width:34mm">State</th><th>Meaning</th><th>Allowed next</th></tr></thead>
+    <tbody>
+      <tr><td>initialized</td><td>Provider checkout created; not trusted.</td><td>pending, failed, expired</td></tr>
+      <tr><td>pending</td><td>Awaiting provider confirmation.</td><td>paid, failed, expired</td></tr>
+      <tr><td>paid</td><td>Server-to-server verified with exact amount/currency.</td><td>refunded</td></tr>
+      <tr><td>failed / expired</td><td>No funds captured; order may expire.</td><td>—</td></tr>
+      <tr><td>refunded</td><td>Refund confirmed by provider.</td><td>—</td></tr>
+    </tbody>
+  </table>
+  <h3>14.3 Negotiation</h3>
+  <table class="tight">
+    <thead><tr><th style="width:34mm">State</th><th>Meaning</th><th>Allowed next</th></tr></thead>
+    <tbody>
+      <tr><td>open</td><td>Offer/counter pending; turn owner defined.</td><td>accepted, declined, expired, withdrawn, converted</td></tr>
+      <tr><td>accepted</td><td>Price agreed; 24 h checkout window.</td><td>converted, expired</td></tr>
+      <tr><td>converted</td><td>Order paid at the agreed price.</td><td>—</td></tr>
+      <tr><td>declined / withdrawn / expired</td><td>No live offer; slot freed.</td><td>—</td></tr>
+    </tbody>
+  </table>
+  <h3>14.4 Goods Flex plan</h3>
+  <table class="tight">
+    <thead><tr><th style="width:34mm">State</th><th>Meaning</th><th>Allowed next</th></tr></thead>
+    <tbody>
+      <tr><td>approved</td><td>Lender approved; terms offered.</td><td>accepted, expired, withdrawn</td></tr>
+      <tr><td>accepted</td><td>Buyer accepted; awaiting down payment/disbursement.</td><td>active, cancelled</td></tr>
+      <tr><td>active</td><td>Disbursed; instalments due.</td><td>completed, defaulted, cancelled</td></tr>
+      <tr><td>defaulted</td><td>Missed instalments; still repayable.</td><td>completed, cancelled</td></tr>
+      <tr><td>completed / cancelled</td><td>Plan closed; slot freed.</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h2>15. Non-functional requirements</h2>
+  <table>
+    <thead><tr><th style="width:24mm">ID</th><th>Category</th><th>Requirement</th><th style="width:30mm">Verification</th></tr></thead>
+    <tbody>
+      <tr><td class="req">NFR-PERF-001</td><td>Performance</td><td>Public read endpoints p95 &lt; 500 ms at target concurrency; home and search cached.</td><td>k6 + smoke test.</td></tr>
+      <tr><td class="req">NFR-PERF-002</td><td>Performance</td><td>Images served as WebP; thumbnails 400 px; full 1280 px; lazy loaded.</td><td>Lighthouse/visual check.</td></tr>
+      <tr><td class="req">NFR-AVL-001</td><td>Availability</td><td>API and worker run ≥ 2 / ≥ 1 replicas; readiness checks gate traffic.</td><td>Deploy topology review.</td></tr>
+      <tr><td class="req">NFR-AVL-002</td><td>Recovery</td><td>PITR enabled; daily logical dump; quarterly restore drill; ledger reconciliation after restore.</td><td>Runbook + drill record.</td></tr>
+      <tr><td class="req">NFR-SEC-001</td><td>Security</td><td>All money transitions row-locked and idempotent; ledger balanced at commit.</td><td>Concurrency tests + DB triggers.</td></tr>
+      <tr><td class="req">NFR-SEC-002</td><td>Security</td><td>Production refuses dev secrets and mock financial providers.</td><td>Boot-guard tests.</td></tr>
+      <tr><td class="req">NFR-SEC-003</td><td>Security</td><td>KYC data encrypted at rest and private; access audited.</td><td>Storage/API tests + review.</td></tr>
+      <tr><td class="req">NFR-PRV-001</td><td>Privacy</td><td>Consent before marketing scripts; data-subject export/delete workflow; retention schedule.</td><td>NDPA review.</td></tr>
+      <tr><td class="req">NFR-CMP-001</td><td>Compliance</td><td>Escrow/lending only through licensed partners; disclosures reviewed.</td><td>Legal sign-off.</td></tr>
+      <tr><td class="req">NFR-A11Y-001</td><td>Accessibility</td><td>Keyboard operable, visible focus, labelled controls, colour contrast on core journeys.</td><td>Manual audit + axe.</td></tr>
+      <tr><td class="req">NFR-I18N-001</td><td>Localisation</td><td>NGN formatting, Nigerian states/cities, English at launch.</td><td>Unit + E2E.</td></tr>
+      <tr><td class="req">NFR-OBS-001</td><td>Observability</td><td>Request ID on every log line; health/readiness; error tracking; alerting.</td><td>Runbook + dashboards.</td></tr>
+      <tr><td class="req">NFR-OPS-001</td><td>Operations</td><td>Migrations backward-compatible; release job; rollback image tag; no prod downgrade on financial tables.</td><td>Release checklist.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>16. Integration requirements</h2>
+  <p>Each integration requirement is a launch gate. The detailed checklist is in Appendix A.</p>
+  <table>
+    <thead><tr><th style="width:18mm">ID</th><th>Integration</th><th>Requirement</th><th style="width:14mm">Priority</th></tr></thead>
+    <tbody>
+      <tr><td class="req">IR-01</td><td>Escrow</td><td>Licensed partner adapter implements hold/release/refund, webhooks and reconciliation; certified in sandbox.</td><td>P0</td></tr>
+      <tr><td class="req">IR-02</td><td>Lending</td><td>Licensed lender adapter implements decision, disbursement and repayment; FCCPC review complete.</td><td>P0</td></tr>
+      <tr><td class="req">IR-03</td><td>Payments</td><td>Paystack or Flutterwave certified; webhook secret; settlement; refunds; reconciliation.</td><td>P0</td></tr>
+      <tr><td class="req">IR-04</td><td>Open banking</td><td>Mono sandbox and production approval; Connect widget; read-only consent; connection events.</td><td>P1</td></tr>
+      <tr><td class="req">IR-05</td><td>KYC</td><td>Licensed BVN/NIN provider; consent; encrypted storage; admin reveal audited.</td><td>P0</td></tr>
+      <tr><td class="req">IR-06</td><td>SMS</td><td>Termii sender ID approved; OTP and transactional templates; delivery reports.</td><td>P0</td></tr>
+      <tr><td class="req">IR-07</td><td>Email</td><td>Postmark/SMTP with SPF/DKIM/DMARC; templates; bounce handling.</td><td>P0</td></tr>
+      <tr><td class="req">IR-08</td><td>Storage</td><td>S3 bucket + CDN; private KYC prefix; signed URLs; lifecycle.</td><td>P0</td></tr>
+      <tr><td class="req">IR-09</td><td>Redis</td><td>Managed Redis in production; TLS; monitoring.</td><td>P0</td></tr>
+      <tr><td class="req">IR-10</td><td>Captcha</td><td>reCAPTCHA/Turnstile production keys; server-side verification.</td><td>P0</td></tr>
+      <tr><td class="req">IR-11</td><td>Observability</td><td>Sentry, log platform, uptime, alerts, on-call.</td><td>P0</td></tr>
+      <tr><td class="req">IR-12</td><td>Deployment</td><td>Vercel + containers + managed Postgres/Redis + DNS/SSL.</td><td>P0</td></tr>
+      <tr><td class="req">IR-13</td><td>Payouts</td><td>Partner payout API; bank account verification; scheduling; reconciliation UI.</td><td>P1</td></tr>
+      <tr><td class="req">IR-14</td><td>Logistics</td><td>At least one carrier; labels; tracking webhooks.</td><td>P2</td></tr>
+      <tr><td class="req">IR-15</td><td>Malware scan</td><td>Upload scanning and quarantine for KYC and listing images.</td><td>P0</td></tr>
+      <tr><td class="req">IR-16</td><td>Google Ads</td><td>Merchant Center + Ads campaign; feed scheduled; domain claimed.</td><td>P2</td></tr>
+      <tr><td class="req">IR-17</td><td>Meta Ads</td><td>Business Manager, catalog, pixel, CAPI token, campaign.</td><td>P2</td></tr>
+      <tr><td class="req">IR-18</td><td>Push</td><td>FCM/APNs device tokens and preferences.</td><td>P3</td></tr>
+    </tbody>
+  </table>
+
+  <h2>17. Acceptance scenarios</h2>
+  <table>
+    <thead><tr><th style="width:12mm">#</th><th>Scenario</th><th>Expected result</th></tr></thead>
+    <tbody>
+      <tr><td>AT-01</td><td>New user registers, verifies phone, signs in.</td><td>Account created; OTP verified; session issued; no sensitive data in response.</td></tr>
+      <tr><td>AT-02</td><td>Seller creates a listing with 3 photos and a 60+ char description.</td><td>Listing active; images watermarked and re-encoded; searchable; promotion eligibility true.</td></tr>
+      <tr><td>AT-03</td><td>Buyer makes an offer, seller counters, buyer accepts.</td><td>Turn-taking enforced; accepted price locked for 24 h; listing price unchanged.</td></tr>
+      <tr><td>AT-04</td><td>Buyer pays through the provider (sandbox).</td><td>Payment verified server-to-server; escrow hold created; stock decremented; seller notified.</td></tr>
+      <tr><td>AT-05</td><td>Duplicate webhook arrives five times.</td><td>Exactly one payment confirmation and one settlement; no double credit.</td></tr>
+      <tr><td>AT-06</td><td>Wrong amount is sent.</td><td>Payment rejected/underpayment not funded; order remains unpaid/cancelled.</td></tr>
+      <tr><td>AT-07</td><td>Seller dispatches with evidence; buyer confirms.</td><td>Order completed; ledger release posts commission and protection fee; seller payable recorded.</td></tr>
+      <tr><td>AT-08</td><td>Buyer disputes before release.</td><td>Order frozen; no auto-release; admin resolves; refund requires a second admin.</td></tr>
+      <tr><td>AT-09</td><td>Flex customer connects bank, names guarantor, guarantor consents, applies.</td><td>Limit computed; one plan; down payment; disbursement; instalments scheduled.</td></tr>
+      <tr><td>AT-10</td><td>Second Flex application while a plan is running.</td><td>Rejected with a clear error; partial unique index prevents a race.</td></tr>
+      <tr><td>AT-11</td><td>Seller buys TOP 7 and Boost Premium.</td><td>Server-priced; payment verified; badges and placement active; expiry clears them.</td></tr>
+      <tr><td>AT-12</td><td>Admin without permission calls an admin endpoint.</td><td>403; permission refusal audited; no state change.</td></tr>
+      <tr><td>AT-13</td><td>Production boot with mock escrow/BNPL or dev secrets.</td><td>Process refuses to start with a clear configuration error.</td></tr>
+      <tr><td>AT-14</td><td>Anonymous search is cached; a listing changes.</td><td>Cache TTL bounded; stale result is acceptable for ≤ 15 s; no user data leaks.</td></tr>
+      <tr><td>AT-15</td><td>Marketing consent is declined.</td><td>No pixel/GA scripts load; transactional email/SMS still works; consent can be changed.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <div class="t">Definition of done for a requirement</div>
+    Code + tests (unit/integration/E2E where relevant) + migration if data changes + admin/ops visibility + documentation update. P0 requirements also need a staging verification against the real provider sandbox where an integration is involved.
+  </div>
+</div>
+
+<div class="part-cover">
+  <div class="n">Appendix</div>
+  <h1>Go-Live Integration Checklist &amp; Reference</h1>
+  <div class="rule"></div>
+  <p>The external services, credentials, contracts and operational controls that remain between the current development build and a live, licensed marketplace.</p>
+  <div class="toc">
+    <div>A. Integration go-live checklist</div>
+    <div>B. Environment variables</div>
+    <div>C. Glossary</div>
+  </div>
+</div>
+
+<div>
+  <h2>A. Integration go-live checklist</h2>
+  <p>Status vocabulary: <span class="b live">LIVE</span> implemented and tested against mocks/local; <span class="b config">CONFIG</span> code exists but production credentials/dashboard work remains; <span class="b mock">MOCK</span> only a mock adapter exists; <span class="b build">NOT BUILT</span> no implementation. "Blocker" means the item must be complete before the first live transaction or before the production process will boot.</p>
+  <table>
+    <thead><tr><th style="width:8mm">#</th><th style="width:30mm">Integration</th><th>Why it matters</th><th style="width:28mm">Current state</th><th>What remains</th><th style="width:13mm">Blocker</th><th style="width:20mm">Owner</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><strong>Licensed escrow / payment partner</strong></td><td>Holds buyer funds for Protected Checkout; Goods.ng must not hold funds.</td><td><span class="b mock">MOCK</span> EscrowProvider only</td><td>Contract; implement hold/release/refund; sandbox certification; settlement/payout API; webhooks; reconciliation.</td><td>Yes</td><td>Finance + Eng</td></tr>
+      <tr><td>2</td><td><strong>Licensed BNPL lender</strong></td><td>Provides the credit decision, disbursement and collections for Goods Flex.</td><td><span class="b mock">MOCK</span> FinancingProvider only</td><td>Contract; decision/disbursement/repayment adapter; real terms; FCCPC review; collections process.</td><td>Yes</td><td>Risk + Legal</td></tr>
+      <tr><td>3</td><td><strong>Payment provider</strong> — Paystack or Flutterwave</td><td>Collects card/transfer/bank payments and verifies them server-side.</td><td><span class="b config">CONFIG</span> both adapters written, untested</td><td>Sandbox account; certify initialize/verify/refund; webhook secret and URL; settlement account; reconciliation; choose primary/backup.</td><td>Yes</td><td>Finance + Eng</td></tr>
+      <tr><td>4</td><td><strong>KYC / BVN-NIN provider</strong></td><td>Verifies seller identity and Flex borrowers; supports the "Verified" badge at scale.</td><td><span class="b mock">MOCK</span> IdentityProvider only</td><td>Choose Dojah/Prembly/Smile ID/Youverify; adapter; consent; encryption; webhook; manual review fallback; NDPA terms.</td><td>Yes</td><td>Compliance + Eng</td></tr>
+      <tr><td>5</td><td><strong>Open banking</strong> — Mono</td><td>Read-only bank statements for the Flex affordability assessment.</td><td><span class="b config">CONFIG</span> Mono adapter, untested</td><td>Mono sandbox; Connect widget keys; production approval; connection webhooks; error monitoring; consent copy.</td><td>No*</td><td>Risk + Eng</td></tr>
+      <tr><td>6</td><td><strong>SMS</strong> — Termii</td><td>OTP, guarantor consent links and transactional alerts.</td><td><span class="b config">CONFIG</span> adapter, console active</td><td>Sender ID approval; templates; DND handling; delivery reports; sandbox OTP proof; spend limits.</td><td>Yes</td><td>Eng + Ops</td></tr>
+      <tr><td>7</td><td><strong>Email</strong> — Postmark or SMTP</td><td>Verification, receipts, dispute and Flex notifications.</td><td><span class="b config">CONFIG</span> adapters, console active</td><td>Domain verification; SPF/DKIM/DMARC; templates; bounce/complaint webhooks; sandbox test.</td><td>Yes</td><td>Eng + Ops</td></tr>
+      <tr><td>8</td><td><strong>Object storage + CDN</strong></td><td>Durable public listing media and private KYC documents.</td><td><span class="b config">CONFIG</span> S3 adapter, local active</td><td>Bucket; IAM least privilege; CORS; CDN; versioning; lifecycle; private prefix; signed URLs; encryption.</td><td>Yes</td><td>Platform</td></tr>
+      <tr><td>9</td><td><strong>Managed Redis</strong></td><td>Shared cache, rate limits and single-flight locks.</td><td><span class="b config">CONFIG</span> optional in dev</td><td>Provision with TLS/private network; monitoring; eviction policy; boot check in production.</td><td>Yes</td><td>Platform</td></tr>
+      <tr><td>10</td><td><strong>Captcha</strong> — reCAPTCHA v2 or Turnstile</td><td>Bot protection on sign-in for new devices and after failures.</td><td><span class="b config">CONFIG</span> providers implemented, mock active</td><td>Production keys; allowed domains; CSP already allows; verify server-side in staging.</td><td>Yes</td><td>Eng</td></tr>
+      <tr><td>11</td><td><strong>Sentry / error tracking</strong></td><td>Detect and triage production errors in API and frontend.</td><td><span class="b build">NOT BUILT</span></td><td>Add FastAPI + Next.js SDKs; DSNs in secrets; release tags; source maps; alert routing; CSP updates.</td><td>Yes</td><td>Platform</td></tr>
+      <tr><td>12</td><td><strong>Deployment platforms</strong></td><td>Run the API, worker, frontend, database and cache in production.</td><td><span class="b build">NOT BUILT</span> Dockerfiles/Compose only</td><td>Vercel project; container platform; ≥2 API instances; worker; managed Postgres PITR; PgBouncer; DNS/SSL.</td><td>Yes</td><td>Platform</td></tr>
+      <tr><td>13</td><td><strong>Seller payouts / disbursement</strong></td><td>Move released seller balances out of the escrow partner to seller bank accounts.</td><td><span class="b build">NOT BUILT</span> ledger only</td><td>Partner payout API; bank account verification/name lookup; payout scheduling; retry/failed handling; UI; reconciliation.</td><td>Yes</td><td>Finance + Eng</td></tr>
+      <tr><td>14</td><td><strong>Malware scanning</strong></td><td>Scan listing images and KYC documents before storage/access.</td><td><span class="b build">NOT BUILT</span></td><td>ClamAV or cloud scanner; quarantine bucket; scan status; admin review; alerting.</td><td>Yes</td><td>Security</td></tr>
+      <tr><td>15</td><td><strong>Logistics / carrier</strong></td><td>Labels, pickup and tracking events for dispatched orders.</td><td><span class="b build">NOT BUILT</span> manual tracking fields</td><td>At least one carrier (GIGL, DHL, Sendbox, etc.); label API; tracking webhooks; status mapping; failed-delivery flow.</td><td>No</td><td>Ops + Eng</td></tr>
+      <tr><td>16</td><td><strong>Google Merchant Center + Ads</strong></td><td>Product listing ads and Shopping/Performance Max campaigns.</td><td><span class="b config">CONFIG</span> feed endpoint</td><td>Merchant Center; claim goods.ng; Nigeria/NGN; scheduled fetch; link Ads; campaign; feed quality checks.</td><td>No</td><td>Growth</td></tr>
+      <tr><td>17</td><td><strong>Meta Pixel / Catalog / CAPI</strong></td><td>Catalog ads and consented server-side purchase events.</td><td><span class="b config">CONFIG</span> pixel, feed, CAPI code</td><td>Business Manager; catalog data source; domain verification; pixel ID; CAPI token; campaign; event dedup check.</td><td>No</td><td>Growth</td></tr>
+      <tr><td>18</td><td><strong>GA4 / Google Ads tags</strong></td><td>Acquisition and conversion measurement.</td><td><span class="b config">CONFIG</span> settings + consent gate</td><td>Property/tag IDs; conversion labels; consent mode; verify no scripts before consent.</td><td>No</td><td>Growth</td></tr>
+      <tr><td>19</td><td><strong>Google OAuth</strong></td><td>Optional social sign-in.</td><td><span class="b config">CONFIG</span> implemented, mock in dev</td><td>OAuth web client; consent screen; redirect URIs; publish/verify app; privacy/terms links.</td><td>No</td><td>Eng</td></tr>
+      <tr><td>20</td><td><strong>Push notifications</strong></td><td>Re-engage buyers/sellers; required for future native apps.</td><td><span class="b build">NOT BUILT</span></td><td>FCM/APNs; device tokens; preferences; deep links; delivery analytics.</td><td>No</td><td>Eng</td></tr>
+      <tr><td>21</td><td><strong>WhatsApp Business API</strong></td><td>Structured messaging and template notifications.</td><td><span class="b build">NOT BUILT</span> deep links only</td><td>Cloud API; number; templates; opt-in; webhook; human handoff; 24-hour window handling.</td><td>No</td><td>Growth + Eng</td></tr>
+      <tr><td>22</td><td><strong>Dedicated search</strong></td><td>Search relevance and latency at scale.</td><td><span class="b build">NOT BUILT</span> Postgres FTS</td><td>OpenSearch/Meilisearch; index pipeline; ranking parity; A/B; swap behind <span class="req">service.search()</span>.</td><td>No</td><td>Eng</td></tr>
+      <tr><td>23</td><td><strong>WebSockets / SSE</strong></td><td>Lower-latency messaging if polling becomes costly.</td><td><span class="b build">NOT BUILT</span> 5 s polling</td><td>Gateway; auth; fan-out; presence; reconnect; load test; mobile background behaviour.</td><td>No</td><td>Eng</td></tr>
+      <tr><td>24</td><td><strong>Fraud / risk scoring</strong></td><td>Detect abusive signups, listings and payments.</td><td><span class="b build">NOT BUILT</span> rules only</td><td>Vendor or in-house scoring; device fingerprint; velocity rules; manual review queue; model governance.</td><td>No</td><td>Trust &amp; Safety</td></tr>
+      <tr><td>25</td><td><strong>NDPA / DPO tooling</strong></td><td>Data-subject export/delete, retention and processing records.</td><td><span class="b build">PARTIAL</span> copy only</td><td>DSR workflow; retention jobs; record of processing; DPO appointment; processor agreements; breach playbook.</td><td>Yes</td><td>Compliance</td></tr>
+    </tbody>
+  </table>
+  <p class="small muted">* Mono is not a production boot blocker, but Goods Flex cannot go live without it (or another open-banking provider) because the credit limit depends on a real bank assessment. If Flex is feature-flagged off at launch, Mono can follow.</p>
+
+  <div class="callout risk">
+    <div class="t">Top five blockers, in order</div>
+    <strong>1.</strong> Licensed escrow/payment partner (Protected Checkout cannot launch without it). <strong>2.</strong> Licensed lender (Goods Flex cannot launch without it). <strong>3.</strong> Payment provider certification (no live money). <strong>4.</strong> Production deployment + managed infrastructure (nothing is live). <strong>5.</strong> KYC + SMS/email + captcha (security and account recovery).
+  </div>
+
+  <h2>B. Environment variables</h2>
+  <table class="tight">
+    <thead><tr><th style="width:44mm">Variable</th><th>Purpose / production requirement</th></tr></thead>
+    <tbody>
+      <tr><td class="req">ENVIRONMENT</td><td>development | test | staging | production. Controls boot guards and dev routes.</td></tr>
+      <tr><td class="req">DATABASE_URL</td><td>PostgreSQL DSN; must use sslmode=require/verify-full in production.</td></tr>
+      <tr><td class="req">DB_POOL_SIZE / DB_MAX_OVERFLOW / DB_POOL_TIMEOUT</td><td>Per-process pool; size against Postgres max_connections or PgBouncer.</td></tr>
+      <tr><td class="req">REDIS_URL</td><td>Required in production; shared cache, rate limits, single-flight.</td></tr>
+      <tr><td class="req">JWT_SECRET / OTP_SECRET / DATA_ENCRYPTION_KEY</td><td>Unique per environment; production rejects dev defaults; back up the Fernet key.</td></tr>
+      <tr><td class="req">FRONTEND_URL / CORS_ORIGINS / ADMIN_URL</td><td>Explicit https origins; admin subdomain used in staff invites.</td></tr>
+      <tr><td class="req">TRUSTED_PROXY_CIDRS</td><td>Load balancer CIDRs; required in production for correct client IPs.</td></tr>
+      <tr><td class="req">ADMIN_2FA_REQUIRED</td><td>Must be true in production; admins enable TOTP before using the admin API.</td></tr>
+      <tr><td class="req">PAYMENT_PROVIDER</td><td>mock | paystack | flutterwave; mock refused in production.</td></tr>
+      <tr><td class="req">ESCROW_PROVIDER / BNPL_PROVIDER</td><td>Mock only today; production refuses mock; real adapters required.</td></tr>
+      <tr><td class="req">BANK_DATA_PROVIDER / MONO_* </td><td>mock | mono; Mono keys server-side only; production refuses mock.</td></tr>
+      <tr><td class="req">PAYSTACK_SECRET_KEY / FLUTTERWAVE_*</td><td>Provider credentials and webhook hash.</td></tr>
+      <tr><td class="req">SMS_PROVIDER / TERMII_*</td><td>console | termii; production refuses console.</td></tr>
+      <tr><td class="req">EMAIL_PROVIDER / SMTP_* / POSTMARK_*</td><td>console | smtp | postmark; production refuses console.</td></tr>
+      <tr><td class="req">STORAGE_BACKEND / S3_* / MEDIA_BASE_URL</td><td>local | s3; production requires s3 + bucket; CDN URL for media.</td></tr>
+      <tr><td class="req">CAPTCHA_PROVIDER / *_SITE_KEY / *_SECRET_KEY</td><td>off | mock | recaptcha | turnstile; production refuses mock/off.</td></tr>
+      <tr><td class="req">GOOGLE_CLIENT_ID / SECRET</td><td>Google OAuth; hidden in production when absent.</td></tr>
+      <tr><td class="req">META_CAPI_ACCESS_TOKEN / META_GRAPH_VERSION</td><td>Server-side purchase events; token never in DB/client.</td></tr>
+      <tr><td class="req">FEED_TOKEN</td><td>Optional protection for Google/Meta feeds.</td></tr>
+      <tr><td class="req">PLATFORM_COMMISSION_RATE / PROTECTION_FEE_RATE / PROTECTION_FEE_CAP</td><td>Marketplace economics; admin-overridable.</td></tr>
+      <tr><td class="req">AUTO_RELEASE_DAYS</td><td>Buyer-confirmation window before escrow release (default 3).</td></tr>
+      <tr><td class="req">RATE_LIMIT_PER_MINUTE / RATE_LIMIT_IP_MULTIPLIER</td><td>Per-identity and coarse per-IP ceilings.</td></tr>
+      <tr><td class="req">MAX_UPLOAD_MB / MAX_IMAGES_PER_SELLER / DELETED_LISTING_RETENTION_DAYS</td><td>Media abuse and retention controls.</td></tr>
+      <tr><td class="req">RATE_LIMIT_MULTIPLIER</td><td>Dev/test only; must be 1 outside development.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>C. Glossary</h2>
+  <table class="tight">
+    <thead><tr><th style="width:42mm">Term</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>Protected Checkout</td><td>Goods.ng checkout where a licensed partner holds the buyer's funds until delivery is confirmed or the dispute process resolves.</td></tr>
+      <tr><td>Escrow partner</td><td>A licensed third party that holds and releases funds. Goods.ng does not hold funds.</td></tr>
+      <tr><td>Goods Flex</td><td>Buy-now-pay-later product with an affordability assessment, mandatory guarantor and instalments.</td></tr>
+      <tr><td>Guarantor</td><td>A person who consents to cover a Flex borrower's obligation up to a stated, capped amount.</td></tr>
+      <tr><td>Premium seller</td><td>Derived status from an active paid subscription; unlocks contact buttons, analytics, banner and ranking.</td></tr>
+      <tr><td>Promotion</td><td>A one-off paid visibility package for a single listing: TOP 7, TOP 30 or Boost Premium 28.</td></tr>
+      <tr><td>Boost Premium</td><td>Promotion tier that makes a listing eligible for the sponsored pool while it meets quality gates.</td></tr>
+      <tr><td>Ledger</td><td>Double-entry, append-only record of money movements; balanced at commit by a deferred trigger.</td></tr>
+      <tr><td>Seller payable</td><td>Ledger liability representing money owed to a seller after release, before disbursement.</td></tr>
+      <tr><td>Verify-before-trust</td><td>Server-to-server payment verification with exact amount/currency; webhooks are only triggers.</td></tr>
+      <tr><td>Idempotency</td><td>The property that retrying the same request has no additional effect.</td></tr>
+      <tr><td>Four-eyes</td><td>A second, different admin must approve a dispute refund.</td></tr>
+      <tr><td>NDPA</td><td>Nigeria Data Protection Act 2023.</td></tr>
+      <tr><td>FCCPC</td><td>Federal Competition and Consumer Protection Commission; regulates digital lending conduct.</td></tr>
+      <tr><td>CBN</td><td>Central Bank of Nigeria; licenses payment/escrow institutions.</td></tr>
+      <tr><td>PPR</td><td>Partial Prerendering (Next.js); static shell with streamed dynamic data.</td></tr>
+      <tr><td>FTS</td><td>PostgreSQL full-text search.</td></tr>
+      <tr><td>PgBouncer</td><td>Connection pooler used in front of Postgres at scale.</td></tr>
+      <tr><td>PITR</td><td>Point-in-time recovery for the database.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer-note">
+    Prepared from the Goods.ng repository and verified build state on 8 November 2026. This document is a planning and acceptance baseline, not legal advice. Licensed partner terms, regulatory interpretations and go-live dates must be confirmed by counsel and the relevant providers.
+  </div>
+</div>
+
+</body>
+</html>

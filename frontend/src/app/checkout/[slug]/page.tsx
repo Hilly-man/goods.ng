@@ -101,7 +101,7 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
         {p.bnpl_enabled && (
           <div className="card grid grid-cols-2 gap-1 p-1">
             <button type="button" onClick={() => setFlex(false)} className={clsx("rounded-lg p-3 text-sm font-semibold", !flex ? "bg-brand-700 text-white" : "text-muted")}><ShieldCheck className="mr-1 inline size-4" />Pay in full</button>
-            <button type="button" onClick={() => setFlex(true)} className={clsx("rounded-lg p-3 text-sm font-semibold", flex ? "bg-violet-700 text-white" : "text-muted")}><CalendarClock className="mr-1 inline size-4" />Goods Flex</button>
+            <button type="button" onClick={() => setFlex(true)} className={clsx("rounded-lg p-3 text-sm font-semibold", flex ? "bg-brand-700 text-white" : "text-muted")}><CalendarClock className="mr-1 inline size-4" />Goods Flex</button>
           </div>
         )}
         <section className="card p-4 sm:p-5">
@@ -144,7 +144,7 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
                 <Link href="/flex" className="underline">Set up Goods Flex</Link>
               </Alert>
             ) : flexLimit !== null ? (
-              <div className="mt-3 flex items-center justify-between rounded-xl bg-violet-50 p-3 text-sm text-violet-900">
+              <div className="mt-3 flex items-center justify-between rounded-xl bg-accent-500/20 p-3 text-sm text-brand-900">
                 <span>Your Goods Flex limit</span>
                 <span className="font-bold">{naira(flexStatus!.credit_limit)}</span>
               </div>
@@ -157,7 +157,7 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
             )}
             <div className="mt-3 grid grid-cols-2 gap-2">
               {options.map((o) => (
-                <button type="button" key={o.tenor_months} onClick={() => setTenor(o.tenor_months)} className={clsx("rounded-xl border p-3 text-left", tenor === o.tenor_months ? "border-violet-600 bg-violet-50" : "border-line")}>
+                <button type="button" key={o.tenor_months} onClick={() => setTenor(o.tenor_months)} className={clsx("rounded-xl border p-3 text-left", tenor === o.tenor_months ? "border-brand-600 bg-brand-50" : "border-line")}>
                   <span className="block text-sm font-semibold">{o.tenor_months} months</span>
                   <span className="block text-lg font-bold">{naira(o.monthly_installment)}<span className="text-xs font-normal text-muted">/mo</span></span>
                   <span className="text-xs text-muted">after {naira(o.down_payment)} today</span>
@@ -190,7 +190,7 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
               <div className="flex justify-between"><dt>Delivery</dt><dd>{Number(quote.delivery_fee) ? naira(quote.delivery_fee) : "Free"}</dd></div>
               <div className="flex justify-between"><dt>Buyer protection fee</dt><dd>{naira(quote.protection_fee)}</dd></div>
               <div className="flex justify-between border-t border-line pt-2 text-base font-bold"><dt>Total</dt><dd>{naira(quote.total)}</dd></div>
-              {flex && option && <div className="flex justify-between rounded-lg bg-violet-50 p-2 font-semibold text-violet-900"><dt>Due today (down payment)</dt><dd>{naira(option.down_payment)}</dd></div>}
+              {flex && option && <div className="flex justify-between rounded-lg bg-accent-500/20 p-2 font-semibold text-brand-900"><dt>Due today (down payment)</dt><dd>{naira(option.down_payment)}</dd></div>}
             </dl>
           )}
           {err && <Alert tone="bad" className="mt-3">{err}</Alert>}

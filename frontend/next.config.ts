@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
-const API = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
+const rawApi = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
+// Render can inject a private "host:port" value; Next needs an absolute URL for rewrites.
+const API = (/^https?:\/\//i.test(rawApi) ? rawApi : `http://${rawApi}`).replace(/\/+$/, "");
 const isDev = process.env.NODE_ENV !== "production";
 
 // Nonce-based CSP is incompatible with PPR/Cache Components, so we use a header policy with

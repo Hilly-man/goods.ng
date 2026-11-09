@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Goods.ng — PRD, TAD &amp; FRD</title>
+<style>
+  :root{
+    --forest:#18251D; --forest-2:#22352A; --forest-3:#2E4636;
+    --mint:#B7FF73; --mint-2:#D3FFA3; --accent:#3F6B1A;
+    --ink:#1B1F1C; --muted:#5C6B60; --line:#DCE5D8; --bg:#F7FAF4;
+    --amber:#92400E; --amber-bg:#FEF3C7; --red:#991B1B; --red-bg:#FEE2E2;
+    --green:#166534; --green-bg:#DCFCE7; --grey:#374151; --grey-bg:#E5E7EB;
+  }
+  @page { size: A4; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    color:var(--ink); font-size:10pt; line-height:1.48; }
+  p{ margin:0 0 6px; }
+  strong{ color:var(--forest); }
+  a{ color:var(--accent); text-decoration:none; }
+  ul,ol{ margin:4px 0 8px 18px; padding:0; }
+  li{ margin:2px 0; }
+  h1,h2,h3,h4{ color:var(--forest); line-height:1.2; margin:0; page-break-after:avoid; }
+  h1{ font-size:26pt; letter-spacing:-0.4px; }
+  h2{ font-size:16pt; margin:14px 0 6px; padding-bottom:4px; border-bottom:2px solid var(--mint); }
+  h3{ font-size:12pt; margin:12px 0 4px; }
+  h4{ font-size:10.5pt; margin:9px 0 3px; }
+  .eyebrow{ font-size:8.5pt; font-weight:700; letter-spacing:1.6px; text-transform:uppercase; color:var(--accent); }
+  .muted{ color:var(--muted); }
+  .small{ font-size:8.6pt; }
+  .nowrap{ white-space:nowrap; }
+  .cover{ height:255mm; background:var(--forest); color:#fff; border-radius:10px;
+    padding:22mm 18mm; position:relative; overflow:hidden; page-break-after:always; }
+  .cover .glow{ position:absolute; width:150mm; height:150mm; border-radius:50%;
+    background:radial-gradient(circle, rgba(183,255,115,.28) 0%, rgba(183,255,115,0) 68%);
+    right:-40mm; top:-35mm; }
+  .cover .glow2{ position:absolute; width:110mm; height:110mm; border-radius:50%;
+    background:radial-gradient(circle, rgba(183,255,115,.14) 0%, rgba(183,255,115,0) 70%);
+    left:-35mm; bottom:-30mm; }
+  .cover .brand{ font-size:13pt; font-weight:800; letter-spacing:2px; color:var(--mint); position:relative; }
+  .cover .tagline{ font-size:9pt; color:#C9D6C9; margin-top:2px; position:relative; }
+  .cover h1{ color:#fff; font-size:31pt; margin:34mm 0 6mm; position:relative; }
+  .cover .sub{ font-size:13pt; color:#DCE8DA; max-width:135mm; position:relative; }
+  .cover .rule{ height:3px; width:42mm; background:var(--mint); margin:9mm 0; position:relative; }
+  .cover .meta{ position:relative; margin-top:22mm; display:flex; gap:8mm; flex-wrap:wrap; }
+  .cover .meta div{ min-width:38mm; }
+  .cover .meta .k{ font-size:7.5pt; letter-spacing:1.2px; text-transform:uppercase; color:#9FB39F; }
+  .cover .meta .v{ font-size:10pt; color:#fff; font-weight:600; margin-top:2px; }
+  .cover .footer{ position:absolute; left:18mm; right:18mm; bottom:14mm; font-size:7.6pt; color:#9FB39F;
+    display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,.16); padding-top:4mm; }
+  .part-cover{ page-break-before:always; background:var(--forest); color:#fff; border-radius:8px;
+    padding:30mm 16mm; min-height:232mm; position:relative; }
+  .part-cover .n{ font-size:9pt; letter-spacing:2px; text-transform:uppercase; color:var(--mint); }
+  .part-cover h1{ color:#fff; font-size:30pt; margin:8mm 0 5mm; }
+  .part-cover p{ color:#D7E3D5; font-size:11.5pt; max-width:140mm; }
+  .part-cover .rule{ height:3px; width:38mm; background:var(--mint); margin:8mm 0; }
+  .part-cover .toc{ margin-top:12mm; columns:2; column-gap:12mm; color:#E8F2E6; font-size:9.4pt; }
+  .part-cover .toc div{ break-inside:avoid; padding:2px 0; border-bottom:1px solid rgba(255,255,255,.09); }
+  table{ width:100%; border-collapse:collapse; font-size:8.5pt; margin:5px 0 10px; page-break-inside:auto; }
+  thead{ display:table-header-group; }
+  tr{ page-break-inside:avoid; }
+  th{ background:var(--forest); color:#fff; text-align:left; padding:5px 6px; font-weight:600; font-size:8.2pt; }
+  td{ padding:4px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tbody tr:nth-child(even) td{ background:#F4F8F0; }
+  td.num, th.num{ text-align:right; white-space:nowrap; }
+  .tight td, .tight th{ padding:3px 5px; }
+  .b{ display:inline-block; padding:1px 6px; border-radius:9px; font-size:7.4pt; font-weight:700;
+      letter-spacing:.2px; white-space:nowrap; }
+  .live{ background:var(--green-bg); color:var(--green); }
+  .config{ background:var(--amber-bg); color:var(--amber); }
+  .mock{ background:var(--red-bg); color:var(--red); }
+  .build{ background:var(--grey-bg); color:var(--grey); }
+  .opt{ background:#E0F2FE; color:#075985; }
+  .callout{ border-left:4px solid var(--accent); background:#F3F8EE; padding:8px 10px; margin:8px 0;
+    border-radius:0 5px 5px 0; font-size:9pt; page-break-inside:avoid; }
+  .callout.warn{ border-left-color:#B45309; background:#FFFBEB; }
+  .callout.risk{ border-left-color:#B91C1C; background:#FEF2F2; }
+  .callout .t{ font-weight:700; color:var(--forest); margin-bottom:2px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:6mm; }
+  .card{ border:1px solid var(--line); border-radius:6px; padding:8px 10px; background:#fff; page-break-inside:avoid; }
+  .card h4{ margin-top:0; }
+  .kpi{ display:flex; gap:4mm; flex-wrap:wrap; margin:6px 0; }
+  .kpi .box{ flex:1 1 28%; border:1px solid var(--line); border-radius:6px; padding:7px 9px; background:#fff; }
+  .kpi .v{ font-size:16pt; font-weight:800; color:var(--forest); }
+  .kpi .l{ font-size:7.8pt; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; }
+  .toc-page{ page-break-after:always; }
+  .toc-page h2{ margin-top:0; }
+  .toc-list{ columns:2; column-gap:12mm; font-size:9pt; }
+  .toc-list div{ padding:2.2px 0; border-bottom:1px dotted #CFDACB; break-inside:avoid; }
+  .toc-list .lvl{ font-weight:700; color:var(--forest); margin-top:5px; border-bottom:none; }
+  .toc-list .sub{ padding-left:9px; color:var(--muted); }
+  .page-break{ page-break-before:always; }
+  .avoid{ page-break-inside:avoid; }
+  .diagram{ background:var(--forest); color:#E9F4E5; border-radius:6px; padding:10px 12px;
+    font-family:"SFMono-Regular",Consolas,Menlo,monospace; font-size:7.8pt; line-height:1.5;
+    white-space:pre; overflow:hidden; page-break-inside:avoid; }
+  .doc-meta td{ border-bottom:1px solid var(--line); }
+  .doc-meta td:first-child{ width:34mm; color:var(--muted); font-weight:600; }
+  .req{ font-family:"SFMono-Regular",Consolas,Menlo,monospace; font-size:8pt; color:var(--accent); white-space:nowrap; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="glow"></div><div class="glow2"></div>
+  <div class="brand">GOODS.NG</div>
+  <div class="tagline">Buy. Sell. Trade with Confidence.</div>
+  <h1>Product, Architecture &amp; Functional Requirements</h1>
+  <div class="rule"></div>
+  <div class="sub">A single go-live documentation set for the Goods.ng marketplace: Product Requirements Document (PRD), Technical Architecture Document (TAD), and Functional Requirements Document (FRD).</div>
+  <div class="meta">
+    <div><div class="k">Version</div><div class="v">1.0</div></div>
+    <div><div class="k">Date</div><div class="v">8 November 2026</div></div>
+    <div><div class="k">Status</div><div class="v">Go-live planning baseline</div></div>
+    <div><div class="k">Market</div><div class="v">Nigeria · NGN</div></div>
+  </div>
+  <div class="footer">
+    <span>Confidential — internal product &amp; engineering document</span>
+    <span>goods.ng</span>
+  </div>
+</div>
+
+<div style="page-break-after:always">
+  <div class="eyebrow">Document control</div>
+  <h2>About this document</h2>
+  <p>This document consolidates three deliverables that are normally maintained separately. They are bound together because the launch decision depends on all three: what the product must do (PRD), how the system is built and operated (TAD), and the testable behaviour expected of each feature (FRD). The appendix contains the integration go-live checklist.</p>
+  <table class="doc-meta tight">
+    <tbody>
+      <tr><td>Product</td><td>Goods.ng — multi-vendor marketplace for Nigeria</td></tr>
+      <tr><td>Owner</td><td>Product &amp; Engineering, Goods.ng</td></tr>
+      <tr><td>Audience</td><td>Founders, product, engineering, QA, security, operations, compliance, and integration partners</td></tr>
+      <tr><td>Source of truth</td><td>Repository <span class="req">docs/</span>, application code, migrations and automated tests as of 8 November 2026</td></tr>
+      <tr><td>Verification baseline</td><td>205 backend tests, 5 frontend unit tests, 6 Playwright E2E scenarios, ruff/eslint/tsc clean, production build passing</td></tr>
+      <tr><td>Change control</td><td>Any change to scope, architecture or an external provider requires a version bump and a launch-gate review</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Status vocabulary used throughout</h3>
+  <table class="tight">
+    <thead><tr><th style="width:22mm">Badge</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><span class="b live">LIVE</span></td><td>Implemented in code and covered by automated tests; runs against mock or local infrastructure in development.</td></tr>
+      <tr><td><span class="b config">CONFIG</span></td><td>Implemented, but production requires credentials, a commercial account, DNS, or a provider dashboard step before it is live.</td></tr>
+      <tr><td><span class="b mock">MOCK</span></td><td>Only a mock adapter exists. A licensed partner adapter and contract are required before live use.</td></tr>
+      <tr><td><span class="b build">NOT BUILT</span></td><td>No implementation yet; required or recommended for launch.</td></tr>
+      <tr><td><span class="b opt">OPTIONAL</span></td><td>Not required for first launch; planned for growth or scale.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <div class="t">Important launch caveat</div>
+    Goods.ng does not hold customer funds. Protected Checkout and Goods Flex currently run against <strong>mock escrow and mock lending partners</strong>. Production boot explicitly refuses mock financial providers. The product must not be described as holding funds or lending until licensed partner adapters are signed, implemented and certified.
+  </div>
+</div>
+
+<div class="toc-page">
+  <h2>Contents</h2>
+  <div class="toc-list">
+    <div class="lvl">Part I — Product Requirements Document</div>
+    <div class="sub">1. Purpose and scope</div>
+    <div class="sub">2. Executive summary</div>
+    <div class="sub">3. Vision, mission and goals</div>
+    <div class="sub">4. Market context and problem</div>
+    <div class="sub">5. Personas</div>
+    <div class="sub">6. Product scope</div>
+    <div class="sub">7. Value proposition</div>
+    <div class="sub">8. Business model</div>
+    <div class="sub">9. Key user journeys</div>
+    <div class="sub">10. Functional epics and priorities</div>
+    <div class="sub">11. Success metrics and launch gates</div>
+    <div class="sub">12. Assumptions, dependencies and risks</div>
+    <div class="sub">13. Roadmap</div>
+    <div class="sub">14. Compliance and legal</div>
+
+    <div class="lvl">Part II — Technical Architecture Document</div>
+    <div class="sub">1. Principles</div>
+    <div class="sub">2. System context</div>
+    <div class="sub">3. Technology stack</div>
+    <div class="sub">4. Deployment topology</div>
+    <div class="sub">5. Backend architecture</div>
+    <div class="sub">6. Data architecture</div>
+    <div class="sub">7. API architecture</div>
+    <div class="sub">8. Identity and access</div>
+    <div class="sub">9. Payments, escrow and ledger</div>
+    <div class="sub">10. Goods Flex</div>
+    <div class="sub">11. Search and discovery</div>
+    <div class="sub">12. Messaging and negotiation</div>
+    <div class="sub">13. Frontend architecture</div>
+    <div class="sub">14. Media pipeline</div>
+    <div class="sub">15. Background processing</div>
+    <div class="sub">16. Caching and performance</div>
+    <div class="sub">17. Security architecture</div>
+    <div class="sub">18. Observability and operations</div>
+    <div class="sub">19. Integration architecture and go-live readiness</div>
+    <div class="sub">20. Scalability plan</div>
+    <div class="sub">21. Architecture decisions</div>
+    <div class="sub">22. Technical risks</div>
+
+    <div class="lvl">Part III — Functional Requirements Document</div>
+    <div class="sub">1. Conventions and actors</div>
+    <div class="sub">2. Authentication and accounts</div>
+    <div class="sub">3. Sellers and verification</div>
+    <div class="sub">4. Catalog and listings</div>
+    <div class="sub">5. Search and discovery</div>
+    <div class="sub">6. Messaging and negotiation</div>
+    <div class="sub">7. Payments and protected checkout</div>
+    <div class="sub">8. Orders, delivery, disputes and refunds</div>
+    <div class="sub">9. Goods Flex</div>
+    <div class="sub">10. Reviews, notifications and trust</div>
+    <div class="sub">11. Subscriptions and promotions</div>
+    <div class="sub">12. Ads, feeds and analytics</div>
+    <div class="sub">13. Administration</div>
+    <div class="sub">14. State machines</div>
+    <div class="sub">15. Non-functional requirements</div>
+    <div class="sub">16. Integration requirements</div>
+    <div class="sub">17. Acceptance scenarios</div>
+
+    <div class="lvl">Appendix</div>
+    <div class="sub">A. Integration go-live checklist</div>
+    <div class="sub">B. Environment variables</div>
+    <div class="sub">C. Glossary</div>
+  </div>
+</div>

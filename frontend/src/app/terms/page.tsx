@@ -1,7 +1,20 @@
 import type { Metadata } from "next";
 import { ProsePage } from "@/components/prose";
+import { ogImageUrl, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Terms & Conditions", alternates: { canonical: "/terms" } };
+export const metadata: Metadata = pageMetadata({
+  title: "Terms & Conditions",
+  description:
+    "The rules for using the Goods.ng marketplace, including accounts, listings, payments, disputes and prohibited items.",
+  path: "/terms",
+  image: ogImageUrl({
+    eyebrow: "Legal",
+    title: "Terms & Conditions",
+    subtitle: "The rules for using the Goods.ng marketplace.",
+    badge: "Legal",
+  }),
+  keywords: ["Goods.ng terms", "marketplace terms Nigeria", "user agreement", "seller terms"],
+});
 
 export default function Page() {
   return (

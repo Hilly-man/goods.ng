@@ -10,6 +10,9 @@ os.environ["CAPTCHA_PROVIDER"] = "off"
 os.environ["RATE_LIMIT_MULTIPLIER"] = "1"
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://localhost/goodsng_test")
 os.environ["LOCAL_MEDIA_DIR"] = "/tmp/goodsng-test-media"
+# Keep the test cache isolated from a developer's running Redis (shared category/feed keys would
+# otherwise leak test-database data into the dev app, and vice versa).
+os.environ["REDIS_URL"] = ""
 os.environ["RATE_LIMIT_PER_MINUTE"] = "100000"
 
 import pytest  # noqa: E402

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Goods.ng — 60-second promo kit</title>
+<style>
+  :root{
+    --bg:#18251D; --bg2:#0B120E; --panel:#1D2C23; --mint:#B7FF73; --mint2:#D3FFA3;
+    --white:#F4F7F4; --muted:#A4B7A9; --line:rgba(183,255,115,.18); --ink:#0F1611;
+    --font:"Avenir Next","Helvetica Neue",Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;color:var(--white);font-family:var(--font);
+    background:radial-gradient(120% 110% at 15% 0%,#2A4232 0%,#18251D 45%,#0B120E 100%);
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 20px 64px}
+  a{color:inherit}
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:48px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-.03em}
+  .brand svg{width:32px;height:32px}
+  .brand .ng{color:var(--mint)}
+  .kicker{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mint);font-weight:700}
+  h1{font-size:clamp(30px,5vw,54px);line-height:1.02;letter-spacing:-.04em;margin:8px 0 10px;font-weight:800}
+  .sub{color:var(--muted);font-size:clamp(15px,2vw,18px);line-height:1.5;max-width:640px;margin:0}
+  .grid{display:grid;grid-template-columns:1.45fr 1fr;gap:22px;margin-top:38px;align-items:start}
+  .card{background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015));
+    border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:14px}
+  .card .label{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 4px 0}
+  .card .label b{font-size:15px}
+  .card .label span{font-size:12px;color:var(--muted)}
+  video{width:100%;display:block;border-radius:12px;background:#000;aspect-ratio:16/9}
+  video.vertical{aspect-ratio:9/16;max-height:560px;object-fit:contain}
+  .btns{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:11px 18px;
+    font-weight:700;font-size:14px;text-decoration:none;transition:transform .12s ease,opacity .12s ease}
+  .btn:hover{transform:translateY(-1px)}
+  .primary{background:var(--mint);color:var(--ink)}
+  .ghost{border:1px solid rgba(255,255,255,.16);color:var(--white);background:rgba(255,255,255,.04)}
+  .btn svg{width:16px;height:16px}
+  .notes{margin-top:36px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .note{border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:14px 16px;background:rgba(255,255,255,.03)}
+  .note b{display:block;font-size:13px;margin-bottom:4px}
+  .note span{font-size:12.5px;color:var(--muted);line-height:1.45}
+  footer{margin-top:44px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    color:var(--muted);font-size:12.5px}
+  @media (max-width:860px){
+    .grid{grid-template-columns:1fr}
+    .notes{grid-template-columns:1fr}
+    video.vertical{max-height:640px;margin:0 auto}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M16 2 4 6.5v8.2C4 22.4 9.2 28.6 16 30c6.8-1.4 12-7.6 12-15.3V6.5L16 2Z" fill="#B7FF73"/>
+        <path d="m10.5 16.2 3.6 3.6 7.6-7.6" fill="none" stroke="#18251D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Goods<span class="ng">.ng</span>
+    </div>
+    <span class="kicker">Marketing kit</span>
+  </header>
+
+  <p class="kicker">60-second promo</p>
+  <h1>Buy. Sell. Trade with <span style="color:var(--mint)">Confidence.</span></h1>
+  <p class="sub">One film, two formats, with a custom background soundtrack and no voiceover. Cut for YouTube and web in 16:9, and for Reels, TikTok and Stories in 9:16. 1080p, 30 fps, 59.8 seconds.</p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="label"><b>Landscape · 16:9</b><span>1920 × 1080 · MP4 · 6.0 MB</span></div>
+      <video controls preload="metadata" poster="poster-16x9.jpg">
+        <source src="goodsng-promo-16x9.mp4" type="video/mp4" />
+      </video>
+      <div class="btns">
+        <a class="btn primary" href="goodsng-promo-16x9.mp4" download>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Download 16:9
+        </a>
+        <a class="btn ghost" href="goodsng-promo-16x9-voiceover.mp4" download>Voiceover version</a>
+      </div>
+      <p class="sub" style="font-size:13px">Best for YouTube, website hero, presentations and landscape ad placements.</p>
+    </div>
+
+    <div class="card">
+      <div class="label"><b>Vertical · 9:16</b><span>1080 × 1920 · MP4 · 7.3 MB</span></div>
+      <video class="vertical" controls preload="metadata" poster="poster-9x16.jpg">
+        <source src="goodsng-promo-9x16.mp4" type="video/mp4" />
+      </video>
+      <div class="btns">
+        <a class="btn primary" href="goodsng-promo-9x16.mp4" download>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Download 9:16
+        </a>
+        <a class="btn ghost" href="goodsng-promo-9x16-voiceover.mp4" download>Voiceover version</a>
+      </div>
+      <p class="sub" style="font-size:13px">Best for Instagram Reels, TikTok, YouTube Shorts, Status and Stories.</p>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><b>Background music only</b><span>Custom 60-second soundtrack with scene-synced transitions. No narration — add captions, subtitles or a local-language VO.</span></div>
+    <div class="note"><b>Brand colours</b><span>Forest Graphite #18251D and Acid Mint #B7FF73, matching the current site theme.</span></div>
+    <div class="note"><b>Feature story</b><span>One marketplace · chat and negotiate · Protected Checkout · Goods Flex · verified sellers.</span></div>
+  </div>
+
+  <footer>
+    <span>Goods.ng — Buy. Sell. Trade with Confidence.</span>
+    <span>Files are served locally from this app at /promo/.</span>
+  </footer>
+</div>
+</body>
+</html>

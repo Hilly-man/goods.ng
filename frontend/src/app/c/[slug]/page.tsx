@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ChevronRight } from "lucide-react";
 import { NotFoundError, serverGet } from "@/lib/server-api";
+import { SITE_URL, ogImageUrl, pageMetadata, truncate } from "@/lib/seo";
 import { ListingResults, ResultsSkeleton, type SP } from "@/components/listing-results";
 
 type Cat = {
@@ -25,11 +26,61 @@ async function getCategory(slug: string) {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const c = await getCategory(slug);
-  return {
+  const description = c.description
+    ? truncate(c.description, 155)
+    : `Buy and sell ${c.name.toLowerCase()} on Goods.ng. Compare prices, chat with verified sellers and pay safely with Protected Checkout.`;
+  return pageMetadata({
     title: `${c.name} for sale in Nigeria`,
-    description: `Buy and sell ${c.name.toLowerCase()} on Goods.ng. Compare prices, chat with verified sellers and pay safely with Protected Checkout.`,
-    alternates: { canonical: `/c/${c.slug}` },
+    description,
+    path: `/c/${c.slug}`,
+    image: ogImageUrl({
+      eyebrow: c.parent?.name ?? "Category",
+      title: c.name,
+      subtitle: "Compare prices, chat with verified sellers and pay safely with Protected Checkout.",
+      badge: "Shop safely",
+    }),
+    keywords: [
+      c.name,
+      `${c.name} Nigeria`,
+      `buy ${c.name} in Nigeria`,
+      `sell ${c.name} in Nigeria`,
+      ...(c.parent ? [c.parent.name] : []),
+      "Goods.ng",
+    ],
+  });
+}
+
+function CategoryJsonLd({ c }: { c: Cat }) {
+  const url = `${SITE_URL}/c/${c.slug}`;
+  const description = c.description ?? `Buy and sell ${c.name.toLowerCase()} on Goods.ng.`;
+  const crumbs = [
+    { name: "Home", item: SITE_URL },
+    ...(c.parent ? [{ name: c.parent.name, item: `${SITE_URL}/c/${c.parent.slug}` }] : []),
+    { name: c.name, item: url },
+  ];
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `${c.name} for sale in Nigeria`,
+    description,
+    url,
+    isPartOf: { "@type": "WebSite", name: "Goods.ng", url: SITE_URL },
+    breadcrumb: {
+      "@type": "BreadcrumbList",
+      itemListElement: crumbs.map((crumb, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: crumb.name,
+        item: crumb.item,
+      })),
+    },
   };
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
+    />
+  );
 }
 
 async function Content({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<SP> }) {
@@ -37,6 +88,7 @@ async function Content({ params, searchParams }: { params: Promise<{ slug: strin
   const c = await getCategory(slug);
   return (
     <>
+      <CategoryJsonLd c={c} />
       <TrackSignal kind="view" category_slug={c.slug} query={typeof sp.q === "string" ? sp.q : undefined} />
       <nav aria-label="Breadcrumb" className="mb-2 flex items-center gap-1 text-xs text-muted">
         <Link href="/" className="hover:text-brand-700">Home</Link>

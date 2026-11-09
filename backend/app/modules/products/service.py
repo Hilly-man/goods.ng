@@ -16,7 +16,7 @@ from app.core.security import clean_text
 from app.core.time import utcnow
 from app.integrations.storage import delete_stored_image
 from app.models import Category, Favourite, PlatformSetting, Product, ProductImage, ProductView, SellerProfile
-from app.models.enums import ProductStatus, VerificationLevel
+from app.models.enums import ProductCondition, ProductStatus, VerificationLevel
 from app.modules.categories.router import descendant_ids
 from app.modules.locations import canonical_city
 from app.modules.products.schemas import (
@@ -32,6 +32,109 @@ from app.modules.products.schemas import (
 from app.modules.subscriptions.premium import premium_exists_for, premium_seller_ids
 
 MAX_IMAGES = 10
+
+# ---------------- title suggestions ----------------
+
+_CONDITION_WORDS = {
+    ProductCondition.BRAND_NEW: "Brand New",
+    ProductCondition.FOREIGN_USED: "Foreign Used",
+    ProductCondition.NIGERIAN_USED: "Nigerian Used",
+    ProductCondition.REFURBISHED: "Refurbished",
+}
+_COLORS = [
+    "Natural Titanium", "Deep Purple", "Space Black", "Sierra Blue", "Pacific Blue", "Midnight",
+    "Starlight", "Graphite", "Product Red", "Rose Gold", "Space Grey", "Space Gray",
+    "Black", "White", "Silver", "Gold", "Grey", "Gray", "Blue", "Navy", "Red", "Green",
+    "Purple", "Pink", "Yellow", "Orange", "Brown", "Beige", "Cream", "Maroon", "Teal",
+]
+
+
+def _clip_title(text: str, limit: int = 140) -> str:
+    text = " ".join(text.split()).strip(" ,—-")
+    if len(text) <= limit:
+        return text
+    cut = text[:limit].rsplit(" ", 1)[0].rstrip(" ,—-")
+    return cut + "…"
+
+
+def _detected_specs(text: str) -> tuple[str | None, list[str]]:
+    """Pull the details buyers actually search for out of the free-text description."""
+    year = re.search(r"\b(19[5-9]\d|20[0-4]\d)\b", text)
+    storage = re.search(r"\b(\d{2,4})\s*(GB|TB)\b", text, re.I)
+    color = next((c for c in _COLORS if re.search(rf"\b{re.escape(c)}\b", text, re.I)), None)
+    size = re.search(r'\b(\d{2,3})\s?(?:inch|inches|")\b', text, re.I)
+    extras = []
+    if storage:
+        extras.append(f"{storage.group(1)}{storage.group(2).upper()}")
+    if color:
+        extras.append(color)
+    if size:
+        extras.append(f"{size.group(1)}-inch")
+    return (year.group(1) if year else None), extras
+
+
+def suggest_titles(*, brand: str | None = None, model: str | None = None,
+                   condition: ProductCondition | str | None = None, description: str | None = None,
+                   current_title: str | None = None, category_name: str | None = None) -> list[str]:
+    """Deterministic, keyword-rich titles built from the listing details.
+
+    No third-party AI: brand, model, condition, category and specs already typed by the seller are
+    enough to produce titles that match how buyers search. The seller can pick one or keep their own.
+    """
+    brand = " ".join((brand or "").split())
+    model = " ".join((model or "").split())
+    desc = " ".join((description or "").split())
+    current = " ".join((current_title or "").split())
+    category = " ".join((category_name or "").split())
+
+    try:
+        cond = ProductCondition(condition) if condition else None
+    except ValueError:
+        cond = None
+    cond_word = _CONDITION_WORDS.get(cond, "") if cond else ""
+
+    year, extras = _detected_specs(" ".join([current, model, desc]))
+
+    def build(parts: list[str]) -> str:
+        seen = ""
+        out = []
+        for part in parts:
+            part = part.strip()
+            if not part:
+                continue
+            if part.lower() in seen.lower():
+                continue
+            out.append(part)
+            seen += " " + part
+        return _clip_title(" ".join(out))
+
+    base = [model] if model else []
+    if brand and (not model or not model.lower().startswith(brand.lower())):
+        base = [brand, *base]
+    if not base and current:
+        base = [current]
+
+    start = [year] if year else []
+    cond_tail = [f"— {cond_word}"] if cond_word else []
+    cond_cat = [f"— {cond_word} {category}"] if (cond_word and category) else (
+        cond_tail + ([category] if category else []))
+    candidates = [
+        build(start + base + extras + cond_tail),
+        build(base + start + extras + cond_cat),
+        build(([cond_word] if cond_word else []) + start + base + extras
+              + ([category] if category and category.lower() not in " ".join(base + extras).lower() else [])),
+        build(([category] if category else []) + base + cond_tail),
+    ]
+
+    out: list[str] = []
+    for title in candidates:
+        if len(title) < 8:
+            continue
+        if title.lower() not in {t.lower() for t in out}:
+            out.append(title)
+        if len(out) == 3:
+            break
+    return out
 
 
 # ---------------- serialisation ----------------
@@ -50,14 +153,32 @@ def _card_kwargs(p: Product, premium: bool, fav: bool) -> dict:
     return dict(
         id=p.id, slug=p.slug, title=p.title, price=p.price, currency=p.currency, negotiable=p.negotiable,
         condition=p.condition, state=p.state, city=p.city, thumb_url=first.thumb_url if first else None,
-        image_count=len(p.images), is_featured=_featured_now(p), created_at=p.created_at,
+        image_count=len(p.images), is_featured=_featured_now(p), promoted_tier=_promotion_tier_now(p),
+        created_at=p.created_at,
         seller=seller_card(p.seller, premium), category=CategoryRef(id=p.category.id, name=p.category.name, slug=p.category.slug),
         protected_checkout_enabled=p.protected_checkout_enabled, bnpl_enabled=p.bnpl_enabled, is_favourite=fav,
+        # Masonry cards (Jiji-style): the photo's real shape sets the card height, plus a short description.
+        image_width=first.width if first else None, image_height=first.height if first else None,
+        snippet=_snippet(p.description),
     )
+
+
+def _snippet(text: str | None, limit: int = 110) -> str | None:
+    t = " ".join((text or "").split())
+    if not t:
+        return None
+    return t if len(t) <= limit else t[: limit - 1].rsplit(" ", 1)[0] + "…"
 
 
 def _featured_now(p: Product) -> bool:
     return bool(p.is_featured and (p.featured_until is None or p.featured_until > utcnow()))
+
+
+def _promotion_tier_now(p: Product) -> str | None:
+    """Paid per-listing tier, only while the paid window is still running."""
+    if not _featured_now(p):
+        return None
+    return p.promoted_tier
 
 
 def favourite_ids(db: Session, user_id, product_ids) -> set:
@@ -76,7 +197,7 @@ def to_cards(db: Session, products: list[Product], user_id=None, cls=ProductCard
         if cls is SellerProductRow:
             kw.update(status=p.status, quantity=p.quantity, views_count=p.views_count, enquiries_count=p.enquiries_count,
                       contact_clicks=p.contact_clicks, favourites_count=p.favourites_count,
-                      rejection_reason=p.rejection_reason)
+                      rejection_reason=p.rejection_reason, promoted_until=p.featured_until)
         out.append(cls(**kw))
     return out
 

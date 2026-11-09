@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ImagePlus, Plus, Trash2, X } from "lucide-react";
+import { ImagePlus, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { http, errorMessage, ApiError } from "@/lib/api";
 import { CONDITION_LABEL, toMoneyString } from "@/lib/format";
 import { StateCitySelect } from "./state-city-select";
@@ -28,6 +28,8 @@ export function ProductForm({ existing }: { existing?: SellerProductDetail }) {
   const [errs, setErrs] = useState<Record<string, string>>({});
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [titleIdeas, setTitleIdeas] = useState<string[]>([]);
+  const [titleBusy, setTitleBusy] = useState(false);
 
   useEffect(() => { http.get<Category[]>("/categories").then(setCats); }, []);
   const rootCat = cats.find((c) => c.id === root);
@@ -38,6 +40,27 @@ export function ProductForm({ existing }: { existing?: SellerProductDetail }) {
     const ok = Array.from(list).filter((x) => /^image\/(jpeg|png|webp)$/.test(x.type) && x.size <= 8 * 1024 * 1024);
     if (ok.length < list.length) toast("Some files were skipped (JPEG/PNG/WebP up to 8MB only)", "bad");
     setFiles((cur) => [...cur, ...ok].slice(0, MAX_IMAGES - images.length));
+  }
+
+  async function autoTitle() {
+    setTitleBusy(true);
+    try {
+      const r = await http.post<{ suggestions: string[] }>("/seller/products/title-suggestions", {
+        category_id: f.category_id || undefined,
+        brand: f.brand || undefined,
+        model: f.model || undefined,
+        condition: f.condition,
+        description: f.description || undefined,
+        title: f.title || undefined,
+      });
+      setTitleIdeas(r.suggestions);
+      if (!f.title.trim() && r.suggestions[0]) setF((prev) => ({ ...prev, title: r.suggestions[0] }));
+      if (!r.suggestions.length) toast("Add a brand, model or description first", "bad");
+    } catch (e) {
+      toast(errorMessage(e), "bad");
+    } finally {
+      setTitleBusy(false);
+    }
   }
 
   async function submit(e: React.FormEvent) {
@@ -110,7 +133,27 @@ export function ProductForm({ existing }: { existing?: SellerProductDetail }) {
         <p className="text-xs text-muted">Up to {MAX_IMAGES} photos. Clear, well-lit photos sell faster. Photos are compressed for fast loading.</p>
       </section>
       <section className="card grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
-        <div className="sm:col-span-2"><Input label="Title" required maxLength={140} placeholder="e.g. iPhone 13 Pro 256GB — UK Used" value={f.title} onChange={set("title")} error={errs.title} /></div>
+        <div className="sm:col-span-2">
+          <Input label="Title" required maxLength={140} placeholder="e.g. iPhone 13 Pro 256GB — UK Used" value={f.title} onChange={set("title")} error={errs.title} />
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <button type="button" onClick={autoTitle} disabled={titleBusy}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline disabled:opacity-60">
+              <Sparkles className="size-3.5" />{titleBusy ? "Creating title…" : "Auto-create title from details"}
+            </button>
+            <span className="text-xs text-muted">We use your brand, model, condition and description.</span>
+          </div>
+          {titleIdeas.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {titleIdeas.map((t) => (
+                <button type="button" key={t} title="Use this title"
+                  onClick={() => { setF((prev) => ({ ...prev, title: t })); setTitleIdeas([]); }}
+                  className="max-w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-left text-xs text-ink transition hover:border-brand-600 hover:text-brand-700">
+                  {t}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <Select label="Category" required value={root} error={errs.category_id} onChange={(e) => {
           const next = cats.find((c) => c.id === e.target.value);
           setRoot(e.target.value);

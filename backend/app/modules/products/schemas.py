@@ -129,6 +129,7 @@ class ProductCard(BaseModel):
     thumb_url: str | None
     image_count: int
     is_featured: bool
+    promoted_tier: str | None = None
     created_at: datetime
     seller: SellerCard
     category: CategoryRef
@@ -136,6 +137,9 @@ class ProductCard(BaseModel):
     bnpl_enabled: bool
     is_favourite: bool = False
     sponsored: bool = False  # paid placement — the UI must label it "Sponsored"
+    image_width: int | None = None
+    image_height: int | None = None
+    snippet: str | None = None
 
 
 class ProductDetail(ProductCard):
@@ -162,6 +166,7 @@ class SellerProductRow(ProductCard):
     contact_clicks: int
     favourites_count: int
     rejection_reason: str | None
+    promoted_until: datetime | None = None
 
 
 class SellerProductDetail(ProductDetail):

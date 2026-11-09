@@ -2,13 +2,13 @@ import uuid
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from app.core.cache import check_rate_limit
+from app.core.cache import cache, check_rate_limit
 from app.core.deps import DB, CurrentSeller, CurrentUser, OptionalUser, client_ip
 from app.core.errors import AppError
 from app.integrations.storage import store_image
-from app.models import Favourite, Product
+from app.models import Category, Favourite, Product
 from app.models.enums import ProductCondition
 from app.modules.ads import service as ads
 from app.modules.common import Page, PageParams, paginate
@@ -78,6 +78,37 @@ class SearchFilters:
                            posted_within=posted_within, seller_id=seller_id)
 
 
+def _search_page(db, user_id, values: dict, sort: str, params) -> dict:
+    page = paginate(db, service.search(db, sort=sort, **values), params)
+    organic = page["items"]
+    sponsored = []
+    # Sponsored slots: only when ranking by relevance/newest, never when sorting by price, browsing one store,
+    # or already filtering to Premium sellers. They always match the buyer's filters.
+    if sort in ("relevance", "newest") and not values.get("seller_id") and not values.get("premium_only"):
+        sponsored = ads.pick(db, service.filter_conditions(db, values))
+        promoted = {p.id for p in sponsored}
+        organic = [p for p in organic if p.id not in promoted]  # shown once, in its labelled slot
+    blended = ads.blend(organic, sponsored, params.page_size) if sponsored else [(p, False) for p in organic]
+    cards = service.to_cards(db, [p for p, _ in blended], user_id)
+    for card, (_, is_sponsored) in zip(cards, blended, strict=True):
+        card.sponsored = is_sponsored
+    page["items"] = cards
+    return page
+
+
+def _search_cache_key(values: dict, sort: str, params) -> str:
+    parts = []
+    for k in sorted(values):
+        v = values[k]
+        if v is None or (isinstance(v, bool) and not v) or v == "" or (isinstance(v, (list, tuple)) and not v):
+            continue
+        if isinstance(v, (list, tuple)):
+            v = ",".join(str(x) for x in v)
+        parts.append(f"{k}={v}")
+    parts += [f"sort={sort}", f"page={params.page}", f"size={params.page_size}"]
+    return "search:" + "|".join(parts)
+
+
 @router.get("/products", response_model=Page[ProductCard])
 def search_products(
     db: DB,
@@ -86,22 +117,16 @@ def search_products(
     sort: str = Query("relevance", pattern="^(relevance|newest|price_asc|price_desc)$"),
     params: PageParams = Depends(),
 ):
-    page = paginate(db, service.search(db, sort=sort, **filters.values), params)
-    organic = page["items"]
-    sponsored = []
-    f = filters.values
-    # Sponsored slots: only when ranking by relevance/newest, never when sorting by price, browsing one store,
-    # or already filtering to Premium sellers. They always match the buyer's filters.
-    if sort in ("relevance", "newest") and not f.get("seller_id") and not f.get("premium_only"):
-        sponsored = ads.pick(db, service.filter_conditions(db, f))
-        promoted = {p.id for p in sponsored}
-        organic = [p for p in organic if p.id not in promoted]  # shown once, in its labelled slot
-    blended = ads.blend(organic, sponsored, params.page_size) if sponsored else [(p, False) for p in organic]
-    cards = service.to_cards(db, [p for p, _ in blended], user.id if user else None)
-    for card, (_, is_sponsored) in zip(cards, blended, strict=True):
-        card.sponsored = is_sponsored
-    page["items"] = cards
-    return page
+    # Signed-in results depend on per-user favourites, so only the anonymous path is shared.
+    if user is not None:
+        return _search_page(db, user.id, filters.values, sort, params)
+
+    def build() -> dict:
+        page = _search_page(db, None, filters.values, sort, params)
+        page["items"] = [c.model_dump(mode="json") for c in page["items"]]
+        return page
+
+    return cache.get_or_compute(_search_cache_key(filters.values, sort, params), 15, build)
 
 
 @router.get("/products/facets")
@@ -142,6 +167,29 @@ def product_similar(slug: str, db: DB, user: OptionalUser):
 
 
 # ---------------- seller listing management ----------------
+class TitleSuggestIn(BaseModel):
+    category_id: uuid.UUID | None = None
+    brand: str | None = Field(None, max_length=80)
+    model: str | None = Field(None, max_length=80)
+    condition: ProductCondition | None = None
+    description: str | None = Field(None, max_length=8000)
+    title: str | None = Field(None, max_length=140)
+
+
+@router.post("/seller/products/title-suggestions")
+def title_suggestions(data: TitleSuggestIn, seller: CurrentSeller, db: DB):
+    """Keyword-rich title ideas built from the details the seller already entered."""
+    check_rate_limit(f"title-suggest:{seller.id}", 120, 3600)
+    category = db.get(Category, data.category_id) if data.category_id else None
+    if data.category_id and not category:
+        raise AppError("Category not found", status_code=404, code="not_found")
+    return {"suggestions": service.suggest_titles(
+        brand=data.brand, model=data.model, condition=data.condition,
+        description=data.description, current_title=data.title,
+        category_name=category.name if category else None,
+    )}
+
+
 @router.get("/seller/products", response_model=Page[SellerProductRow])
 def my_products(seller: CurrentSeller, db: DB, status: str | None = None, q: str | None = None,
                 params: PageParams = Depends()):
@@ -192,8 +240,7 @@ async def upload_images(product_id: uuid.UUID, seller: CurrentSeller, db: DB, fi
         raise AppError(f"Upload at most {service.MAX_IMAGES} photos at once")
     # Check before writing files, so rejected uploads don't consume storage.
     service.ensure_image_capacity(db, seller, len(files))
-    mark = f"“{seller.store_name}” Listed on Goods.ng"
-    stored = [store_image(await f.read(), f"products/{product_id}", watermark=mark) for f in files]
+    stored = [store_image(await f.read(), f"products/{product_id}", watermark=seller.store_name) for f in files]
     service.add_images(db, seller, product_id, stored)
     return owner_detail(db, service.get_owned(db, seller, product_id))
 

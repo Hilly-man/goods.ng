@@ -6,14 +6,16 @@ Last updated: 5 November 2026.
 
 | Check | Result |
 |---|---|
-| Backend tests (pytest, real PostgreSQL) | **187 passed** |
+| Backend tests (pytest, real PostgreSQL) | **205 passed** |
 | Frontend unit tests (vitest) | **5 passed** |
 | E2E (Playwright, mobile viewport, production build) | **6 passed**: redesigned product page; full protected purchase lifecycle; negotiation → checkout at agreed price; direct-contact warning gate; mandatory-guarantor and one-running-plan rules; TOTP 2FA login challenge |
 | Security controls | TOTP 2FA with recovery codes and replay protection · trusted-proxy IP resolution · CSP and HSTS headers |
 | Lint / types | ruff clean · eslint 0 errors · tsc clean |
 | Production build | `next build` succeeds (static and partially prerendered routes) |
 | Migrations | upgrade and downgrade round-trip clean |
+| Auto-title suggestions | Deterministic titles from brand, model, condition and category, with storage/colour/year/size detected from the description; feeds the weight-A search field |
 | Load smoke test (single dev worker, 20 concurrent) | home feed ~300 req/s, p95 ~220 ms; search ~240 req/s, p95 ~125 ms; 0 errors |
+| k6 realistic mix (`backend/perf/load.js`, single dev worker) | 120 VUs: 0 errors, p95 41 ms · 400 VUs: 182 req/s, p95 553 ms, 0 errors · 800 VUs: plateau ~182 req/s, p95 ~1.9 s (one worker saturates) |
 
 ## Stages
 
@@ -22,9 +24,9 @@ Last updated: 5 November 2026.
 | 1–3 | Requirements, architecture, project setup | Done |
 | 4 | Database (46 tables, constraints, partial unique indexes, integrity triggers) | Done |
 | 5 | Authentication (JWT + rotating refresh, OTP, lockout, reset) | Done |
-| 6 | Marketplace (categories, listings, watermarked WebP images, full-text search, filters, favourites) | Done |
+| 6 | Marketplace (categories, listings, watermarked WebP images, full-text search, filters, favourites, keyword-rich auto-title suggestions) | Done |
 | 7 | Seller management (profiles, dashboard, analytics, verification) | Done |
-| 8 | Premium subscriptions (plans, paid activation, featured credits, admin grants) | Done |
+| 8 | Premium subscriptions (plans, paid activation, featured credits, admin grants) and per-listing paid promotions (TOP / Boost Premium) | Done |
 | 9 | Messaging (product-linked chats, read receipts, unread counts, reports) | Done — polling, not WebSockets |
 | 10 | Negotiation (offers, counters, expiry, concurrency, agreed-price checkout) | Done |
 | 11 | Payments abstraction (mock, Paystack, Flutterwave adapters) | Done — **Paystack/Flutterwave not yet exercised against sandbox** |
@@ -58,4 +60,4 @@ Last updated: 5 November 2026.
 7. Seller payout and bank-account management UI, once the escrow partner's payout API is known.
 8. Logistics provider integrations (the delivery model already has carrier, tracking URL and updates).
 9. WebSocket or SSE messaging if polling load becomes significant.
-10. Paid promotions: the `Promotion` model and admin feature exist, and sellers use plan credits today; a pay-per-boost checkout is not built.
+10. Paid promotions: per-listing TOP (7 or 30 days) and Boost Premium (28 days) packages are live with one-off checkout and automatic expiry — no subscription required. Prices can be overridden via the `promotion_packages` platform setting.

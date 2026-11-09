@@ -10,13 +10,13 @@ from sqlalchemy import text
 from app.core.cache import cache, check_rate_limit
 from app.core.config import settings
 from app.core.db import engine
-from app.core.deps import client_ip
+from app.core.deps import client_ip, rate_limit_identity
 from app.core.errors import AppError, register_exception_handlers
 from app.core.logging import RequestContextMiddleware, configure_logging
 
 ROUTERS = [
     "auth", "users", "sellers", "categories", "products", "subscriptions", "messaging", "negotiation",
-    "payments", "orders", "bnpl", "reviews", "notifications", "admin", "staff", "stats", "recommendations", "ads", "marketing",
+    "payments", "orders", "promotions", "bnpl", "reviews", "notifications", "admin", "staff", "stats", "recommendations", "ads", "marketing",
 ]
 
 
@@ -46,7 +46,13 @@ def create_app() -> FastAPI:
     async def security_headers_and_throttle(request: Request, call_next):
         if request.url.path.startswith(settings.api_prefix) and not request.url.path.endswith("/webhook"):
             try:
-                check_rate_limit(f"api:{client_ip(request)}", settings.rate_limit_per_minute, 60)
+                identity = rate_limit_identity(request)
+                check_rate_limit(f"api:{identity}", settings.rate_limit_per_minute, 60)
+                if not identity.startswith("ip:"):
+                    # Coarse shared-IP ceiling: rotating X-Anon-Id must not bypass throttling,
+                    # but a busy carrier NAT may legitimately host many users.
+                    check_rate_limit(f"api-ip:{client_ip(request)}",
+                                     settings.rate_limit_per_minute * settings.rate_limit_ip_multiplier, 60)
             except AppError as e:
                 from fastapi.responses import JSONResponse
 

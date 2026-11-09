@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:3000"]
 
     database_url: str = "postgresql+psycopg://localhost/goodsng_dev"
+    # Per-process pool. Total connections = (pool_size + max_overflow) x workers x replicas,
+    # so tune these against the database's max_connections (or PgBouncer's pool size).
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    db_pool_timeout: int = 30
     db_statement_timeout_ms: int = 15000
     # Production must use an encrypted DB connection (sslmode=require/verify-full in DATABASE_URL).
     # Only set false for a private network where TLS is terminated elsewhere.
@@ -101,6 +106,9 @@ class Settings(BaseSettings):
     auto_release_days: int = 3
 
     rate_limit_per_minute: int = 240
+    # Coarse ceiling per public IP, as a multiple of the per-user/device limit. Keeps a client
+    # from dodging limits by rotating its anonymous id, while still allowing shared carrier NAT.
+    rate_limit_ip_multiplier: int = 20
     rate_limit_multiplier: int = 1  # dev/test only (e.g. 50 for E2E runs); must be 1 in staging/production
 
     # Only trust X-Forwarded-For when the direct peer is one of these CIDRs (your load balancer).
@@ -115,6 +123,22 @@ class Settings(BaseSettings):
     def split_origins(cls, v):
         if isinstance(v, str) and not v.startswith("["):
             return [o.strip() for o in v.split(",") if o.strip()]
+        return v
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, v):
+        """Accept the URL shapes used by managed platforms (Render, Heroku, Railway).
+
+        SQLAlchemy defaults a bare ``postgresql://`` URL to psycopg2, which this project does
+        not install. Normalise it to the psycopg (v3) driver so a platform-provided
+        connection string works without a manual edit.
+        """
+        if isinstance(v, str):
+            if v.startswith("postgres://"):
+                return "postgresql+psycopg://" + v[len("postgres://"):]
+            if v.startswith("postgresql://"):
+                return "postgresql+psycopg://" + v[len("postgresql://"):]
         return v
 
     @property

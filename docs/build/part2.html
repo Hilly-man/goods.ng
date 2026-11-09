@@ -1,0 +1,376 @@
+<div class="part-cover">
+  <div class="n">Part II</div>
+  <h1>Technical Architecture Document</h1>
+  <div class="rule"></div>
+  <p>How the system is structured, deployed, secured and operated, and the exact state of every external integration required for go-live.</p>
+  <div class="toc">
+    <div>1. Principles</div><div>2. System context</div>
+    <div>3. Technology stack</div><div>4. Deployment topology</div>
+    <div>5. Backend architecture</div><div>6. Data architecture</div>
+    <div>7. API architecture</div><div>8. Identity and access</div>
+    <div>9. Payments and escrow</div><div>10. Goods Flex</div>
+    <div>11. Search</div><div>12. Messaging and negotiation</div>
+    <div>13. Frontend</div><div>14. Media pipeline</div>
+    <div>15. Background processing</div><div>16. Caching and performance</div>
+    <div>17. Security</div><div>18. Observability</div>
+    <div>19. Integrations and go-live</div><div>20. Scalability</div>
+    <div>21. Decisions</div><div>22. Technical risks</div>
+  </div>
+</div>
+
+<div>
+  <h2>1. Architecture principles</h2>
+  <ol>
+    <li><strong>Modular monolith first.</strong> One deployable API with clear module boundaries and a single database. Scale the process horizontally before splitting services.</li>
+    <li><strong>Provider interfaces at every regulated or external boundary.</strong> Payments, escrow, lending, open banking, identity, storage, SMS and email are behind Protocols so a partner can be replaced without touching domain logic.</li>
+    <li><strong>Verify before trust.</strong> A payment is real only after a server-to-server verification with an exact amount and currency match. Webhooks trigger verification; redirects and screenshots never do.</li>
+    <li><strong>The database is the source of truth.</strong> Financial invariants are enforced by constraints, row locks, unique keys and triggers, not only by application code.</li>
+    <li><strong>Idempotency everywhere.</strong> Checkout, webhooks, settlement, refunds, promotions and BNPL payments can be retried safely.</li>
+    <li><strong>Same-origin API.</strong> The browser talks only to the Next.js origin, which proxies <span class="req">/api/v1</span> and <span class="req">/media</span> to the backend. This keeps the refresh cookie first-party and removes CORS from the production path.</li>
+    <li><strong>Operate what you build.</strong> Structured logs, request IDs, health checks, reconciliation and audit trails are part of the feature, not an afterthought.</li>
+  </ol>
+
+  <h2>2. System context</h2>
+  <div class="diagram"> Browser (mobile-first, SEO public pages)
+   │  same-origin /api/v1/* and /media/*
+   ▼
+ Next.js 16 (Vercel)  ── rewrite ──▶  FastAPI (stateless, N pods)
+   │  SSR / PPR public pages            /api/v1 REST · JWT + RBAC
+   │  client dashboards                 modules/* domain services
+   ▼                                          │            │
+ PostgreSQL 15+ (source of truth) ◀───────────┘            │
+ Redis (cache, rate limits, single-flight) ◀───────────────┘
+   ▲
+ Worker (python -m app.worker): outbox, expiry, auto-release, reminders, feeds, CAPI
+
+ External, behind interfaces:
+   PaymentProvider (mock | Paystack | Flutterwave)
+   EscrowProvider (mock only today)
+   FinancingProvider (mock only today)
+   BankDataProvider (mock | Mono, untested)
+   IdentityProvider (mock only today)
+   Object storage (local | S3-compatible)
+   SMS (console | Termii) · Email (console | SMTP | Postmark)
+   Google OAuth · reCAPTCHA/Turnstile · Meta CAPI</div>
+
+  <h2>3. Technology stack</h2>
+  <table>
+    <thead><tr><th style="width:30mm">Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Frontend</td><td>Next.js 16.4 (App Router, Cache Components/PPR), React 19.3, TypeScript 5, Tailwind 4</td><td>System fonts, streaming SSR, client dashboards on a central API client.</td></tr>
+      <tr><td>Backend</td><td>Python 3.12, FastAPI, Pydantic 2, SQLAlchemy 2, Alembic</td><td>185 REST endpoints, 20 modules, OpenAPI only in dev/test.</td></tr>
+      <tr><td>Database</td><td>PostgreSQL 15+</td><td>54 tables, full-text search, partial unique indexes, append-only triggers, deferred balance check.</td></tr>
+      <tr><td>Cache / limits</td><td>Redis 5+</td><td>Required in production. In-memory fallback in development. Rate limits and single-flight locks.</td></tr>
+      <tr><td>Worker</td><td>Same image, <span class="req">python -m app.worker</span></td><td>Postgres advisory locks make multiple replicas safe.</td></tr>
+      <tr><td>Storage</td><td>Local (dev) or S3-compatible + CDN</td><td>Pillow decode, WebP re-encode, watermark, private KYC prefix.</td></tr>
+      <tr><td>Tests</td><td>pytest, Vitest, Playwright, ruff, eslint, tsc</td><td>205 backend, 5 unit, 6 E2E; CI runs migrations round-trip and build.</td></tr>
+      <tr><td>Deploy</td><td>Vercel (frontend) + container platform (API/worker) + managed Postgres/Redis</td><td>Dockerfiles and Compose exist; not yet deployed.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4. Deployment topology</h2>
+  <table>
+    <thead><tr><th style="width:32mm">Component</th><th>Production shape</th><th style="width:52mm">Scaling / resilience</th></tr></thead>
+    <tbody>
+      <tr><td>Frontend</td><td>Vercel, root <span class="req">frontend/</span>, <span class="req">pnpm build</span>; rewrites <span class="req">/api/v1</span> and <span class="req">/media</span> to the API.</td><td>CDN edge, static/PPR pages, per-request streaming for data.</td></tr>
+      <tr><td>API</td><td>Container image from <span class="req">backend/Dockerfile</span>, ≥ 2 instances behind HTTPS.</td><td>Stateless; horizontal scale. Pool: (10 + 20) × workers × replicas.</td></tr>
+      <tr><td>Worker</td><td>Same image, separate command, ≥ 1 replica.</td><td>Advisory locks prevent duplicate job execution; scale horizontally.</td></tr>
+      <tr><td>Database</td><td>Managed Postgres 15+, TLS, PITR, private network; PgBouncer (transaction pooling) as replicas grow.</td><td>Read replicas for browse/search before write saturation; 15 s statement timeout.</td></tr>
+      <tr><td>Redis</td><td>Managed Redis, private network.</td><td>Cache, rate limits, single-flight. Boot fails without it in production.</td></tr>
+      <tr><td>Storage</td><td>S3-compatible bucket, versioning, CDN for public media, no public access for <span class="req">private/</span>.</td><td>Signed URLs for KYC; lifecycle rules; cross-region replication for private data.</td></tr>
+      <tr><td>DNS</td><td>goods.ng, admin.goods.ng; SSL managed by the platform.</td><td>Admin host carries <span class="req">X-Robots-Tag: noindex</span>; optional edge IP allow-list.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout">
+    <div class="t">Connection budget</div>
+    Each API process opens up to <span class="req">DB_POOL_SIZE + DB_MAX_OVERFLOW</span> connections. Total = that × <span class="req">WEB_CONCURRENCY</span> × replicas. Size this against <span class="req">max_connections</span>, or put PgBouncer in front. This is the first thing to tune when adding pods.
+  </div>
+
+  <h2>5. Backend architecture</h2>
+  <p>The API is a modular monolith. Each module owns its router and business logic; cross-module coupling goes through service functions and the payment purpose registry. The payments module never imports orders, subscriptions or BNPL directly.</p>
+  <table>
+    <thead><tr><th style="width:30mm">Layer</th><th>Responsibility</th><th>Examples</th></tr></thead>
+    <tbody>
+      <tr><td><span class="req">core/</span></td><td>Config, DB session, security primitives, errors, JSON logging with request IDs, cache/rate limiter, auth/RBAC dependencies.</td><td>Argon2, JWT, Fernet, Redis, trusted proxy IP resolution.</td></tr>
+      <tr><td><span class="req">models/</span></td><td>SQLAlchemy mappings and constraints.</td><td>Users, sellers, catalog, messaging, commerce, ledger, misc.</td></tr>
+      <tr><td><span class="req">integrations/</span></td><td>External provider Protocols and adapters.</td><td>Payments, escrow, BNPL, bank data, identity, storage.</td></tr>
+      <tr><td><span class="req">modules/</span></td><td>Domain services, routers, state machines, policies.</td><td>auth, users, sellers, categories, products, subscriptions, messaging, negotiation, payments, orders, promotions, bnpl, reviews, notifications, admin, staff, stats, recommendations, ads, marketing.</td></tr>
+      <tr><td><span class="req">worker.py</span></td><td>Scheduled jobs with advisory locks.</td><td>Outbox, expiry, auto-release, subscription/promotion expiry, BNPL reminders, feed/CAPI, purge.</td></tr>
+    </tbody>
+  </table>
+  <h3>Payment purpose registry</h3>
+  <p>A single payment can satisfy different business purposes: an order, a subscription, a listing promotion, or a BNPL instalment. The payments module activates the correct handler on verified success. This keeps payment verification independent of the domain that initiated it.</p>
+  <table>
+    <thead><tr><th style="width:40mm">Purpose</th><th>Effect on verified success</th><th>Ledger posting</th></tr></thead>
+    <tbody>
+      <tr><td>Order / Protected Checkout</td><td>Confirm payment, fund escrow, reserve stock already held, move order to funds safeguarded.</td><td>Debit provider receipts / credit escrow obligations (via partner mirror).</td></tr>
+      <tr><td>Subscription</td><td>Activate plan, grant featured credits, set period.</td><td>Debit provider receipts / credit subscription revenue.</td></tr>
+      <tr><td>Promotion</td><td>Activate listing promotion, set tier/featured window.</td><td>Debit provider receipts / credit promotion revenue.</td></tr>
+      <tr><td>BNPL instalment</td><td>Mark instalment paid, update plan status, notify.</td><td>Recorded against the financing partner's position.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6. Data architecture</h2>
+  <p>54 tables in six domains. Money is <span class="req">Decimal</span> with at most two decimal places and is serialised as a string; it never touches floats. The database enforces the invariants that matter most.</p>
+  <table>
+    <thead><tr><th style="width:34mm">Domain</th><th>Core tables</th><th>Key guarantees</th></tr></thead>
+    <tbody>
+      <tr><td>Identity &amp; access</td><td>users, profiles, refresh_tokens, otp_codes, two_factor, admin roles/permissions, staff invitations, audit logs</td><td>Token rotation and reuse detection; append-only audit; granular RBAC.</td></tr>
+      <tr><td>Seller &amp; catalog</td><td>seller_profiles, verifications, categories, products, product_images, favourites, reports</td><td>One seller profile per user; slug uniqueness; image ownership; verification tiers.</td></tr>
+      <tr><td>Messaging &amp; negotiation</td><td>conversations, messages, read receipts, negotiations, offers</td><td>One live negotiation per buyer/product (partial unique index); stale-offer rejection.</td></tr>
+      <tr><td>Commerce</td><td>orders, order_items, payments, escrow_records, escrow_events, refunds, disputes, disputes_messages, reviews</td><td>Total = subtotal + delivery + protection; one active refund; append-only escrow events.</td></tr>
+      <tr><td>Growth</td><td>subscription_plans, subscriptions, promotions, platform_settings, ads/events, interest signals</td><td>Premium derived from an active period; promotion tier mirrors an active paid promotion.</td></tr>
+      <tr><td>Flex &amp; ledger</td><td>credit_profiles, bank_connections, credit_assessments, guarantors, applications, agreements, instalments, ledger_accounts, ledger_transactions, ledger_entries</td><td>One running plan; guarantor cap; immutable assessment snapshots; balanced ledger at commit.</td></tr>
+    </tbody>
+  </table>
+  <h3>Ledger design</h3>
+  <p>The ledger is double-entry and append-only. A deferred constraint trigger rejects any unbalanced transaction at commit. Database triggers block updates and deletes on ledger, escrow-event and audit tables.</p>
+  <table>
+    <thead><tr><th>Event</th><th>Debit</th><th>Credit</th></tr></thead>
+    <tbody>
+      <tr><td>Escrow funded</td><td><span class="req">asset:escrow_partner_holding</span></td><td><span class="req">liability:escrow_obligations</span></td></tr>
+      <tr><td>Released to seller</td><td><span class="req">liability:escrow_obligations</span></td><td><span class="req">liability:seller_payable:&lt;seller&gt;</span>, <span class="req">revenue:platform_commission</span>, <span class="req">revenue:protection_fees</span></td></tr>
+      <tr><td>Refunded</td><td><span class="req">liability:escrow_obligations</span></td><td><span class="req">asset:escrow_partner_holding</span></td></tr>
+      <tr><td>Subscription</td><td><span class="req">asset:provider_receipts</span></td><td><span class="req">revenue:subscriptions</span></td></tr>
+      <tr><td>Promotion</td><td><span class="req">asset:provider_receipts</span></td><td><span class="req">revenue:promotions</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2>7. API architecture</h2>
+  <ul class="small">
+    <li><strong>Style:</strong> REST under <span class="req">/api/v1</span>; JSON; 185 endpoints; OpenAPI in development/test only.</li>
+    <li><strong>Auth:</strong> Bearer access token (15 min) plus an httpOnly refresh cookie scoped to <span class="req">/api/v1/auth</span>; CSRF header on cookie-authenticated endpoints.</li>
+    <li><strong>Idempotency:</strong> <span class="req">Idempotency-Key</span> on checkout; unique <span class="req">(provider, event_key)</span> on webhooks; unique ledger keys on settlement.</li>
+    <li><strong>Errors:</strong> consistent <span class="req">{error:{code,message,details}}</span>; resource ownership failures return 404 to avoid existence leaks.</li>
+    <li><strong>Rate limits:</strong> per user/device and a coarse per-IP ceiling (20× by default) for carrier NAT; stricter per-action limits on login, OTP, offers, messages, uploads, checkout and Flex.</li>
+    <li><strong>Webhooks:</strong> <span class="req">POST /api/v1/payments/webhooks/{provider}/webhook</span>; signatures verified (Paystack HMAC-SHA512, Flutterwave <span class="req">verif-hash</span>); invalid signatures return 403; events de-duplicated.</li>
+    <li><strong>Health:</strong> <span class="req">/health</span> for liveness, <span class="req">/health/ready</span> checks the database and reports providers outside production.</li>
+  </ul>
+
+  <h2>8. Identity and access</h2>
+  <table>
+    <thead><tr><th style="width:34mm">Control</th><th>Implementation</th></tr></thead>
+    <tbody>
+      <tr><td>Passwords</td><td>Argon2id; automatic re-hash on login; 8+ characters with letters and digits; timing-safe login for unknown emails.</td></tr>
+      <tr><td>Access tokens</td><td>Short-lived JWT (15 min) kept in memory; algorithm pinned to HS256/384/512; per-user token version revokes all on password/role/status change.</td></tr>
+      <tr><td>Refresh tokens</td><td>Opaque, hashed at rest, rotated on every use; reuse revokes the family; httpOnly, SameSite=Lax, Secure outside development.</td></tr>
+      <tr><td>OTP</td><td>6 digits, HMAC-peppered, 10-minute TTL, 5 attempts, 3 sends/10 min and 10/day per number.</td></tr>
+      <tr><td>2FA</td><td>TOTP with single-use recovery codes and replay protection; required for admins in production; staff cannot use Google sign-in.</td></tr>
+      <tr><td>Captcha</td><td>reCAPTCHA v2 or Turnstile, enforced before the password check for new devices (24 h) or after 3 wrong passwords.</td></tr>
+      <tr><td>Google sign-in</td><td>OIDC web flow; mock consent in development; hidden in production when credentials are absent.</td></tr>
+      <tr><td>RBAC</td><td>Granular admin permissions; only super admins change roles; every admin route has a permission dependency; audit log is append-only.</td></tr>
+      <tr><td>Proxy trust</td><td><span class="req">X-Forwarded-For</span> ignored unless the peer is in <span class="req">TRUSTED_PROXY_CIDRS</span>; chain walked right-to-left.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>9. Payments, escrow and ledger</h2>
+  <p>Goods.ng does not hold funds. A licensed escrow/payment partner holds them; Goods.ng instructs release or refund based on the order state machine. The ledger mirrors the partner's position.</p>
+  <div class="diagram">pending_payment ─▶ payment_confirmed ─▶ funds_safeguarded ─▶ awaiting_seller ─▶ processing ─▶ dispatched
+      │                                                            │                │              │
+      ▼                                                            ▼                ▼              ▼
+  cancelled                                              refund_pending ◀── (decline/cancel)   delivered
+                                                               │                               │
+                                                               ▼                               ▼
+                                                           refunded       completed ◀─ awaiting_buyer_confirmation
+                                                                              ▲                │
+                                                       disputed ──────────────┘ (admin)        │ (auto-release after N days)</div>
+  <ul class="small">
+    <li><strong>Verify before trust:</strong> server-to-server verify with exact amount and currency; webhook signature; redirects never trusted.</li>
+    <li><strong>No double settlement:</strong> state machine + row locks + unique <span class="req">escrow:&lt;id&gt;:settle</span> ledger key; a five-thread concurrency test asserts one settlement.</li>
+    <li><strong>Server-side pricing:</strong> totals from the listing or an accepted negotiation owned by the buyer; DB check constraint on the total.</li>
+    <li><strong>Stock:</strong> reserved atomically at checkout; restored on unpaid expiry or pre-dispatch refund; late payment honoured if stock remains, otherwise auto-refunded.</li>
+    <li><strong>Refunds:</strong> automatic pre-dispatch for cancellation/decline; dispute refunds need a second, different admin; one active refund per order.</li>
+    <li><strong>Reconciliation:</strong> <span class="req">/admin/reconciliation</span> cross-checks payments, escrow states and ledger postings.</li>
+  </ul>
+
+  <h2>10. Goods Flex</h2>
+  <p>Flex is a credit product, not a wallet. Before applying, the customer builds a credit profile: verified phone → BVN (Fernet-encrypted, keyed fingerprint to prevent reuse) → read-only bank connection → mandatory guarantor consent → optional workplace verification. Without a guarantor, the limit is zero and no application can start.</p>
+  <table>
+    <thead><tr><th style="width:34mm">Step</th><th>Rule</th></tr></thead>
+    <tbody>
+      <tr><td>Bank assessment</td><td>Six months of transactions; salary detection or 70% of median eligible inflow; deduct existing repayments; risk factor from volatility, missing months, betting share and failed debits.</td></tr>
+      <tr><td>Limit</td><td><span class="req">min(statement limit, verification-tier cap, repayment-history cap, lender maximum)</span>; zero without phone + BVN + bank + consented guarantor.</td></tr>
+      <tr><td>Guarantor</td><td>Sees borrower, relationship, amount and expiry; explicit consent; consent time, IP and BVN reference recorded; amount caps the limit; at most 3 active guarantees per person; withdrawal drops the limit to zero.</td></tr>
+      <tr><td>Decision</td><td>Partner decision stored with reference; offer terms stored verbatim; buyer explicitly accepts.</td></tr>
+      <tr><td>One plan</td><td>Only one of approved/accepted/active/defaulted at a time, enforced in the service under a row lock and by a partial unique index.</td></tr>
+      <tr><td>Funds</td><td>Down payment via the payment layer; partner disburses; order funded through the same escrow path; refund cancels the agreement.</td></tr>
+      <tr><td>Repayment</td><td>Instalments via the payment layer; worker marks overdue and reminds; defaulted plans can still be paid off.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>11. Search and discovery</h2>
+  <ul class="small">
+    <li><strong>Engine:</strong> PostgreSQL full-text search; generated weighted <span class="req">tsvector</span> (title A, brand/model B, description C) with a GIN index and prefix matching (<span class="req">iph</span> matches iPhone).</li>
+    <li><strong>Ranking:</strong> featured first, then premium sellers, then text rank, then recency.</li>
+    <li><strong>Filters/facets:</strong> state, category, price, condition, brand, BNPL, delivery, verification; counts computed for the current result set.</li>
+    <li><strong>Sponsored:</strong> premium sellers and Boost Premium listings enter a quality-gated sponsored pool; TOP promotes a single listing.</li>
+    <li><strong>Seam:</strong> <span class="req">products.service.search()</span> is the single place to swap in a dedicated engine later.</li>
+    <li><strong>Recommendations:</strong> interest signals and a "for you" feed; purge job keeps signal tables bounded.</li>
+  </ul>
+
+  <h2>12. Messaging and negotiation</h2>
+  <table>
+    <thead><tr><th style="width:34mm">Area</th><th>Behaviour</th></tr></thead>
+    <tbody>
+      <tr><td>Conversations</td><td>Product-linked; one thread per buyer/seller/product context; read receipts and unread counts; 5-second polling while visible, paused when hidden.</td></tr>
+      <tr><td>Safety</td><td>Direct-contact warning gate; message reporting; rate limits; HTML stripped.</td></tr>
+      <tr><td>Negotiation</td><td>One live negotiation per buyer/product; turn-taking; counter direction; minimum offer 10% of list; 48-hour offer expiry; 24-hour checkout after acceptance; 10-round cap.</td></tr>
+      <tr><td>Concurrency</td><td>Every response locks the negotiation row and must name the pending offer; stale/double clicks get <span class="req">409 stale_offer</span>.</td></tr>
+      <tr><td>Price integrity</td><td>The public listing price never changes; the accepted offer becomes the checkout price for that buyer only.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>13. Frontend architecture</h2>
+  <ul class="small">
+    <li><strong>Public pages</strong> (home, search, category, item, store, info) are server-rendered with streaming and PPR; static shells are prerendered; JSON-LD, canonical URLs, OG metadata, sitemap and robots are included.</li>
+    <li><strong>Dashboards</strong> (account, orders, messages, seller, admin) are client components on a central API client: in-memory access token, silent refresh through the httpOnly cookie with a CSRF header, one retry on 401.</li>
+    <li><strong>Performance:</strong> system fonts, backend WebP thumbnails (400 px) and full images (1280 px), lazy loading, skeletons, Redis-cached feeds, bottom navigation on phones.</li>
+    <li><strong>Admin host:</strong> <span class="req">frontend/src/proxy.ts</span> serves the console on <span class="req">admin.goods.ng</span>, redirects <span class="req">/admin/...</span>, and adds <span class="req">X-Robots-Tag: noindex</span>. Sessions are per host.</li>
+    <li><strong>Resilience:</strong> no client-side price trust, no direct provider secrets, and no analytics scripts before marketing consent.</li>
+  </ul>
+
+  <h2>14. Media pipeline</h2>
+  <ol class="small">
+    <li>Input capped at <span class="req">MAX_UPLOAD_MB</span> (8 MB) and 40 MP (decompression-bomb guard).</li>
+    <li>Decoded with Pillow; extension and MIME are not trusted.</li>
+    <li>Re-encoded to WebP: full at 1280 px, thumbnail at 400 px; EXIF/GPS and embedded payloads stripped.</li>
+    <li>Listing photos watermarked with the seller business name and Goods.ng.</li>
+    <li>Stored under random keys; public media to S3 + CDN; KYC documents to the private prefix with server-side encryption and short-lived signed URLs.</li>
+    <li>Per-seller cap <span class="req">MAX_IMAGES_PER_SELLER</span> (200); soft-deleted listings purged after 30 days.</li>
+  </ol>
+
+  <h2>15. Background processing</h2>
+  <table>
+    <thead><tr><th style="width:44mm">Job</th><th class="num" style="width:20mm">Interval</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><span class="req">outbox</span></td><td class="num">10 s</td><td>Drain queued email/SMS notifications.</td></tr>
+      <tr><td><span class="req">expire_unpaid_orders</span></td><td class="num">60 s</td><td>Expire unpaid orders, restore stock, re-check late payments with the provider.</td></tr>
+      <tr><td><span class="req">expire_negotiations</span></td><td class="num">60 s</td><td>Expire stale offers and accepted-offer checkout windows.</td></tr>
+      <tr><td><span class="req">auto_release_escrow</span></td><td class="num">300 s</td><td>Release funds after the buyer-confirmation window.</td></tr>
+      <tr><td><span class="req">expire_subscriptions</span></td><td class="num">300 s</td><td>Expire plans, clear promoted tiers and features.</td></tr>
+      <tr><td><span class="req">refresh_promotion_bumps</span></td><td class="num">3600 s</td><td>Refresh Boost Premium top placement.</td></tr>
+      <tr><td><span class="req">bnpl_reminders</span></td><td class="num">3600 s</td><td>Mark overdue instalments and send reminders.</td></tr>
+      <tr><td><span class="req">meta_capi_purchases</span></td><td class="num">300 s</td><td>Send consented purchase events to Meta Conversions API.</td></tr>
+      <tr><td><span class="req">purge_interest_signals</span></td><td class="num">86400 s</td><td>Keep recommendation signals bounded.</td></tr>
+      <tr><td><span class="req">purge_deleted_listings</span></td><td class="num">86400 s</td><td>Hard-delete listings and media after retention.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>16. Caching and performance</h2>
+  <ul class="small">
+    <li><strong>Cache:</strong> Redis with an in-memory development fallback; anonymous search cached for 15 s; public feeds cached; single-flight locks prevent stampedes.</li>
+    <li><strong>Rate limiting:</strong> per user/device and a coarse per-IP ceiling; hot paths use constant-time checks.</li>
+    <li><strong>Database:</strong> 15 s statement timeout, 60 s idle-in-transaction timeout, pooled connections, indexes for search and browse.</li>
+    <li><strong>Measurement:</strong> k6 realistic mix; single dev worker plateaus at ~182 req/s. Add workers/replicas and PgBouncer before that becomes the ceiling.</li>
+  </ul>
+  <table>
+    <thead><tr><th>Scenario</th><th class="num">Throughput</th><th class="num">p95</th><th class="num">Errors</th></tr></thead>
+    <tbody>
+      <tr><td>Home feed smoke (20 concurrent)</td><td class="num">~300 req/s</td><td class="num">~220 ms</td><td class="num">0</td></tr>
+      <tr><td>Search smoke (20 concurrent)</td><td class="num">~240 req/s</td><td class="num">~125 ms</td><td class="num">0</td></tr>
+      <tr><td>k6 mix, 120 VUs</td><td class="num">—</td><td class="num">41 ms</td><td class="num">0</td></tr>
+      <tr><td>k6 mix, 400 VUs</td><td class="num">182 req/s</td><td class="num">553 ms</td><td class="num">0</td></tr>
+      <tr><td>k6 mix, 800 VUs</td><td class="num">~182 req/s (plateau)</td><td class="num">~1.9 s</td><td class="num">0</td></tr>
+    </tbody>
+  </table>
+
+  <h2>17. Security architecture</h2>
+  <table>
+    <thead><tr><th style="width:36mm">Area</th><th>Control</th></tr></thead>
+    <tbody>
+      <tr><td>Transport &amp; headers</td><td>TLS everywhere; HSTS in staging/production; CSP, nosniff, frame DENY, referrer policy, Permissions-Policy, COOP; <span class="req">no-store</span> on auth/admin responses; no Server header in production.</td></tr>
+      <tr><td>Secrets</td><td>Secret manager only; production boot rejects dev defaults, short JWT secrets, http origins, missing Redis, local storage, mock financial providers, missing proxy CIDRs and admin 2FA off.</td></tr>
+      <tr><td>Input/output</td><td>Pydantic validation; HTML stripped with nh3; React escaping; JSON-LD escaped; user URLs restricted to http(s); parameterised queries only.</td></tr>
+      <tr><td>Files</td><td>Decode-and-re-encode; random keys; private KYC prefix; signed URLs; malware scanning still outstanding.</td></tr>
+      <tr><td>Financial</td><td>Append-only ledger/escrow/audit; balance check at commit; row locks; idempotency; four-eyes refunds; reconciliation.</td></tr>
+      <tr><td>Privacy</td><td>KYC identifiers encrypted; masked in API; admin reveal audited; marketing cookies gated; NDPA workflows partially outstanding.</td></tr>
+      <tr><td>Audit</td><td>Every staff sign-in/out/failure, 2FA failure, admin action, permission refusal and console page view; CSV export; immutable rows.</td></tr>
+      <tr><td>Outstanding</td><td>Malware scanning, licensed KYC provider, external pen test, DPO/data-subject workflow, NDPA record of processing.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>18. Observability and operations</h2>
+  <ul class="small">
+    <li><strong>Logs:</strong> structured JSON on stdout with <span class="req">request_id</span> on every line and in the <span class="req">x-request-id</span> response header; ship to a log platform.</li>
+    <li><strong>Health:</strong> <span class="req">/health</span> (liveness) and <span class="req">/health/ready</span> (DB, cache, providers outside production).</li>
+    <li><strong>Error tracking:</strong> Sentry SDK for FastAPI and Next.js is <strong>not wired yet</strong>; add DSNs via secrets and extend CSP allowlists.</li>
+    <li><strong>Alerting:</strong> 5xx rate, p95 latency, readiness failures, worker job failures, payment amount mismatch, invalid webhook signatures, non-empty reconciliation, overdue BNPL growth, guarantor limit spikes, provider errors, bank-connection drop.</li>
+    <li><strong>Backups:</strong> managed PITR 7–35 days plus encrypted daily logical dumps to a separate account/region; quarterly restore drill into staging and ledger reconciliation.</li>
+    <li><strong>Rollback:</strong> redeploy the previous immutable image tag; prefer forward database fixes; never blindly downgrade financial tables.</li>
+  </ul>
+
+  <h2>19. Integration architecture and go-live readiness</h2>
+  <p>This section is the architecture-level view of the integration gaps. Appendix A is the detailed checklist with owners and acceptance criteria.</p>
+  <table>
+    <thead><tr><th style="width:34mm">Integration</th><th>Interface / state today</th><th style="width:18mm">Go-live</th><th>What remains</th></tr></thead>
+    <tbody>
+      <tr><td>Escrow partner</td><td><span class="req">EscrowProvider</span>; mock only</td><td><span class="b mock">BLOCKER</span></td><td>Licensed contract; implement create_hold/release/refund; sandbox certification; payout API; webhooks; reconciliation.</td></tr>
+      <tr><td>Lending partner (Flex)</td><td><span class="req">FinancingProvider</span>; mock only</td><td><span class="b mock">BLOCKER</span></td><td>Licensed lender; decision/disbursement/repayment APIs; terms; FCCPC review; collections.</td></tr>
+      <tr><td>Payments</td><td>Paystack and Flutterwave adapters; mock active</td><td><span class="b config">REQUIRED</span></td><td>Sandbox → live certification; webhook secrets; settlement account; refunds; reconciliation.</td></tr>
+      <tr><td>Open banking</td><td>Mono adapter; mock active</td><td><span class="b config">REQUIRED</span></td><td>Mono sandbox test; Connect widget keys; production approval; connection webhooks.</td></tr>
+      <tr><td>KYC / BVN</td><td><span class="req">IdentityProvider</span>; mock only</td><td><span class="b mock">REQUIRED</span></td><td>Licensed provider adapter (Dojah/Prembly/Smile ID/Youverify); consent; encryption; webhook; manual fallback.</td></tr>
+      <tr><td>SMS</td><td>Termii adapter; console active</td><td><span class="b config">REQUIRED</span></td><td>Sender ID approval; templates; delivery reports; DND; sandbox OTP test.</td></tr>
+      <tr><td>Email</td><td>Postmark/SMTP adapters; console active</td><td><span class="b config">REQUIRED</span></td><td>Domain + SPF/DKIM/DMARC; templates; bounce/complaint handling; sandbox test.</td></tr>
+      <tr><td>Object storage / CDN</td><td>Local + S3 adapter; local active</td><td><span class="b config">REQUIRED</span></td><td>Bucket, IAM, CORS, CDN, lifecycle, versioning, private KYC prefix, signed URLs.</td></tr>
+      <tr><td>Captcha</td><td>reCAPTCHA/Turnstile; mock active</td><td><span class="b config">REQUIRED</span></td><td>Production keys and domains; CSP already allows providers.</td></tr>
+      <tr><td>Google OAuth</td><td>Implemented; mock in dev</td><td><span class="b config">CONFIG</span></td><td>OAuth client, consent screen, redirect URIs, publish app.</td></tr>
+      <tr><td>Redis</td><td>Optional in dev; required in prod</td><td><span class="b config">BLOCKER</span></td><td>Managed instance, private network, TLS, monitoring.</td></tr>
+      <tr><td>Sentry / observability</td><td>Not wired</td><td><span class="b build">REQUIRED</span></td><td>SDKs, DSNs, release tracking, alerts, on-call, log platform, uptime.</td></tr>
+      <tr><td>Deployment platform</td><td>Dockerfiles/Compose; not deployed</td><td><span class="b build">BLOCKER</span></td><td>Vercel, container platform, managed Postgres PITR, PgBouncer, DNS/SSL.</td></tr>
+      <tr><td>Seller payouts</td><td>Ledger only (<span class="req">seller_payable</span>)</td><td><span class="b build">REQUIRED</span></td><td>Partner payout API; bank account verification; payout scheduling; UI; reconciliation.</td></tr>
+      <tr><td>Logistics / tracking</td><td>Manual tracking fields</td><td><span class="b build">RECOMMENDED</span></td><td>At least one carrier; labels; tracking webhooks; delivery status mapping.</td></tr>
+      <tr><td>Malware scanning</td><td>Not implemented</td><td><span class="b build">REQUIRED</span></td><td>ClamAV/cloud scanner on upload; quarantine; KYC document handling.</td></tr>
+      <tr><td>Google Merchant / Ads</td><td>Feed endpoint implemented</td><td><span class="b config">GROWTH</span></td><td>Merchant Center, domain claim, scheduled fetch, Ads link, campaign.</td></tr>
+      <tr><td>Meta Pixel / Catalog / CAPI</td><td>Pixel events, feed and CAPI implemented</td><td><span class="b config">GROWTH</span></td><td>Business Manager, catalog, domain verification, pixel ID, CAPI token, campaign.</td></tr>
+      <tr><td>GA4 / Google Ads tags</td><td>Admin settings + consent gating</td><td><span class="b config">GROWTH</span></td><td>Property/tag IDs; conversion labels; consent-mode check.</td></tr>
+      <tr><td>Push notifications</td><td>Not implemented</td><td><span class="b opt">OPTIONAL</span></td><td>FCM/APNs, device tokens, preferences; needed for native apps.</td></tr>
+      <tr><td>WhatsApp Business API</td><td>Deep links only</td><td><span class="b opt">OPTIONAL</span></td><td>Cloud API, templates, opt-in, handoff to human agents.</td></tr>
+      <tr><td>Dedicated search</td><td>Postgres FTS</td><td><span class="b opt">SCALE</span></td><td>OpenSearch/Meilisearch behind <span class="req">service.search()</span>.</td></tr>
+      <tr><td>WebSockets / SSE</td><td>5-second polling</td><td><span class="b opt">SCALE</span></td><td>Replace polling if load or latency demands.</td></tr>
+      <tr><td>Fraud / risk scoring</td><td>Rules + verification only</td><td><span class="b opt">OPTIONAL</span></td><td>Vendor scoring, device fingerprint, velocity rules.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>20. Scalability plan</h2>
+  <ol class="small">
+    <li><strong>Horizontal API:</strong> add replicas; keep the app stateless; move sessions/tokens as already designed.</li>
+    <li><strong>Database:</strong> PgBouncer transaction pooling; read replicas for browse/search; partition large event tables if needed; then shard only as a last resort.</li>
+    <li><strong>Cache:</strong> increase Redis capacity; add per-entity cache invalidation; cache anonymous feeds and facets.</li>
+    <li><strong>Search:</strong> move to a dedicated engine when Postgres FTS p95 or query complexity becomes the bottleneck.</li>
+    <li><strong>Messaging:</strong> WebSockets/SSE or a managed pub/sub when polling at scale becomes expensive.</li>
+    <li><strong>Media:</strong> CDN offload, responsive variants, signed URLs; keep origin egress low.</li>
+    <li><strong>Worker:</strong> more replicas are safe; split jobs by queue if contention appears.</li>
+  </ol>
+
+  <h2>21. Architecture decisions</h2>
+  <table>
+    <thead><tr><th style="width:12mm">ADR</th><th>Decision</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td>001</td><td>Modular monolith, not microservices</td><td>Small team, shared transactions, fast iteration; module seams allow later extraction.</td></tr>
+      <tr><td>002</td><td>PostgreSQL as the only source of truth</td><td>Strong constraints, transactions, FTS and operational simplicity; ledger integrity is paramount.</td></tr>
+      <tr><td>003</td><td>Provider interfaces for regulated services</td><td>Partners change; the domain must not. Production refuses mocks.</td></tr>
+      <tr><td>004</td><td>Same-origin API via Next.js rewrite</td><td>First-party refresh cookie, no CORS, simpler CSP, better mobile reliability.</td></tr>
+      <tr><td>005</td><td>Double-entry ledger with DB triggers</td><td>Money correctness cannot depend on application discipline alone.</td></tr>
+      <tr><td>006</td><td>Verify-before-trust payments</td><td>Webhooks and redirects are signals, not proof.</td></tr>
+      <tr><td>007</td><td>Premium is derived, not stored</td><td>An active subscription period is the only truth; clients cannot self-grant.</td></tr>
+      <tr><td>008</td><td>Per-listing promotions separate from subscriptions</td><td>Lowers the barrier: a seller can buy visibility for one product without a plan.</td></tr>
+      <tr><td>009</td><td>Postgres FTS first</td><td>Sufficient at launch; one seam to replace later.</td></tr>
+      <tr><td>010</td><td>Polling messaging first</td><td>Simpler operations; WebSockets can replace without API changes.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>22. Technical risks</h2>
+  <table>
+    <thead><tr><th style="width:42mm">Risk</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Escrow/lending adapter surprises in sandbox</td><td>Contract-first adapter tests; certify in staging before production; keep mock for regression tests.</td></tr>
+      <tr><td>Webhook storms or missed events</td><td>Idempotency, de-duplication, buyer-return verification, expiry job re-check, alerting.</td></tr>
+      <tr><td>Database connection exhaustion</td><td>Pool math, PgBouncer, load tests, connection alerts.</td></tr>
+      <tr><td>Large-image abuse</td><td>Size and pixel caps, re-encode, per-seller quota, malware scan.</td></tr>
+      <tr><td>KYC data breach</td><td>Private storage, encryption, signed URLs, least privilege, audit, pen test.</td></tr>
+      <tr><td>Provider outage</td><td>Retries with backoff, status page, manual reconciliation, graceful buyer messaging.</td></tr>
+      <tr><td>Search relevance drift</td><td>Ranking tests, stable weights, search success metric.</td></tr>
+      <tr><td>Polling load at scale</td><td>Visibility-aware polling, backoff, then WebSockets/SSE.</td></tr>
+    </tbody>
+  </table>
+</div>

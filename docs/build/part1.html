@@ -1,0 +1,284 @@
+<div class="part-cover">
+  <div class="n">Part I</div>
+  <h1>Product Requirements Document</h1>
+  <div class="rule"></div>
+  <p>What Goods.ng is, who it serves, what is in the first release, how it makes money, and the measurable gates that must be met before launch.</p>
+  <div class="toc">
+    <div>1. Purpose and scope</div><div>2. Executive summary</div>
+    <div>3. Vision and goals</div><div>4. Market context</div>
+    <div>5. Personas</div><div>6. Product scope</div>
+    <div>7. Value proposition</div><div>8. Business model</div>
+    <div>9. Key journeys</div><div>10. Epics and priorities</div>
+    <div>11. Success metrics</div><div>12. Assumptions and risks</div>
+    <div>13. Roadmap</div><div>14. Compliance</div>
+  </div>
+</div>
+
+<div>
+  <h2>1. Purpose and scope</h2>
+  <p>This PRD defines the first production release of Goods.ng, a Nigeria-first, multi-vendor marketplace that combines classifieds-style discovery with in-app chat, price negotiation, identity and business verification, escrow-protected checkout, and a buy-now-pay-later product called <strong>Goods Flex</strong>. It is written for the team that will take the product from a working development build to a licensed, operated, revenue-generating service.</p>
+  <p>The PRD covers product intent, users, scope, economics, journeys, priorities and launch gates. Implementation detail belongs in the TAD; testable feature behaviour belongs in the FRD. Where the three documents disagree, the FRD is the acceptance authority, the TAD is the implementation authority, and the PRD is the priority authority.</p>
+
+  <h2>2. Executive summary</h2>
+  <p>Nigerian online commerce is split between classifieds platforms where buyers and sellers transact directly — with high fraud, no payment protection and no accountability — and traditional e-commerce sites that control inventory but offer limited negotiation, weak local-seller tooling and little flexibility on payment. Goods.ng occupies the middle: a trusted marketplace where every listing can be discussed, negotiated and paid for through a protected flow, while sellers keep their independence and build a verifiable reputation.</p>
+  <p>The product is already broad and functionally deep: 20 backend modules, 185 REST endpoints, 54 database tables, 17 root categories (91 total), protected checkout with a double-entry ledger, negotiation, messaging, seller verification, reviews, subscriptions, per-listing promotions, advertising feeds, and a 20-area admin console. The launch gap is not feature breadth; it is the <strong>external integration layer</strong> (licensed escrow and lending partners, payment certification, KYC, SMS/email, observability, payouts, logistics) and the legal/operational readiness that goes with it.</p>
+  <div class="kpi">
+    <div class="box"><div class="v">205</div><div class="l">Backend tests passing</div></div>
+    <div class="box"><div class="v">185</div><div class="l">REST endpoints</div></div>
+    <div class="box"><div class="v">54</div><div class="l">Database tables</div></div>
+    <div class="box"><div class="v">17 / 91</div><div class="l">Root / total categories</div></div>
+  </div>
+
+  <h2>3. Vision, mission and goals</h2>
+  <p><strong>Vision.</strong> Make everyday trade in Nigeria safe enough to do online without fear.</p>
+  <p><strong>Mission.</strong> Give buyers and sellers the tools to discover, agree and complete a transaction with confidence: real listings, real people, protected money and a reputation that follows both sides.</p>
+  <h3>Product goals for the first release</h3>
+  <ol>
+    <li><strong>Trust:</strong> a buyer can pay through Goods.ng without losing money if the item is not delivered as described.</li>
+    <li><strong>Liquidity:</strong> enough quality inventory and seller activity in the launch categories for a buyer to find something worth buying.</li>
+    <li><strong>Conversion:</strong> reduce the friction between "I am interested" and "paid" through chat, offers, a protected checkout and instalment payments.</li>
+    <li><strong>Repeatability:</strong> sellers return because the tools (storefront, analytics, promotions, verification) produce measurable sales.</li>
+    <li><strong>Operability:</strong> the business can be run safely by a small team with audit trails, reconciliation and clear escalation paths.</li>
+  </ol>
+
+  <h2>4. Market context and problem</h2>
+  <table>
+    <thead><tr><th style="width:38mm">Problem</th><th>Current reality</th><th style="width:52mm">Goods.ng response</th></tr></thead>
+    <tbody>
+      <tr><td>Fraud and non-delivery</td><td>Buyers send bank transfers to strangers; sellers ship to buyers who dispute after delivery. Evidence is weak and recovery is rare.</td><td>Protected Checkout with a licensed escrow partner, server-side payment verification, delivery evidence, auto-release and a dispute workflow.</td></tr>
+      <tr><td>Price negotiation is informal</td><td>Haggling happens on WhatsApp with no record; agreed prices are disputed and stale screenshots are unreliable.</td><td>Structured offers and counters with expiry, turn-taking, a 10-round cap and a checkout locked to the accepted offer.</td></tr>
+      <tr><td>Sellers are anonymous</td><td>Anyone can post a listing; reputation is a profile picture and a phone number.</td><td>Phone, identity and business verification tiers; verified badges; reviews only from delivered orders.</td></tr>
+      <tr><td>Payment inflexibility</td><td>Buyers must pay in full; sellers wait for settlement; no formal instalment option exists for everyday goods.</td><td>Goods Flex: credit assessment from open-banking data, a mandatory guarantor, transparent instalments, and one running plan per customer.</td></tr>
+      <tr><td>Discovery is noisy</td><td>Feeds are dominated by spam and repeat posts; filters are shallow and search misses synonyms.</td><td>PostgreSQL full-text search with weighted fields and prefix matching, category facets, premium ranking, and quality-gated sponsored placements.</td></tr>
+      <tr><td>Seller growth is manual</td><td>No analytics, no promotion products, no way to buy visibility for a single listing.</td><td>Seller dashboard, per-listing TOP and Boost Premium packages, subscriptions with featured credits, and advertising feeds.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5. Personas</h2>
+  <table>
+    <thead><tr><th style="width:30mm">Persona</th><th>Needs</th><th>Success looks like</th><th style="width:34mm">Key surfaces</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Adaeze — buyer</strong><br><span class="small muted">Lagos, 29, salaried</span></td><td>Find a genuine phone or appliance at a fair price, ask questions, negotiate, pay safely, and know when it will arrive.</td><td>Buys within one session; item matches the listing; money is released only after delivery.</td><td>Home, search, item, chat, offers, checkout, orders</td></tr>
+      <tr><td><strong>Chinedu — business seller</strong><br><span class="small muted">Ikeja, phone shop</span></td><td>List stock quickly, look credible, answer buyers, close sales, promote individual products without a full subscription.</td><td>Verified badge, steady enquiries, measurable views, repeat buyers, paid promotions that pay back.</td><td>Seller dashboard, products, orders, analytics, promotions, storefront</td></tr>
+      <tr><td><strong>Aisha — fashion seller</strong><br><span class="small muted">Abuja, made-to-order</span></td><td>Sell unique pieces, manage custom orders, build a brand, use WhatsApp for relationship selling.</td><td>Storefront visits convert to chats; premium contact controls drive direct sales.</td><td>Storefront, listings, chat, subscription</td></tr>
+      <tr><td><strong>Ngozi — premium seller</strong><br><span class="small muted">Port Harcourt, appliances</span></td><td>Priority visibility, analytics, featured credits and a trustworthy checkout for high-ticket items.</td><td>Premium ranking, more qualified leads, lower dispute rate.</td><td>Premium, analytics, ads, promotions</td></tr>
+      <tr><td><strong>Tunde — auto dealer</strong><br><span class="small muted">Lekki, vehicles</span></td><td>High-value listings, inspection-driven trust, serious buyers only.</td><td>Qualified enquiries; protected checkout for large transactions; clear delivery/collection terms.</td><td>Listing editor, chat, orders, verification</td></tr>
+      <tr><td><strong>Guarantor</strong><br><span class="small muted">Friend or family of a Flex buyer</span></td><td>Understand exactly what they are guaranteeing, for how long, and how to withdraw.</td><td>Informed consent, a capped amount, SMS notification and a clear record.</td><td>Guarantor consent link</td></tr>
+      <tr><td><strong>Operations admin</strong><br><span class="small muted">Support, trust &amp; safety</span></td><td>Resolve disputes, moderate listings, verify sellers, reconcile money, investigate abuse.</td><td>Every action is permissioned, audited and reversible where appropriate.</td><td>Admin console (20 areas)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6. Product scope</h2>
+  <div class="grid2">
+    <div class="card">
+      <h4>In scope — first release</h4>
+      <ul class="small">
+        <li>Mobile-first public marketplace with SSR/SEO.</li>
+        <li>17 root categories, 91 categories, 36 states + FCT.</li>
+        <li>Seller onboarding, verification tiers, storefronts.</li>
+        <li>Listing creation, image pipeline, moderation, stock.</li>
+        <li>Search, filters, facets, favourites, recommendations.</li>
+        <li>Product-linked chat and structured negotiation.</li>
+        <li>Protected Checkout, escrow state machine, ledger.</li>
+        <li>Orders, delivery updates, evidence, auto-release.</li>
+        <li>Disputes, refunds and four-eyes approval.</li>
+        <li>Goods Flex with guarantor and open-banking assessment.</li>
+        <li>Reviews from delivered orders only.</li>
+        <li>In-app notifications + email/SMS outbox.</li>
+        <li>Subscriptions and per-listing promotions.</li>
+        <li>Google/Meta product feeds and tracking.</li>
+        <li>Admin console with RBAC and audit logs.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Out of scope — first release</h4>
+      <ul class="small">
+        <li>Native iOS/Android apps (responsive web and PWA-ready only).</li>
+        <li>Goods.ng-owned inventory or first-party warehousing.</li>
+        <li>In-house wallet, stored value or direct fund custody.</li>
+        <li>International shipping and multi-currency checkout.</li>
+        <li>Live video shopping or livestream auctions.</li>
+        <li>Full logistics network; manual tracking initially.</li>
+        <li>Automated seller payouts (partner-dependent).</li>
+        <li>Partial refunds in the UI (model supports amounts).</li>
+        <li>Dedicated search engine (Postgres FTS is sufficient).</li>
+        <li>WebSocket messaging (5-second polling initially).</li>
+        <li>Fraud-scoring vendor and address verification.</li>
+        <li>Business accounting or invoicing suite.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>7. Value proposition</h2>
+  <table>
+    <thead><tr><th style="width:34mm">For</th><th>Value</th><th style="width:52mm">Proof point in the product</th></tr></thead>
+    <tbody>
+      <tr><td>Buyers</td><td>Shop strangers safely, negotiate transparently, pay in a way that protects the money, and get recourse.</td><td>Protected Checkout, verified sellers, structured offers, delivery evidence, disputes, reviews.</td></tr>
+      <tr><td>Sellers</td><td>A credible storefront, qualified buyers, tools to grow, and a path to higher visibility without giving up independence.</td><td>Verification badges, analytics, premium placement, per-listing promotions, storefront and chat.</td></tr>
+      <tr><td>Flex customers</td><td>Afford everyday purchases through instalments with clear terms and a human guarantor model.</td><td>Six-month bank assessment, transparent schedule, mandatory guarantor consent, one-plan rule.</td></tr>
+      <tr><td>Partners</td><td>A regulated-ready marketplace that routes protected transactions to licensed escrow and lending partners with clean reconciliation.</td><td>Provider interfaces, append-only ledger, webhook verification, reconciliation reports.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>8. Business model</h2>
+  <table>
+    <thead><tr><th style="width:44mm">Revenue stream</th><th>Mechanism</th><th class="num" style="width:34mm">Default</th><th style="width:44mm">Status</th></tr></thead>
+    <tbody>
+      <tr><td>Marketplace commission</td><td>Percentage of the item subtotal on a completed protected order, deducted before seller settlement.</td><td class="num">5.0%</td><td><span class="b live">LIVE</span> mock settlement</td></tr>
+      <tr><td>Buyer protection fee</td><td>Percentage of subtotal, capped per order, shown separately at checkout.</td><td class="num">1.5% · cap ₦5,000</td><td><span class="b live">LIVE</span> mock settlement</td></tr>
+      <tr><td>Premium subscriptions</td><td>Monthly, quarterly and annual seller plans with featured credits and premium tools.</td><td class="num">₦15k / ₦40k / ₦150k</td><td><span class="b live">LIVE</span> mock payments</td></tr>
+      <tr><td>Per-listing promotions</td><td>One-off TOP 7-day, TOP 30-day, or Boost Premium 28-day visibility for a single listing.</td><td class="num">₦3,099 / ₦9,999 / ₦31,999</td><td><span class="b live">LIVE</span> mock payments</td></tr>
+      <tr><td>Advertising</td><td>Promoted placements and catalog ads on Google/Meta; tracking and product feeds.</td><td class="num">Campaign-defined</td><td><span class="b config">CONFIG</span></td></tr>
+    </tbody>
+  </table>
+  <div class="callout">
+    <div class="t">Pricing governance</div>
+    Commission, protection fee and cap are environment defaults and can be overridden in Platform Settings. Promotion package prices are server-side and overridable through the <span class="req">promotion_packages</span> setting. Client-supplied prices are always ignored.
+  </div>
+
+  <h2>9. Key user journeys</h2>
+  <h3>9.1 Buyer: discover → agree → pay → receive</h3>
+  <ol class="small">
+    <li>Lands on home or a category; searches or browses; filters by state, price, condition and brand.</li>
+    <li>Opens an item page with photos, seller verification, delivery options and protection terms.</li>
+    <li>Starts a product-linked chat or makes an offer. Counter-offers are structured and time-boxed.</li>
+    <li>Accepts the price (or the seller accepts the offer); checkout is locked to that accepted offer for 24 hours.</li>
+    <li>Chooses delivery, sees the subtotal, delivery fee, protection fee and total; pays through the licensed provider.</li>
+    <li>Goods.ng verifies the payment server-to-server; the escrow partner holds the funds; the seller is notified.</li>
+    <li>Seller accepts, processes and dispatches with evidence; buyer confirms delivery or the order auto-releases after the configured window.</li>
+    <li>Buyer leaves a review; seller is paid through the partner; the ledger records commission and protection fee.</li>
+  </ol>
+  <h3>9.2 Seller: onboard → list → sell</h3>
+  <ol class="small">
+    <li>Creates an account, becomes a seller, adds store name, location and contact details.</li>
+    <li>Completes phone, identity or business verification; uploads supporting documents privately.</li>
+    <li>Creates a listing with images, condition, price, stock, delivery options and BNPL eligibility; auto-title suggests a keyword-rich title.</li>
+    <li>Receives enquiries and offers; responds in chat; accepts or declines orders.</li>
+    <li>Tracks views, favourites, enquiries and earnings; optionally buys a promotion or a subscription.</li>
+  </ol>
+  <h3>9.3 Goods Flex: assess → guarantee → apply → repay</h3>
+  <ol class="small">
+    <li>Customer verifies phone and BVN, connects a bank account read-only, and receives an affordability assessment.</li>
+    <li>Names a guarantor, who receives an SMS link, sees the amount and terms, and consents explicitly.</li>
+    <li>Applies for a plan; the licensed lender returns a decision and terms; the customer accepts.</li>
+    <li>Pays the down payment; the partner disburses; the order follows the same protected checkout path.</li>
+    <li>Repays instalments; reminders and overdue states are handled by the worker; only one plan can run at a time.</li>
+  </ol>
+  <h3>9.4 Admin: trust and money operations</h3>
+  <ol class="small">
+    <li>Moderates listings and reviews; verifies sellers; suspends abusive accounts.</li>
+    <li>Resolves disputes with evidence, issues refunds under four-eyes approval, and reconciles payments, escrow and ledger.</li>
+    <li>Grants subscriptions, adjusts platform settings, manages staff roles, and reviews the append-only activity log.</li>
+  </ol>
+
+  <h2>10. Functional epics and priorities</h2>
+  <table>
+    <thead><tr><th style="width:36mm">Epic</th><th>Outcome</th><th style="width:18mm">Priority</th><th style="width:38mm">Launch state</th></tr></thead>
+    <tbody>
+      <tr><td>Authentication &amp; account</td><td>Secure sign-up, login, OTP, password reset, 2FA, sessions.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Catalog &amp; listings</td><td>Categories, listing lifecycle, images, stock, moderation.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Search &amp; discovery</td><td>Full-text search, facets, ranking, favourites, recommendations.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Messaging</td><td>Product-linked conversations, unread counts, reports.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Negotiation</td><td>Offers, counters, expiry, accepted-price checkout.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Payments</td><td>Provider abstraction, verification, webhooks, refunds.</td><td>P0</td><td><span class="b config">CONFIG</span></td></tr>
+      <tr><td>Protected checkout &amp; escrow</td><td>Funds held by a licensed partner; release/refund state machine.</td><td>P0</td><td><span class="b mock">MOCK</span></td></tr>
+      <tr><td>Orders &amp; delivery</td><td>Seller acceptance, dispatch, evidence, auto-release.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Disputes &amp; refunds</td><td>Evidence, admin resolution, four-eyes refund approval.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Seller verification</td><td>Phone, identity, business tiers; private document review.</td><td>P0</td><td><span class="b config">CONFIG</span></td></tr>
+      <tr><td>Goods Flex</td><td>Credit assessment, guarantor, lender decision, instalments.</td><td>P1</td><td><span class="b mock">MOCK</span></td></tr>
+      <tr><td>Reviews</td><td>Verified-purchase reviews, replies, moderation.</td><td>P1</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Notifications</td><td>In-app inbox, preferences, email/SMS outbox.</td><td>P1</td><td><span class="b config">CONFIG</span></td></tr>
+      <tr><td>Subscriptions</td><td>Premium plans, featured credits, admin grants.</td><td>P1</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Promotions</td><td>Per-listing TOP and Boost Premium packages.</td><td>P1</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Ads &amp; feeds</td><td>Google/Meta catalog feeds, pixel events, CAPI.</td><td>P2</td><td><span class="b config">CONFIG</span></td></tr>
+      <tr><td>Admin &amp; staff</td><td>20 areas, granular RBAC, audit, reconciliation.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+      <tr><td>Trust &amp; safety</td><td>Moderation, reports, direct-contact warning, suspension.</td><td>P0</td><td><span class="b live">LIVE</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2>11. Success metrics and launch gates</h2>
+  <h3>North-star and supporting metrics</h3>
+  <table>
+    <thead><tr><th style="width:42mm">Metric</th><th>Definition</th><th style="width:34mm">First-90-day target</th></tr></thead>
+    <tbody>
+      <tr><td>Protected GMV</td><td>Value of orders paid through Protected Checkout, excluding refunds.</td><td>Baseline set in staging; grow week-on-week</td></tr>
+      <tr><td>Order completion rate</td><td>Completed orders ÷ paid orders.</td><td>≥ 90%</td></tr>
+      <tr><td>Dispute rate</td><td>Orders with a dispute ÷ paid orders.</td><td>&lt; 3%</td></tr>
+      <tr><td>Time to first response</td><td>Median seller response to a new enquiry.</td><td>&lt; 30 minutes in business hours</td></tr>
+      <tr><td>Listing quality</td><td>Share of active listings with 3+ photos and a 60+ character description.</td><td>≥ 80%</td></tr>
+      <tr><td>Verified seller share</td><td>Active sellers at identity or business tier.</td><td>≥ 60%</td></tr>
+      <tr><td>Flex repayment health</td><td>Instalments paid on time ÷ due instalments.</td><td>≥ 95%</td></tr>
+      <tr><td>Search success</td><td>Sessions with a search and an item view ÷ search sessions.</td><td>≥ 45%</td></tr>
+      <tr><td>p95 API latency</td><td>Read endpoints at target concurrency.</td><td>&lt; 500 ms</td></tr>
+      <tr><td>Error rate</td><td>5xx responses ÷ total API responses.</td><td>&lt; 0.5%</td></tr>
+    </tbody>
+  </table>
+  <h3>Launch gates (all must be true)</h3>
+  <table>
+    <thead><tr><th style="width:12mm">#</th><th>Gate</th><th style="width:30mm">Owner</th></tr></thead>
+    <tbody>
+      <tr><td>G1</td><td>Licensed escrow/payment partner contract signed; adapter implemented and certified in sandbox; production boot passes.</td><td>Finance / Eng</td></tr>
+      <tr><td>G2</td><td>Licensed lender contract signed; FinancingProvider adapter implemented; FCCPC and legal review complete.</td><td>Risk / Legal</td></tr>
+      <tr><td>G3</td><td>Primary payment provider (Paystack or Flutterwave) certified in sandbox and live; webhooks, settlement and reconciliation verified.</td><td>Finance / Eng</td></tr>
+      <tr><td>G4</td><td>KYC provider live for BVN/NIN; consent and data-retention copy approved.</td><td>Compliance</td></tr>
+      <tr><td>G5</td><td>SMS and email providers live; sender ID/domain authenticated; OTP and transactional delivery proven.</td><td>Eng</td></tr>
+      <tr><td>G6</td><td>Managed Postgres with PITR, managed Redis, S3 + CDN, and at least two API instances deployed.</td><td>Platform</td></tr>
+      <tr><td>G7</td><td>Sentry/error tracking, structured logs, uptime checks and alerts live; on-call rota agreed.</td><td>Platform</td></tr>
+      <tr><td>G8</td><td>External penetration test complete; critical/high findings closed.</td><td>Security</td></tr>
+      <tr><td>G9</td><td>Legal review of Terms, Privacy, Refund &amp; Dispute, Goods Flex and guarantor consent complete.</td><td>Legal</td></tr>
+      <tr><td>G10</td><td>Staging end-to-end: sign-up → listing → offer → payment → escrow → delivery → release → review, with real provider sandboxes.</td><td>QA</td></tr>
+    </tbody>
+  </table>
+
+  <h2>12. Assumptions, dependencies and risks</h2>
+  <h3>Assumptions</h3>
+  <ul class="small">
+    <li>Goods.ng will operate as a marketplace and agent, not as a bank, lender or escrow provider.</li>
+    <li>A licensed partner is available and commercially viable for escrow and for BNPL.</li>
+    <li>Buyers and sellers have smartphones and intermittent connectivity; the web experience must stay lightweight.</li>
+    <li>NGN is the only currency and Nigeria the only market at launch.</li>
+    <li>Sellers will accept a 5% commission and a buyer-paid protection fee in exchange for trust and demand.</li>
+  </ul>
+  <h3>Dependencies</h3>
+  <ul class="small">
+    <li>Escrow/lending partner contracts, sandbox access and legal sign-off.</li>
+    <li>Payment provider approval and settlement account.</li>
+    <li>KYC and open-banking provider approval, including NDPA-compliant consent.</li>
+    <li>Termii sender ID approval and email domain authentication.</li>
+    <li>Cloud accounts, DNS and SSL for goods.ng and admin.goods.ng.</li>
+  </ul>
+  <h3>Top risks</h3>
+  <table>
+    <thead><tr><th style="width:42mm">Risk</th><th>Impact</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Escrow partner not signed in time</td><td>Protected Checkout cannot launch; core differentiator unavailable.</td><td>Start partner diligence immediately; keep a fallback licensed payment partner; do not launch unprotected checkout under the "Protected" brand.</td></tr>
+      <tr><td>BNPL regulatory friction</td><td>Goods Flex cannot launch or must be re-scoped.</td><td>Launch Flex behind a feature flag after FCCPC review; keep the product usable without it.</td></tr>
+      <tr><td>Fraud at onboarding</td><td>Chargebacks, fake listings, reputational damage.</td><td>Verification tiers, KYC, moderation, device/rate limits, delivery evidence, manual review for high-value orders.</td></tr>
+      <tr><td>Seller liquidity</td><td>Buyers find nothing to buy.</td><td>Seed launch categories with verified sellers; run supply acquisition before paid marketing.</td></tr>
+      <tr><td>Payment webhook outages</td><td>Orders stuck unpaid or unfulfilled.</td><td>Verify-before-trust, buyer return-page re-verification, expiry job that re-checks the provider, reconciliation alerts.</td></tr>
+      <tr><td>Operational overload</td><td>Disputes and KYC queues grow faster than the team.</td><td>Admin SLAs, canned responses, audit trails, four-eyes refunds, staffing plan for launch.</td></tr>
+      <tr><td>Data breach</td><td>Regulatory and reputational harm.</td><td>Encryption at rest, private KYC storage, least privilege, pen test, incident response, NDPA records.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>13. Roadmap</h2>
+  <table>
+    <thead><tr><th style="width:26mm">Phase</th><th>Scope</th><th style="width:38mm">Exit criteria</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Now → launch</strong></td><td>Integration layer, legal/compliance, observability, deployment, pen test, staging E2E.</td><td>All ten launch gates met.</td></tr>
+      <tr><td><strong>Launch + 30 days</strong></td><td>Operate, monitor, fix funnel friction, tune ranking and fees, grow verified supply.</td><td>Stable error rate, dispute rate &lt; 3%, completion ≥ 90%.</td></tr>
+      <tr><td><strong>Launch + 90 days</strong></td><td>Payout automation, logistics partners, partial refunds, push notifications, saved searches.</td><td>Seller payout cycle &lt; T+1 after release; at least one carrier integrated.</td></tr>
+      <tr><td><strong>Scale</strong></td><td>Dedicated search, WebSockets/SSE, fraud scoring, mobile apps, more cities/categories.</td><td>Search p95 stable at 10× traffic; messaging no longer polling-bound.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>14. Compliance and legal</h2>
+  <ul class="small">
+    <li><strong>NDPA 2023:</strong> lawful basis, privacy notice, cookie consent, data-subject requests, retention schedule, DPO appointment, processor agreements.</li>
+    <li><strong>FCCPC digital lending:</strong> transparent charges, affordability, responsible collections, complaint handling, no dark patterns.</li>
+    <li><strong>CBN-licensed partner:</strong> funds held by a licensed escrow/payment partner; Goods.ng is not a deposit-taking institution.</li>
+    <li><strong>Guarantor law:</strong> enforceability, disclosures, cooling-off and withdrawal rights reviewed by counsel.</li>
+    <li><strong>Consumer protection:</strong> clear refund and dispute policy, seller obligations, prohibited items, takedown process.</li>
+    <li><strong>Advertising:</strong> claims must match the licensed reality; no "insured", "guaranteed" or "bank" language without partner approval.</li>
+  </ul>
+</div>

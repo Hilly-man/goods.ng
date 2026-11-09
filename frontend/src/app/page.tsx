@@ -1,5 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { DEFAULT_DESCRIPTION, DEFAULT_OG_IMAGE, pageMetadata } from "@/lib/seo";
 import { ArrowRight, BadgeCheck, CalendarClock, Handshake, MessagesSquare, PackageCheck, ShieldCheck, Wallet } from "lucide-react";
 import { serverGet } from "@/lib/server-api";
 import type { Category, HomeFeed } from "@/lib/types";
@@ -11,6 +13,14 @@ import { AutoCarousel } from "@/components/auto-carousel";
 import { CategoryTiles, SectionHeader, SellerTile } from "@/components/sections";
 import { CategoryMenu } from "@/components/category-menu";
 import { RecommendedForYou } from "@/components/recommended";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Goods.ng — Buy. Sell. Trade with Confidence.",
+  description: DEFAULT_DESCRIPTION,
+  path: "/",
+  image: DEFAULT_OG_IMAGE,
+  absoluteTitle: true,
+});
 
 export default function HomePage() {
   return (
@@ -81,11 +91,11 @@ function TrustStrip() {
         <p className="mt-1 max-w-md text-sm text-white/80">Pay with Goods.ng Protected Checkout. If the item doesn&apos;t arrive or isn&apos;t as described, we step in.</p>
         <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold">Learn how it works <ArrowRight className="size-4 transition group-hover:translate-x-0.5" /></span>
       </Link>
-      <Link href="/flex/about" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-800 p-5 text-white">
-        <Wallet className="absolute -right-4 -top-4 size-32 text-white/10" aria-hidden />
-        <p className="text-xs font-bold uppercase tracking-wider text-violet-200">Goods Flex</p>
+      <Link href="/flex/about" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent-400 to-accent-500 p-5 text-ink">
+        <Wallet className="absolute -right-4 -top-4 size-32 text-ink/10" aria-hidden />
+        <p className="text-xs font-bold uppercase tracking-wider text-brand-800">Goods Flex</p>
         <h2 className="mt-1 text-lg font-bold sm:text-xl">Buy now, pay in 3 or 6 monthly instalments</h2>
-        <p className="mt-1 max-w-md text-sm text-white/80">Pay a down payment today and spread the rest. Financing by our licensed lending partner, subject to approval.</p>
+        <p className="mt-1 max-w-md text-sm text-ink/75">Pay a down payment today and spread the rest. Financing by our licensed lending partner, subject to approval.</p>
         <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold">Check eligibility <ArrowRight className="size-4 transition group-hover:translate-x-0.5" /></span>
       </Link>
     </div>

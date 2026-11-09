@@ -94,51 +94,113 @@ def _load(data: bytes) -> Image.Image:
     return img.convert("RGB")
 
 
+_FONT_CANDIDATES = {
+    True: ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "DejaVuSans-Bold.ttf",
+           "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "/Library/Fonts/Arial Bold.ttf"],
+    False: ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "DejaVuSans.ttf",
+            "/System/Library/Fonts/Supplemental/Arial.ttf", "/Library/Fonts/Arial.ttf"],
+}
+
+
 def _font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    try:
-        return ImageFont.truetype("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf", size)
-    except OSError:
-        return ImageFont.load_default(size=size)
+    """DejaVu on the server (installed in the Docker image), Arial on macOS dev, Pillow's font as a last resort."""
+    for path in _FONT_CANDIDATES[bold]:
+        try:
+            return ImageFont.truetype(path, size)
+        except OSError:
+            continue
+    return ImageFont.load_default(size=size)
 
 
-def _watermark(img: Image.Image, text: str) -> Image.Image:
-    """Centre “Business name” in bold followed by a lighter “Listed on Goods.ng”."""
-    suffix = "Listed on Goods.ng"
-    text = text.strip()
-    if not text:
-        return img
-    name = text[: -len(suffix)].rstrip() if text.endswith(suffix) else text
+# ---------------- listing-photo watermark (Jiji-style: brand mark centred, white, semi-transparent) ----------------
+_SHIELD = [(0.50, 0.00), (0.95, 0.15), (0.95, 0.48), (0.92, 0.62), (0.84, 0.76), (0.70, 0.89), (0.50, 1.00),
+           (0.30, 0.89), (0.16, 0.76), (0.08, 0.62), (0.05, 0.48), (0.05, 0.15)]
+_TICK = [(0.27, 0.52), (0.44, 0.68), (0.75, 0.35)]
+_MARK_OPACITY = 190   # of 255 — clearly visible, never hides the item (Jiji's mark is ~50–60%)
+_MARK_WIDTH = 0.42    # share of the photo's width
+
+
+def _name_lines(name: str, per_line: int = 26, limit: int = 52) -> list[str]:
+    """Long business names wrap onto two balanced lines (and are cut with … past `limit`)."""
+    name = " ".join(name.split())
+    if len(name) > limit:
+        name = name[: limit - 1].rstrip() + "…"
+    if len(name) <= per_line:
+        return [name]
+    words, best = name.split(" "), None
+    for i in range(1, len(words)):
+        a, b = " ".join(words[:i]), " ".join(words[i:])
+        if best is None or max(len(a), len(b)) < max(len(best[0]), len(best[1])):
+            best = (a, b)
+    return list(best) if best else [name[:per_line], name[per_line:]]
+
+
+def _mark_layer(business: str | None) -> Image.Image:
+    """White mark on transparent background, drawn 4× for smooth edges:
+         [shield]  Listed on Goods.ng
+                   BUSINESS NAME        <- larger, bold
+       Without a business name: [shield] Goods.ng (logo only)."""
+
+    h = 240  # shield height in the oversampled drawing
+    gap = int(h * 0.16)
+    draw = ImageDraw.Draw(Image.new("L", (1, 1)))
+    if business:
+        top, names = "Listed on Goods.ng", _name_lines(business)
+        top_font, name_font = _font(int(h * 0.27), bold=False), _font(int(h * 0.42), bold=True)
+        tw = max([draw.textlength(top, font=top_font)] + [draw.textlength(n, font=name_font) for n in names])
+    else:
+        name_font = _font(int(h * 0.62), bold=True)
+        tw = draw.textlength("Goods.ng", font=name_font)
+    full_w = int(h + gap + tw + h * 0.1)
+    mask = Image.new("L", (full_w, h), 0)
+    d = ImageDraw.Draw(mask)
+    d.polygon([(x * h, y * h) for x, y in _SHIELD], fill=255)
+    d.line([(x * h, y * h) for x, y in _TICK], fill=0, width=int(h * 0.11), joint="curve")
+    x = h + gap
+    if business:
+        # "Listed on Goods.ng" then the business name (1–2 lines), vertically centred on the shield.
+        t_box = d.textbbox((0, 0), top, font=top_font)
+        asc, desc = name_font.getmetrics()
+        t_h, line_h, spacing = t_box[3] - t_box[1], int((asc + desc) * 0.95), int(h * 0.08)
+        block = t_h + spacing + line_h * len(names)
+        if block > h:  # two-line names: grow the canvas, keep the shield centred
+            grow = block - h + int(h * 0.1)
+            bigger = Image.new("L", (mask.width, h + grow), 0)
+            bigger.paste(mask, (0, grow // 2))
+            mask, d = bigger, ImageDraw.Draw(bigger)
+        y0 = (mask.height - block) // 2
+        d.text((x, y0 - t_box[1]), top, font=top_font, fill=225)  # slightly lighter than the name
+        for i, n in enumerate(names):
+            d.text((x, y0 + t_h + spacing + i * line_h), n, font=name_font, fill=255)
+    else:
+        box = d.textbbox((0, 0), "Goods.ng", font=name_font)
+        d.text((x, (h - (box[3] - box[1])) // 2 - box[1]), "Goods.ng", font=name_font, fill=255)
+    return mask
+
+
+def _watermark(img: Image.Image, business: str | bool = True) -> Image.Image:
+    """Centre the white Goods.ng mark (with the seller's business name, if given) on a listing photo."""
+    from PIL import ImageFilter
+
+    name = business if isinstance(business, str) else None
     base = img.convert("RGBA")
     w, h = base.size
-    size = max(18, min(w // 18, 54))
-    suffix_size = max(12, int(size * 0.78))
-    name_font, suffix_font = _font(size, bold=True), _font(suffix_size, bold=False)
-    layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(layer)
-
-    name_width = draw.textlength(name, font=name_font)
-    suffix_width = draw.textlength(suffix, font=suffix_font)
-    gap = size * 0.4
-    fill, stroke = (255, 255, 255, 110), (0, 0, 0, 90)
-
-    if name_width + gap + suffix_width <= w * 0.82:
-        x = (w - (name_width + gap + suffix_width)) / 2
-        y = (h - size) / 2
-        draw.text((x, y), name, font=name_font, fill=fill,
-                  stroke_width=max(2, size // 14), stroke_fill=stroke)
-        draw.text((x + name_width + gap, y + (size - suffix_size) * 0.7), suffix, font=suffix_font,
-                  fill=fill, stroke_width=max(1, suffix_size // 18), stroke_fill=stroke)
-    else:
-        line_height = size + int(size * 0.35)
-        total = line_height + suffix_size + int(suffix_size * 0.35)
-        y = (h - total) / 2
-        draw.text(((w - name_width) / 2, y), name, font=name_font, fill=fill,
-                  stroke_width=max(2, size // 14), stroke_fill=stroke)
-        y += line_height
-        draw.text(((w - suffix_width) / 2, y), suffix, font=suffix_font, fill=fill,
-                  stroke_width=max(1, suffix_size // 18), stroke_fill=stroke)
-
-    base.alpha_composite(layer)
+    mask = _mark_layer(name)
+    # Fit: about 55% of the photo's width with a name (42% logo-only), never wider than 86% or taller than 22%.
+    target_w = int(w * (0.55 if name else _MARK_WIDTH))
+    max_h = h * (0.30 if mask.height > 300 else 0.22)  # a two-line name may stand a little taller
+    target_w = min(target_w, int(w * 0.86), int(mask.width * max_h / mask.height))
+    target_w = max(120, min(target_w, w))
+    target_h = max(1, round(mask.height * target_w / mask.width))
+    mask = mask.resize((target_w, target_h), Image.LANCZOS)
+    pad = max(4, target_h // 6)
+    layer = Image.new("RGBA", (target_w + 2 * pad, target_h + 2 * pad), (0, 0, 0, 0))
+    shadow = Image.new("L", layer.size, 0)  # soft shadow keeps it readable on white/bright photos
+    shadow.paste(mask.point(lambda v: v * 85 // 255), (pad, pad + 1))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(max(1, target_h // 30)))
+    layer.paste((0, 0, 0, 255), (0, 0), shadow)
+    layer.paste((255, 255, 255, 255), (pad, pad), mask.point(lambda v: v * _MARK_OPACITY // 255))
+    base.alpha_composite(layer, ((w - layer.width) // 2, (h - layer.height) // 2))
     return base.convert("RGB")
 
 
@@ -150,7 +212,9 @@ def _encode(img: Image.Image, max_side: int, quality: int) -> tuple[bytes, int, 
     return buf.getvalue(), im.width, im.height
 
 
-def store_image(data: bytes, folder: str, watermark: str | None = None) -> StoredImage:
+def store_image(data: bytes, folder: str, watermark: bool | str = False) -> StoredImage:
+    """Listing photos only: `watermark=<business name>` (or True for the logo alone).
+    Never used for avatars, logos, evidence or KYC documents."""
     img = _load(data)
     if watermark:
         img = _watermark(img, watermark)

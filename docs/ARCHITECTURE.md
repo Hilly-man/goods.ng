@@ -43,6 +43,7 @@ Each module owns its router and business logic. Cross-module coupling goes throu
 - Guest: browse, search, view listings, stores and reviews.
 - User (buyer): every account. Becomes a **seller** by creating a seller profile.
 - **Premium** is derived, never stored as a flag: an ACTIVE subscription whose period covers *now* (`subscriptions/premium.py`). The client cannot grant itself premium.
+- **Per-listing promotions** are separate from Premium: `products.promoted_tier` mirrors an ACTIVE paid `Promotion` while `featured_until` is in the future, so one listing can be promoted without an account plan.
 - Admins: `role=admin` with granular permissions (`users.manage`, `refunds.approve`, `disputes.resolve`, …). `super_admin` has all permissions and is the only role that can change roles. Every sensitive admin action writes an append-only `admin_audit_logs` row.
 
 ## Protected checkout and escrow
@@ -82,8 +83,13 @@ Guarantees:
 | Released to seller | liability:escrow_obligations | liability:seller_payable:<seller>, revenue:platform_commission, revenue:protection_fees |
 | Refunded | liability:escrow_obligations | asset:escrow_partner_holding |
 | Premium subscription | asset:provider_receipts | revenue:subscriptions |
+| Listing promotion | asset:provider_receipts | revenue:promotions |
 
 Database triggers make ledger tables, escrow events and audit logs **append-only**, and a deferred constraint trigger rejects any **unbalanced** transaction at commit. `/admin/reconciliation` cross-checks payments, escrow states and ledger postings.
+
+## Promotions
+
+Sellers can buy visibility for one listing without subscribing: `POST /api/v1/promotions` prices the package server-side, creates a `PaymentPurpose.PROMOTION` charge, and activates the `Promotion` only after server-side provider verification. TOP packages set the listing featured and bump it to the top; Boost Premium additionally marks it `promoted_tier=premium`, making it eligible for the sponsored pool while it meets the same photo/description/verification quality bar as Premium sellers. The worker expires promotions, clears stale badges, and refreshes Boost Premium top placement roughly daily. Package prices are defaults in `modules/promotions/packages.py`, overridable through the `promotion_packages` platform setting.
 
 ## Negotiation
 

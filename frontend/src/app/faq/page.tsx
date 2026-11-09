@@ -1,7 +1,20 @@
 import type { Metadata } from "next";
 import { ProsePage } from "@/components/prose";
+import { ogImageUrl, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Frequently asked questions", alternates: { canonical: "/faq" } };
+export const metadata: Metadata = pageMetadata({
+  title: "Frequently asked questions",
+  description:
+    "Answers about Protected Checkout, fees, refunds, Goods Flex, verification and selling on Goods.ng.",
+  path: "/faq",
+  image: ogImageUrl({
+    eyebrow: "Help centre",
+    title: "Frequently asked questions",
+    subtitle: "Protected Checkout, fees, refunds, Flex and verification.",
+    badge: "Answers",
+  }),
+  keywords: ["Goods.ng FAQ", "Protected Checkout questions", "Goods Flex FAQ", "selling on Goods.ng"],
+});
 
 const FAQ: [string, string][] = [
   ["Is it free to post an ad?", "Yes. Listing on Goods.ng is free. Sellers pay a small commission only when an item sells through Protected Checkout."],

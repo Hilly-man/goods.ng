@@ -18,7 +18,7 @@ type Trends = {
 };
 
 const RANGES = [{ value: "7", label: "Last 7 days" }, { value: "30", label: "Last 30 days" }, { value: "90", label: "Last 90 days" }];
-const FLEX = "#6250d6"; // validated against brand green (CVD ΔE 25)
+const FLEX = "#2a78d6"; // blue, CVD-safe against brand green
 
 export function OverviewCharts() {
   const [days, setDays] = useState("30");
@@ -54,10 +54,10 @@ export function OverviewCharts() {
           </ChartCard>
 
           <ChartCard className="lg:col-span-2" title="Growth" subtitle="New customer sign-ups and new listings per day"
-            legend={<Legend items={[{ label: `New users (${sum("new_users")})`, color: SERIES.blue }, { label: `New listings (${sum("new_listings")})`, color: SERIES.brand }]} />}
+            legend={<Legend items={[{ label: `New users (${sum("new_users")})`, color: SERIES.alt }, { label: `New listings (${sum("new_listings")})`, color: SERIES.brand }]} />}
             table={{ head: ["Date", "New users", "New listings"], rows: rows.map((r) => [shortDate(r.date), r.new_users, r.new_listings]) }}>
             <LineChart data={rows} height={220} series={[
-              { key: "new_users", label: "New users", color: SERIES.blue },
+              { key: "new_users", label: "New users", color: SERIES.alt },
               { key: "new_listings", label: "New listings", color: SERIES.brand },
             ]} />
           </ChartCard>
@@ -77,7 +77,7 @@ export function OverviewCharts() {
 
           <ChartCard className="lg:col-span-2" title="Live listings by category" subtitle="Top 6 categories right now"
             table={{ head: ["Category", "Listings"], rows: data.top_categories.map((c) => [c.name, c.count]) }}>
-            <BarList items={data.top_categories.map((c) => ({ label: c.name, value: c.count }))} color={SERIES.blue} />
+            <BarList items={data.top_categories.map((c) => ({ label: c.name, value: c.count }))} color={SERIES.alt} />
           </ChartCard>
         </div>
       )}

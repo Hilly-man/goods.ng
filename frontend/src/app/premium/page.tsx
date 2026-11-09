@@ -5,8 +5,21 @@ import { serverGet } from "@/lib/server-api";
 import type { Plan } from "@/lib/types";
 import { naira } from "@/lib/format";
 import { SubscribeButton } from "./subscribe-button";
+import { ogImageUrl, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Premium Seller", description: "WhatsApp and call buttons, enhanced storefront, featured listings and advanced analytics.", alternates: { canonical: "/premium" } };
+export const metadata: Metadata = pageMetadata({
+  title: "Premium Seller",
+  description:
+    "WhatsApp and call buttons, an enhanced storefront, featured listing credits, priority search visibility and advanced analytics.",
+  path: "/premium",
+  image: ogImageUrl({
+    eyebrow: "Premium seller",
+    title: "Grow faster with Premium",
+    subtitle: "Contact buttons, enhanced storefront, featured listings and analytics.",
+    badge: "Seller tools",
+  }),
+  keywords: ["Goods.ng Premium", "premium seller Nigeria", "seller analytics", "featured listings"],
+});
 
 async function Plans() {
   const plans = await serverGet<Plan[]>("/subscriptions/plans");

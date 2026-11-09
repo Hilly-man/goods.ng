@@ -1,0 +1,116 @@
+<div class="part-cover">
+  <div class="n">Appendix</div>
+  <h1>Go-Live Integration Checklist &amp; Reference</h1>
+  <div class="rule"></div>
+  <p>The external services, credentials, contracts and operational controls that remain between the current development build and a live, licensed marketplace.</p>
+  <div class="toc">
+    <div>A. Integration go-live checklist</div>
+    <div>B. Environment variables</div>
+    <div>C. Glossary</div>
+  </div>
+</div>
+
+<div>
+  <h2>A. Integration go-live checklist</h2>
+  <p>Status vocabulary: <span class="b live">LIVE</span> implemented and tested against mocks/local; <span class="b config">CONFIG</span> code exists but production credentials/dashboard work remains; <span class="b mock">MOCK</span> only a mock adapter exists; <span class="b build">NOT BUILT</span> no implementation. "Blocker" means the item must be complete before the first live transaction or before the production process will boot.</p>
+  <table>
+    <thead><tr><th style="width:8mm">#</th><th style="width:30mm">Integration</th><th>Why it matters</th><th style="width:28mm">Current state</th><th>What remains</th><th style="width:13mm">Blocker</th><th style="width:20mm">Owner</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><strong>Licensed escrow / payment partner</strong></td><td>Holds buyer funds for Protected Checkout; Goods.ng must not hold funds.</td><td><span class="b mock">MOCK</span> EscrowProvider only</td><td>Contract; implement hold/release/refund; sandbox certification; settlement/payout API; webhooks; reconciliation.</td><td>Yes</td><td>Finance + Eng</td></tr>
+      <tr><td>2</td><td><strong>Licensed BNPL lender</strong></td><td>Provides the credit decision, disbursement and collections for Goods Flex.</td><td><span class="b mock">MOCK</span> FinancingProvider only</td><td>Contract; decision/disbursement/repayment adapter; real terms; FCCPC review; collections process.</td><td>Yes</td><td>Risk + Legal</td></tr>
+      <tr><td>3</td><td><strong>Payment provider</strong> — Paystack or Flutterwave</td><td>Collects card/transfer/bank payments and verifies them server-side.</td><td><span class="b config">CONFIG</span> both adapters written, untested</td><td>Sandbox account; certify initialize/verify/refund; webhook secret and URL; settlement account; reconciliation; choose primary/backup.</td><td>Yes</td><td>Finance + Eng</td></tr>
+      <tr><td>4</td><td><strong>KYC / BVN-NIN provider</strong></td><td>Verifies seller identity and Flex borrowers; supports the "Verified" badge at scale.</td><td><span class="b mock">MOCK</span> IdentityProvider only</td><td>Choose Dojah/Prembly/Smile ID/Youverify; adapter; consent; encryption; webhook; manual review fallback; NDPA terms.</td><td>Yes</td><td>Compliance + Eng</td></tr>
+      <tr><td>5</td><td><strong>Open banking</strong> — Mono</td><td>Read-only bank statements for the Flex affordability assessment.</td><td><span class="b config">CONFIG</span> Mono adapter, untested</td><td>Mono sandbox; Connect widget keys; production approval; connection webhooks; error monitoring; consent copy.</td><td>No*</td><td>Risk + Eng</td></tr>
+      <tr><td>6</td><td><strong>SMS</strong> — Termii</td><td>OTP, guarantor consent links and transactional alerts.</td><td><span class="b config">CONFIG</span> adapter, console active</td><td>Sender ID approval; templates; DND handling; delivery reports; sandbox OTP proof; spend limits.</td><td>Yes</td><td>Eng + Ops</td></tr>
+      <tr><td>7</td><td><strong>Email</strong> — Postmark or SMTP</td><td>Verification, receipts, dispute and Flex notifications.</td><td><span class="b config">CONFIG</span> adapters, console active</td><td>Domain verification; SPF/DKIM/DMARC; templates; bounce/complaint webhooks; sandbox test.</td><td>Yes</td><td>Eng + Ops</td></tr>
+      <tr><td>8</td><td><strong>Object storage + CDN</strong></td><td>Durable public listing media and private KYC documents.</td><td><span class="b config">CONFIG</span> S3 adapter, local active</td><td>Bucket; IAM least privilege; CORS; CDN; versioning; lifecycle; private prefix; signed URLs; encryption.</td><td>Yes</td><td>Platform</td></tr>
+      <tr><td>9</td><td><strong>Managed Redis</strong></td><td>Shared cache, rate limits and single-flight locks.</td><td><span class="b config">CONFIG</span> optional in dev</td><td>Provision with TLS/private network; monitoring; eviction policy; boot check in production.</td><td>Yes</td><td>Platform</td></tr>
+      <tr><td>10</td><td><strong>Captcha</strong> — reCAPTCHA v2 or Turnstile</td><td>Bot protection on sign-in for new devices and after failures.</td><td><span class="b config">CONFIG</span> providers implemented, mock active</td><td>Production keys; allowed domains; CSP already allows; verify server-side in staging.</td><td>Yes</td><td>Eng</td></tr>
+      <tr><td>11</td><td><strong>Sentry / error tracking</strong></td><td>Detect and triage production errors in API and frontend.</td><td><span class="b build">NOT BUILT</span></td><td>Add FastAPI + Next.js SDKs; DSNs in secrets; release tags; source maps; alert routing; CSP updates.</td><td>Yes</td><td>Platform</td></tr>
+      <tr><td>12</td><td><strong>Deployment platforms</strong></td><td>Run the API, worker, frontend, database and cache in production.</td><td><span class="b build">NOT BUILT</span> Dockerfiles/Compose only</td><td>Vercel project; container platform; ≥2 API instances; worker; managed Postgres PITR; PgBouncer; DNS/SSL.</td><td>Yes</td><td>Platform</td></tr>
+      <tr><td>13</td><td><strong>Seller payouts / disbursement</strong></td><td>Move released seller balances out of the escrow partner to seller bank accounts.</td><td><span class="b build">NOT BUILT</span> ledger only</td><td>Partner payout API; bank account verification/name lookup; payout scheduling; retry/failed handling; UI; reconciliation.</td><td>Yes</td><td>Finance + Eng</td></tr>
+      <tr><td>14</td><td><strong>Malware scanning</strong></td><td>Scan listing images and KYC documents before storage/access.</td><td><span class="b build">NOT BUILT</span></td><td>ClamAV or cloud scanner; quarantine bucket; scan status; admin review; alerting.</td><td>Yes</td><td>Security</td></tr>
+      <tr><td>15</td><td><strong>Logistics / carrier</strong></td><td>Labels, pickup and tracking events for dispatched orders.</td><td><span class="b build">NOT BUILT</span> manual tracking fields</td><td>At least one carrier (GIGL, DHL, Sendbox, etc.); label API; tracking webhooks; status mapping; failed-delivery flow.</td><td>No</td><td>Ops + Eng</td></tr>
+      <tr><td>16</td><td><strong>Google Merchant Center + Ads</strong></td><td>Product listing ads and Shopping/Performance Max campaigns.</td><td><span class="b config">CONFIG</span> feed endpoint</td><td>Merchant Center; claim goods.ng; Nigeria/NGN; scheduled fetch; link Ads; campaign; feed quality checks.</td><td>No</td><td>Growth</td></tr>
+      <tr><td>17</td><td><strong>Meta Pixel / Catalog / CAPI</strong></td><td>Catalog ads and consented server-side purchase events.</td><td><span class="b config">CONFIG</span> pixel, feed, CAPI code</td><td>Business Manager; catalog data source; domain verification; pixel ID; CAPI token; campaign; event dedup check.</td><td>No</td><td>Growth</td></tr>
+      <tr><td>18</td><td><strong>GA4 / Google Ads tags</strong></td><td>Acquisition and conversion measurement.</td><td><span class="b config">CONFIG</span> settings + consent gate</td><td>Property/tag IDs; conversion labels; consent mode; verify no scripts before consent.</td><td>No</td><td>Growth</td></tr>
+      <tr><td>19</td><td><strong>Google OAuth</strong></td><td>Optional social sign-in.</td><td><span class="b config">CONFIG</span> implemented, mock in dev</td><td>OAuth web client; consent screen; redirect URIs; publish/verify app; privacy/terms links.</td><td>No</td><td>Eng</td></tr>
+      <tr><td>20</td><td><strong>Push notifications</strong></td><td>Re-engage buyers/sellers; required for future native apps.</td><td><span class="b build">NOT BUILT</span></td><td>FCM/APNs; device tokens; preferences; deep links; delivery analytics.</td><td>No</td><td>Eng</td></tr>
+      <tr><td>21</td><td><strong>WhatsApp Business API</strong></td><td>Structured messaging and template notifications.</td><td><span class="b build">NOT BUILT</span> deep links only</td><td>Cloud API; number; templates; opt-in; webhook; human handoff; 24-hour window handling.</td><td>No</td><td>Growth + Eng</td></tr>
+      <tr><td>22</td><td><strong>Dedicated search</strong></td><td>Search relevance and latency at scale.</td><td><span class="b build">NOT BUILT</span> Postgres FTS</td><td>OpenSearch/Meilisearch; index pipeline; ranking parity; A/B; swap behind <span class="req">service.search()</span>.</td><td>No</td><td>Eng</td></tr>
+      <tr><td>23</td><td><strong>WebSockets / SSE</strong></td><td>Lower-latency messaging if polling becomes costly.</td><td><span class="b build">NOT BUILT</span> 5 s polling</td><td>Gateway; auth; fan-out; presence; reconnect; load test; mobile background behaviour.</td><td>No</td><td>Eng</td></tr>
+      <tr><td>24</td><td><strong>Fraud / risk scoring</strong></td><td>Detect abusive signups, listings and payments.</td><td><span class="b build">NOT BUILT</span> rules only</td><td>Vendor or in-house scoring; device fingerprint; velocity rules; manual review queue; model governance.</td><td>No</td><td>Trust &amp; Safety</td></tr>
+      <tr><td>25</td><td><strong>NDPA / DPO tooling</strong></td><td>Data-subject export/delete, retention and processing records.</td><td><span class="b build">PARTIAL</span> copy only</td><td>DSR workflow; retention jobs; record of processing; DPO appointment; processor agreements; breach playbook.</td><td>Yes</td><td>Compliance</td></tr>
+    </tbody>
+  </table>
+  <p class="small muted">* Mono is not a production boot blocker, but Goods Flex cannot go live without it (or another open-banking provider) because the credit limit depends on a real bank assessment. If Flex is feature-flagged off at launch, Mono can follow.</p>
+
+  <div class="callout risk">
+    <div class="t">Top five blockers, in order</div>
+    <strong>1.</strong> Licensed escrow/payment partner (Protected Checkout cannot launch without it). <strong>2.</strong> Licensed lender (Goods Flex cannot launch without it). <strong>3.</strong> Payment provider certification (no live money). <strong>4.</strong> Production deployment + managed infrastructure (nothing is live). <strong>5.</strong> KYC + SMS/email + captcha (security and account recovery).
+  </div>
+
+  <h2>B. Environment variables</h2>
+  <table class="tight">
+    <thead><tr><th style="width:44mm">Variable</th><th>Purpose / production requirement</th></tr></thead>
+    <tbody>
+      <tr><td class="req">ENVIRONMENT</td><td>development | test | staging | production. Controls boot guards and dev routes.</td></tr>
+      <tr><td class="req">DATABASE_URL</td><td>PostgreSQL DSN; must use sslmode=require/verify-full in production.</td></tr>
+      <tr><td class="req">DB_POOL_SIZE / DB_MAX_OVERFLOW / DB_POOL_TIMEOUT</td><td>Per-process pool; size against Postgres max_connections or PgBouncer.</td></tr>
+      <tr><td class="req">REDIS_URL</td><td>Required in production; shared cache, rate limits, single-flight.</td></tr>
+      <tr><td class="req">JWT_SECRET / OTP_SECRET / DATA_ENCRYPTION_KEY</td><td>Unique per environment; production rejects dev defaults; back up the Fernet key.</td></tr>
+      <tr><td class="req">FRONTEND_URL / CORS_ORIGINS / ADMIN_URL</td><td>Explicit https origins; admin subdomain used in staff invites.</td></tr>
+      <tr><td class="req">TRUSTED_PROXY_CIDRS</td><td>Load balancer CIDRs; required in production for correct client IPs.</td></tr>
+      <tr><td class="req">ADMIN_2FA_REQUIRED</td><td>Must be true in production; admins enable TOTP before using the admin API.</td></tr>
+      <tr><td class="req">PAYMENT_PROVIDER</td><td>mock | paystack | flutterwave; mock refused in production.</td></tr>
+      <tr><td class="req">ESCROW_PROVIDER / BNPL_PROVIDER</td><td>Mock only today; production refuses mock; real adapters required.</td></tr>
+      <tr><td class="req">BANK_DATA_PROVIDER / MONO_* </td><td>mock | mono; Mono keys server-side only; production refuses mock.</td></tr>
+      <tr><td class="req">PAYSTACK_SECRET_KEY / FLUTTERWAVE_*</td><td>Provider credentials and webhook hash.</td></tr>
+      <tr><td class="req">SMS_PROVIDER / TERMII_*</td><td>console | termii; production refuses console.</td></tr>
+      <tr><td class="req">EMAIL_PROVIDER / SMTP_* / POSTMARK_*</td><td>console | smtp | postmark; production refuses console.</td></tr>
+      <tr><td class="req">STORAGE_BACKEND / S3_* / MEDIA_BASE_URL</td><td>local | s3; production requires s3 + bucket; CDN URL for media.</td></tr>
+      <tr><td class="req">CAPTCHA_PROVIDER / *_SITE_KEY / *_SECRET_KEY</td><td>off | mock | recaptcha | turnstile; production refuses mock/off.</td></tr>
+      <tr><td class="req">GOOGLE_CLIENT_ID / SECRET</td><td>Google OAuth; hidden in production when absent.</td></tr>
+      <tr><td class="req">META_CAPI_ACCESS_TOKEN / META_GRAPH_VERSION</td><td>Server-side purchase events; token never in DB/client.</td></tr>
+      <tr><td class="req">FEED_TOKEN</td><td>Optional protection for Google/Meta feeds.</td></tr>
+      <tr><td class="req">PLATFORM_COMMISSION_RATE / PROTECTION_FEE_RATE / PROTECTION_FEE_CAP</td><td>Marketplace economics; admin-overridable.</td></tr>
+      <tr><td class="req">AUTO_RELEASE_DAYS</td><td>Buyer-confirmation window before escrow release (default 3).</td></tr>
+      <tr><td class="req">RATE_LIMIT_PER_MINUTE / RATE_LIMIT_IP_MULTIPLIER</td><td>Per-identity and coarse per-IP ceilings.</td></tr>
+      <tr><td class="req">MAX_UPLOAD_MB / MAX_IMAGES_PER_SELLER / DELETED_LISTING_RETENTION_DAYS</td><td>Media abuse and retention controls.</td></tr>
+      <tr><td class="req">RATE_LIMIT_MULTIPLIER</td><td>Dev/test only; must be 1 outside development.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>C. Glossary</h2>
+  <table class="tight">
+    <thead><tr><th style="width:42mm">Term</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>Protected Checkout</td><td>Goods.ng checkout where a licensed partner holds the buyer's funds until delivery is confirmed or the dispute process resolves.</td></tr>
+      <tr><td>Escrow partner</td><td>A licensed third party that holds and releases funds. Goods.ng does not hold funds.</td></tr>
+      <tr><td>Goods Flex</td><td>Buy-now-pay-later product with an affordability assessment, mandatory guarantor and instalments.</td></tr>
+      <tr><td>Guarantor</td><td>A person who consents to cover a Flex borrower's obligation up to a stated, capped amount.</td></tr>
+      <tr><td>Premium seller</td><td>Derived status from an active paid subscription; unlocks contact buttons, analytics, banner and ranking.</td></tr>
+      <tr><td>Promotion</td><td>A one-off paid visibility package for a single listing: TOP 7, TOP 30 or Boost Premium 28.</td></tr>
+      <tr><td>Boost Premium</td><td>Promotion tier that makes a listing eligible for the sponsored pool while it meets quality gates.</td></tr>
+      <tr><td>Ledger</td><td>Double-entry, append-only record of money movements; balanced at commit by a deferred trigger.</td></tr>
+      <tr><td>Seller payable</td><td>Ledger liability representing money owed to a seller after release, before disbursement.</td></tr>
+      <tr><td>Verify-before-trust</td><td>Server-to-server payment verification with exact amount/currency; webhooks are only triggers.</td></tr>
+      <tr><td>Idempotency</td><td>The property that retrying the same request has no additional effect.</td></tr>
+      <tr><td>Four-eyes</td><td>A second, different admin must approve a dispute refund.</td></tr>
+      <tr><td>NDPA</td><td>Nigeria Data Protection Act 2023.</td></tr>
+      <tr><td>FCCPC</td><td>Federal Competition and Consumer Protection Commission; regulates digital lending conduct.</td></tr>
+      <tr><td>CBN</td><td>Central Bank of Nigeria; licenses payment/escrow institutions.</td></tr>
+      <tr><td>PPR</td><td>Partial Prerendering (Next.js); static shell with streamed dynamic data.</td></tr>
+      <tr><td>FTS</td><td>PostgreSQL full-text search.</td></tr>
+      <tr><td>PgBouncer</td><td>Connection pooler used in front of Postgres at scale.</td></tr>
+      <tr><td>PITR</td><td>Point-in-time recovery for the database.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer-note">
+    Prepared from the Goods.ng repository and verified build state on 8 November 2026. This document is a planning and acceptance baseline, not legal advice. Licensed partner terms, regulatory interpretations and go-live dates must be confirmed by counsel and the relevant providers.
+  </div>
+</div>
+
+</body>
+</html>

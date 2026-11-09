@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ArrowRight, BadgeCheck, CalendarDays, ChevronRight, Eye, MapPin, Smile, Star, Store } from "lucide-react";
 import { NotFoundError, serverGet, SITE_URL } from "@/lib/server-api";
+import { absoluteMediaUrl, ogImageUrl, pageMetadata, truncate } from "@/lib/seo";
 import type { ProductCard, ProductDetail } from "@/lib/types";
 import { CONDITION_LABEL, date, isVerified, naira, timeAgo, VERIFICATION_LABEL } from "@/lib/format";
 import { Gallery } from "@/components/gallery";
@@ -32,38 +33,155 @@ type Params = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
   const p = await getProduct(slug);
-  const description = `${naira(p.price)} · ${CONDITION_LABEL[p.condition]} · ${p.city}, ${p.state}. ${p.description.slice(0, 140)}`;
-  return {
+  const condition = CONDITION_LABEL[p.condition];
+  const location = `${p.city}, ${p.state}`;
+  const description = `${naira(p.price)} · ${condition} · ${location}. ${truncate(p.description, 150)}`;
+  const image = ogImageUrl({
+    eyebrow: p.category.name,
+    title: p.title,
+    subtitle: `${condition} · ${location}`,
+    price: naira(p.price),
+    image: p.images[0]?.url ?? p.thumb_url,
+    badge: p.protected_checkout_enabled ? "Protected Checkout" : "Verified seller",
+  });
+
+  return pageMetadata({
     title: `${p.title} — ${naira(p.price)}`,
     description,
-    alternates: { canonical: `/item/${p.slug}` },
-    openGraph: { title: p.title, description, images: p.images[0] ? [{ url: p.images[0].url }] : undefined, type: "website" },
-  };
+    path: `/item/${p.slug}`,
+    image,
+    imageAlt: p.title,
+    keywords: [
+      p.title,
+      p.brand,
+      p.model,
+      p.category.name,
+      p.subcategory?.name,
+      `${p.category.name} in ${p.state}`,
+      `${p.category.name} in ${p.city}`,
+      `buy ${p.category.name.toLowerCase()} in Nigeria`,
+      `used ${p.category.name.toLowerCase()} in Nigeria`,
+      condition,
+    ].filter((value): value is string => Boolean(value)),
+    other: {
+      "product:price:amount": p.price,
+      "product:price:currency": p.currency ?? "NGN",
+      "product:availability": p.status === "active" && p.quantity > 0 ? "in stock" : "out of stock",
+      "product:condition": p.condition === "brand_new" ? "new" : p.condition === "refurbished" ? "refurbished" : "used",
+      ...(p.brand ? { "product:brand": p.brand } : {}),
+      "twitter:label1": "Price",
+      "twitter:data1": naira(p.price),
+      "twitter:label2": "Location",
+      "twitter:data2": location,
+    },
+  });
 }
 
 function JsonLd({ p }: { p: ProductDetail }) {
-  const data = {
+  const url = `${SITE_URL}/item/${p.slug}`;
+  const sellerUrl = `${SITE_URL}/store/${p.seller.slug}`;
+  const images = p.images.map((image) => absoluteMediaUrl(image.url)).filter((image): image is string => Boolean(image));
+  const itemCondition =
+    p.condition === "brand_new"
+      ? "https://schema.org/NewCondition"
+      : p.condition === "refurbished"
+        ? "https://schema.org/RefurbishedCondition"
+        : "https://schema.org/UsedCondition";
+  const availability =
+    p.status === "active" && p.quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/SoldOut";
+  const sellerRating =
+    p.seller.rating_count > 0
+      ? { "@type": "AggregateRating", ratingValue: p.seller.rating_avg, reviewCount: p.seller.rating_count }
+      : undefined;
+
+  const shippingDetails = p.delivery_options
+    .filter((option) => option.type !== "pickup")
+    .map((option) => ({
+      "@type": "OfferShippingDetails",
+      shippingRate: { "@type": "MonetaryAmount", value: option.fee, currency: p.currency ?? "NGN" },
+      shippingDestination: { "@type": "DefinedRegion", addressCountry: "NG" },
+      deliveryTime: {
+        "@type": "ShippingDeliveryTime",
+        transitTime: {
+          "@type": "QuantitativeValue",
+          minValue: option.eta_days,
+          maxValue: option.eta_days,
+          unitCode: "DAY",
+        },
+      },
+    }));
+
+  const product = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: p.title,
-    description: p.description.slice(0, 500),
-    image: p.images.map((i) => (i.url.startsWith("http") ? i.url : `${SITE_URL}${i.url}`)),
+    description: truncate(p.description, 5000),
+    image: images,
+    sku: p.id,
+    mpn: p.id,
+    url,
     brand: p.brand ? { "@type": "Brand", name: p.brand } : undefined,
     model: p.model ?? undefined,
     category: p.category.name,
     offers: {
       "@type": "Offer",
-      url: `${SITE_URL}/item/${p.slug}`,
-      priceCurrency: "NGN",
+      url,
+      priceCurrency: p.currency ?? "NGN",
       price: p.price,
-      itemCondition: p.condition === "brand_new" ? "https://schema.org/NewCondition" : p.condition === "refurbished" ? "https://schema.org/RefurbishedCondition" : "https://schema.org/UsedCondition",
-      availability: p.status === "active" && p.quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
-      seller: { "@type": "Organization", name: p.seller.store_name },
+      priceValidUntil: new Date(new Date(p.updated_at).getTime() + 365 * 86_400_000).toISOString().slice(0, 10),
+      itemCondition,
+      availability,
+      seller: {
+        "@type": "Organization",
+        name: p.seller.store_name,
+        url: sellerUrl,
+        ...(sellerRating ? { aggregateRating: sellerRating } : {}),
+      },
+      ...(shippingDetails.length ? { shippingDetails } : {}),
     },
-    aggregateRating: p.seller.rating_count > 0 ? { "@type": "AggregateRating", ratingValue: p.seller.rating_avg, reviewCount: p.seller.rating_count } : undefined,
+    additionalProperty: [
+      { "@type": "PropertyValue", name: "Condition", value: CONDITION_LABEL[p.condition] },
+      { "@type": "PropertyValue", name: "Location", value: `${p.city}, ${p.state}` },
+      { "@type": "PropertyValue", name: "Availability", value: p.quantity > 0 ? `${p.quantity} in stock` : "Out of stock" },
+      ...(p.brand ? [{ "@type": "PropertyValue", name: "Brand", value: p.brand }] : []),
+      ...(p.model ? [{ "@type": "PropertyValue", name: "Model", value: p.model }] : []),
+      ...(p.protected_checkout_enabled
+        ? [{ "@type": "PropertyValue", name: "Payment protection", value: "Protected Checkout" }]
+        : []),
+      ...(p.bnpl_enabled ? [{ "@type": "PropertyValue", name: "Instalments", value: "Goods Flex" }] : []),
+    ],
   };
+
+  const crumbs = [
+    { name: "Home", item: SITE_URL },
+    ...p.category_path.map((category) => ({ name: category.name, item: `${SITE_URL}/c/${category.slug}` })),
+    ...(p.subcategory ? [{ name: p.subcategory.name, item: `${SITE_URL}/c/${p.subcategory.slug}` }] : []),
+    { name: p.title, item: url },
+  ];
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((crumb, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: crumb.name,
+      item: crumb.item,
+    })),
+  };
+
   // JSON.stringify output is escaped for "<" to prevent script injection via user content.
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }} />;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(product).replace(/</g, "\\u003c") }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb).replace(/</g, "\\u003c") }}
+      />
+    </>
+  );
 }
 
 async function Content({ params }: Params) {
@@ -95,6 +213,8 @@ async function Content({ params }: Params) {
           <div className="relative">
             <Gallery images={p.images} title={p.title} categorySlug={p.category.slug} />
             <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+              {p.promoted_tier === "premium" && !s.is_premium && <span className="rounded-md bg-brand-700 px-2 py-1 text-[11px] font-bold text-white shadow-sm">Premium listing</span>}
+              {p.promoted_tier === "top" && <span className="rounded-md bg-accent-500 px-2 py-1 text-[11px] font-bold text-ink shadow-sm">TOP listing</span>}
               {s.is_premium && <span className="rounded-md bg-accent-500 px-2 py-1 text-[11px] font-bold text-ink shadow-sm">Premium</span>}
               {isVerified(s.verification_level) && (
                 <span className="inline-flex items-center gap-1 rounded-md bg-white/95 px-2 py-1 text-[11px] font-semibold text-brand-800 shadow-sm">

@@ -31,6 +31,7 @@ COMMISSION = ("revenue:platform_commission", "Platform commission", LedgerAccoun
 PROTECTION_FEES = ("revenue:protection_fees", "Buyer protection fees", LedgerAccountType.REVENUE)
 SUBSCRIPTION_RECEIPTS = ("asset:provider_receipts", "Provider receipts (non-escrow)", LedgerAccountType.ASSET)
 SUBSCRIPTION_REVENUE = ("revenue:subscriptions", "Premium subscriptions", LedgerAccountType.REVENUE)
+PROMOTION_REVENUE = ("revenue:promotions", "Listing promotions", LedgerAccountType.REVENUE)
 
 
 def seller_payable(seller_id) -> tuple[str, str, LedgerAccountType]:

@@ -56,22 +56,22 @@ const CAP_LABEL = {
 export function FlexLimitCard({ s }: { s: FlexStatus }) {
   const limit = Number(s.credit_limit);
   return (
-    <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-800 p-5 text-white shadow-[var(--shadow-pop)] sm:p-6">
-      <p className="text-sm font-medium text-violet-200">Your Goods Flex limit</p>
+    <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-accent-400 to-accent-500 p-5 text-ink shadow-[var(--shadow-pop)] sm:p-6">
+      <p className="text-sm font-medium text-brand-800">Your Goods Flex limit</p>
       <p className="mt-1 text-4xl font-extrabold tracking-tight">{limit > 0 ? naira(s.credit_limit) : "Not set up"}</p>
-      {limit > 0 && s.binding_cap && <p className="mt-1 text-sm text-violet-100">Limited by {CAP_LABEL[s.binding_cap]}</p>}
+      {limit > 0 && s.binding_cap && <p className="mt-1 text-sm text-ink/75">Limited by {CAP_LABEL[s.binding_cap]}</p>}
       {s.running_plan ? (
-        <div className="mt-4 rounded-xl bg-white/12 p-3 text-sm ring-1 ring-white/20">
+        <div className="mt-4 rounded-xl bg-ink/5 p-3 text-sm ring-1 ring-ink/10">
           <p className="font-semibold">You have a Goods Flex plan running</p>
-          <p className="text-violet-100">You can start a new plan once it&apos;s fully paid. Only one plan can run at a time.</p>
+          <p className="text-ink/75">You can start a new plan once it&apos;s fully paid. Only one plan can run at a time.</p>
           {s.running_plan.order_id && <Link href={`/orders/${s.running_plan.order_id}`} className="mt-1 inline-block font-semibold underline">View plan order</Link>}
         </div>
       ) : limit > 0 ? (
-        <p className="mt-4 text-sm text-violet-100">Look for the <b>Goods Flex</b> option on eligible items up to this amount.</p>
+        <p className="mt-4 text-sm text-ink/75">Look for the <b>Goods Flex</b> option on eligible items up to this amount.</p>
       ) : (
-        <p className="mt-4 text-sm text-violet-100">Complete the steps below to see how much you can buy now and pay later.</p>
+        <p className="mt-4 text-sm text-ink/75">Complete the steps below to see how much you can buy now and pay later.</p>
       )}
-      {s.tips.map((t) => <p key={t} className="mt-2 text-sm font-medium text-amber-200">→ {t}</p>)}
+      {s.tips.map((t) => <p key={t} className="mt-2 text-sm font-medium text-brand-800">→ {t}</p>)}
     </section>
   );
 }
@@ -82,7 +82,7 @@ function Step({ n, title, done, pending, icon, children, sub, locked }: {
   return (
     <section className={clsx("card p-4 sm:p-5", locked && "opacity-60")}>
       <div className="flex items-start gap-3">
-        <span className={clsx("grid size-10 shrink-0 place-items-center rounded-xl", done ? "bg-brand-50 text-brand-700" : "bg-violet-50 text-violet-700")}>{icon}</span>
+        <span className={clsx("grid size-10 shrink-0 place-items-center rounded-xl", done ? "bg-brand-50 text-brand-700" : "bg-accent-500/25 text-brand-800")}>{icon}</span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold">{n}. {title}</h3>
@@ -277,8 +277,8 @@ export function FlexSteps({ s, onChange }: { s: FlexStatus; onChange: (s: FlexSt
             <fieldset className="space-y-2">
               <legend className="label">Test customer profile</legend>
               {Object.entries(bankOpts.mock_personas ?? {}).map(([k, v]) => (
-                <label key={k} className={clsx("flex cursor-pointer gap-2.5 rounded-lg border p-3 text-sm", persona === k ? "border-violet-600 bg-violet-50" : "border-line")}>
-                  <input type="radio" name="persona" checked={persona === k} onChange={() => setPersona(k)} className="mt-0.5 accent-violet-700" />{v}
+                <label key={k} className={clsx("flex cursor-pointer gap-2.5 rounded-lg border p-3 text-sm", persona === k ? "border-brand-600 bg-brand-50" : "border-line")}>
+                  <input type="radio" name="persona" checked={persona === k} onChange={() => setPersona(k)} className="mt-0.5 accent-brand-700" />{v}
                 </label>
               ))}
             </fieldset>

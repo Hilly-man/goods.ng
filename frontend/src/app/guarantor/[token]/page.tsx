@@ -26,7 +26,7 @@ function Consent({ token }: { token: string }) {
   }
   return (
     <div className="card space-y-4 p-6">
-      <div className="flex items-center gap-2 text-violet-700"><ShieldCheck className="size-6" /><h1 className="text-xl font-bold text-ink">Guarantor request</h1></div>
+      <div className="flex items-center gap-2 text-brand-700"><ShieldCheck className="size-6" /><h1 className="text-xl font-bold text-ink">Guarantor request</h1></div>
       <p>Hello {r.guarantor_name.split(" ")[0]}, <b>{r.borrower_name}</b> ({r.relationship}) has named you as their guarantor for <b>Goods Flex</b> purchases on Goods.ng
         {Number(r.amount_guaranteed) > 0 ? <> up to <b>{naira(r.amount_guaranteed)}</b></> : null}.</p>
       <ul className="list-disc space-y-1 pl-5 text-sm text-ink/80">

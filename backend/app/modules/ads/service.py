@@ -17,7 +17,7 @@ per block, so no single seller can take over a page. Sponsored listings always m
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.cache import cache
@@ -40,9 +40,16 @@ LAGOS = ZoneInfo("Africa/Lagos")
 def eligible():
     """SQL conditions a listing must meet to be shown as Sponsored."""
     photos = select(func.count()).select_from(ProductImage).where(ProductImage.product_id == Product.id).scalar_subquery()
+    premium_visibility = or_(
+        premium_exists_for(Product.seller_id),
+        # A single-listing Boost Premium purchase gets the same sponsored eligibility as a
+        # Premium seller, but only while its paid window is running.
+        and_(Product.promoted_tier == "premium", Product.is_featured.is_(True),
+             or_(Product.featured_until.is_(None), Product.featured_until > func.now())),
+    )
     return and_(
         public_filter(),
-        premium_exists_for(Product.seller_id),
+        premium_visibility,
         # Same meaning of "verified" as the rest of the site: ID or business verified (not just a phone).
         Product.seller.has(SellerProfile.verification_level.in_([VerificationLevel.IDENTITY, VerificationLevel.BUSINESS])),
         photos >= MIN_PHOTOS,

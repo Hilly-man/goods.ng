@@ -135,8 +135,8 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--replace", action="store_true", help="regenerate images that already exist")
     args = parser.parse_args()
-    if settings.environment not in ("development", "test"):
-        raise SystemExit("Refusing to generate demo images outside development/test")
+    if settings.environment not in ("development", "test", "staging"):
+        raise SystemExit("Refusing to generate demo images outside development/test/staging")
 
     with SessionLocal() as db:
         products = db.scalars(select(Product).options(selectinload(Product.images), selectinload(Product.subcategory),
@@ -154,8 +154,7 @@ def main() -> int:
                     delete_stored_image(img.storage_key)
                 p.images.clear()
             for variant in range(2):
-                stored = store_image(card(p, p.seller, variant), f"products/{p.id}",
-                                     watermark=f"“{p.seller.store_name}” Listed on Goods.ng")
+                stored = store_image(card(p, p.seller, variant), f"products/{p.id}", watermark=p.seller.store_name)
                 p.images.append(ProductImage(url=stored.url, thumb_url=stored.thumb_url, storage_key=stored.key,
                                              width=stored.width, height=stored.height, position=variant,
                                              created_at=utcnow()))

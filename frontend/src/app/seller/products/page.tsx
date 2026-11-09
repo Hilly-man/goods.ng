@@ -8,7 +8,8 @@ import { Badge, ButtonLink, EmptyState, PageLoader, Tabs, useToast } from "@/com
 import { ProductThumb } from "@/components/product-card";
 import { http, errorMessage } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
-import { naira, titleCase } from "@/lib/format";
+import { date, naira, titleCase } from "@/lib/format";
+import { PromoteDialog } from "@/components/promote-dialog";
 import type { Page, SellerProductRow } from "@/lib/types";
 
 type AdSummary = {
@@ -24,7 +25,7 @@ function SponsoredCard({ s }: { s: AdSummary }) {
     return (
       <div className="card mb-3 flex flex-wrap items-center gap-3 p-4">
         <Megaphone className="size-5 text-accent-600" />
-        <p className="flex-1 text-sm"><b>Get more buyers:</b> Premium listings rank higher in search, get extra <b>TOP</b> spots in search, on item pages and in recommendations, and can be bumped to the top daily.</p>
+        <p className="flex-1 text-sm"><b>Get more buyers:</b> Premium listings rank higher in search, get extra <b>TOP</b> spots on item pages and in recommendations, and can be bumped daily. Or promote a single listing from ₦3,099 — no subscription needed.</p>
         <ButtonLink href="/premium" size="sm" variant="accent">See Premium</ButtonLink>
       </div>
     );
@@ -54,6 +55,7 @@ const TONE = { active: "good", sold: "info", inactive: "neutral", pending_review
 
 function List() {
   const [status, setStatus] = useState("");
+  const [promoteFor, setPromoteFor] = useState<SellerProductRow | null>(null);
   const { data, reload } = useApi<Page<SellerProductRow>>("/seller/products", { status: status || undefined, page_size: 100 });
   const { data: ads, reload: reloadAds } = useApi<AdSummary>("/seller/ads/summary");
   const toast = useToast();
@@ -85,7 +87,10 @@ function List() {
                     <span className="inline-flex items-center gap-1"><Eye className="size-3" />{p.views_count}</span>
                     <span className="inline-flex items-center gap-1"><MessageCircle className="size-3" />{p.enquiries_count}</span>
                     <span className="inline-flex items-center gap-1"><MousePointerClick className="size-3" />{p.contact_clicks}</span>
-                    {p.is_featured && <span className="font-semibold text-accent-600">Featured</span>}
+                    {p.promoted_tier && p.promoted_until && (
+                      <span className="font-semibold text-brand-700">{p.promoted_tier === "premium" ? "Premium" : "TOP"} until {date(p.promoted_until)}</span>
+                    )}
+                    {!p.promoted_tier && p.is_featured && <span className="font-semibold text-accent-600">Featured</span>}
                   </p>
                   {p.rejection_reason && <p className="text-xs text-red-600">{p.rejection_reason}</p>}
                 </div>
@@ -99,13 +104,17 @@ function List() {
                 )}
                 {p.status === "active" && <button className="chip" onClick={() => act(p, "sold")}>Mark sold</button>}
                 {p.status === "active" && <button className="chip" onClick={() => act(p, "inactive")}>Pause</button>}
-                {p.status === "active" && !p.is_featured && <button className="chip" onClick={() => act(p, "feature")}><Sparkles className="size-3.5" />Feature</button>}
+                {p.status === "active" && <button className="chip" onClick={() => setPromoteFor(p)}><Megaphone className="size-3.5" />{p.promoted_tier ? "Extend" : "Promote"}</button>}
+                {p.status === "active" && !p.is_featured && ads?.bumps.premium && <button className="chip" onClick={() => act(p, "feature")}><Sparkles className="size-3.5" />Feature</button>}
                 {["inactive", "sold"].includes(p.status) && <button className="chip" onClick={() => act(p, "active")}>Reactivate</button>}
                 <button className="chip text-red-600" onClick={() => act(p, "delete")}>Delete</button>
               </div>
             </li>
           ))}
         </ul>
+      )}
+      {promoteFor && (
+        <PromoteDialog product={promoteFor} onClose={() => setPromoteFor(null)} />
       )}
     </>
   );

@@ -12,10 +12,10 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { Table2 } from "lucide-react";
 
-export const SERIES = { brand: "#069456", blue: "#2a78d6" } as const; // validated pair (CVD ΔE 22)
+export const SERIES = { brand: "#2f7a4a", alt: "#2a78d6" } as const; // green + blue: validated CVD pair
 const SURFACE = "#ffffff";
-const GRID = "#e8ebe9";
-const AXIS_TEXT = "#6b7280";
+const GRID = "#e2e8e3";
+const AXIS_TEXT = "#55635a";
 
 /* ---------------- helpers ---------------- */
 

@@ -33,13 +33,21 @@ import {
   SafetyIllustration,
   SellerIllustration,
 } from "@/components/illustrations";
+import { ogImageUrl, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "About Goods.ng — the safer way to buy and sell in Nigeria",
   description:
     "Goods.ng is a Nigerian marketplace where you can find great deals, negotiate in-app, pay with escrow-protected checkout or in instalments with Goods Flex, and trade with verified sellers.",
-  alternates: { canonical: "/about" },
-};
+  path: "/about",
+  image: ogImageUrl({
+    eyebrow: "About Goods.ng",
+    title: "The safer way to buy and sell in Nigeria",
+    subtitle: "Escrow-protected checkout, verified sellers and Goods Flex.",
+    badge: "Our story",
+  }),
+  keywords: ["about Goods.ng", "Nigerian marketplace", "safe online marketplace", "verified sellers Nigeria"],
+});
 
 const OUTLINE_ON_DARK =
   "inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-white/40 px-5 text-base font-semibold text-white transition hover:border-white hover:bg-white/10";
@@ -192,7 +200,7 @@ function WhyUs() {
   const items = [
     { icon: ShieldCheck, tone: "bg-brand-50 text-brand-700", title: "Protected payments", body: "We hold your money until you get your item." },
     { icon: Handshake, tone: "bg-amber-50 text-amber-700", title: "Negotiate in-app", body: "Make offers; the agreed price goes to checkout." },
-    { icon: CalendarClock, tone: "bg-violet-50 text-violet-700", title: "Pay small-small", body: "Spread the cost over 3 or 6 months with Goods Flex." },
+    { icon: CalendarClock, tone: "bg-accent-500/25 text-brand-800", title: "Pay small-small", body: "Spread the cost over 3 or 6 months with Goods Flex." },
     { icon: BadgeCheck, tone: "bg-sky-50 text-sky-700", title: "Verified sellers", body: "Look for the badge and real buyer reviews." },
   ];
   return (

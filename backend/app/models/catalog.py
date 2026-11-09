@@ -84,6 +84,8 @@ class Product(UUIDPk, Timestamps, SoftDelete, Base):
     featured_until: Mapped[datetime | None]
     # Premium "bump to top": counts as fresh for ordering (without faking the posted date).
     bumped_at: Mapped[datetime | None] = mapped_column(index=True)
+    # Paid per-listing promotion tier: "top" or "premium" while featured_until is in the future.
+    promoted_tier: Mapped[str | None] = mapped_column(String(20))
     views_count: Mapped[int] = mapped_column(Integer, default=0)
     enquiries_count: Mapped[int] = mapped_column(Integer, default=0)
     contact_clicks: Mapped[int] = mapped_column(Integer, default=0)
@@ -169,5 +171,6 @@ class Promotion(UUIDPk, Timestamps, Base):
     ends_at: Mapped[datetime]
     status: Mapped[PromotionStatus] = mapped_column(StrEnum(PromotionStatus), default=PromotionStatus.ACTIVE)
     source: Mapped[str] = mapped_column(String(30), default="subscription_quota")  # or paid / admin
+    package_code: Mapped[str | None] = mapped_column(String(30))  # paid single-listing package
     payment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("payments.id"))
     notes: Mapped[str | None] = mapped_column(Text)

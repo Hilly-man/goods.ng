@@ -1,0 +1,167 @@
+# Render Blueprint for Goods.ng.
+#
+# Deploy: Render Dashboard → New → Blueprint → select this repo → Apply.
+# This creates the API, background worker, Next.js web app, managed Postgres and
+# Key Value (Redis) in one go. Images are built from the existing Dockerfiles.
+#
+# Notes:
+#   - ENVIRONMENT=staging so mock payment/escrow/BNPL providers are allowed.
+#     Switch to production only after wiring real providers, S3 storage, SMS/email,
+#     a captcha and TRUSTED_PROXY_CIDRS (see docs/DEPLOYMENT.md).
+#   - The API runs `alembic upgrade head` as its pre-deploy command.
+#   - Seed demo data once from the API's Render Shell: python -m app.seed --demo
+#   - Custom domain: set NEXT_PUBLIC_SITE_URL (build-time) and FRONTEND_URL/CORS_ORIGINS
+#     to https://your-domain, then redeploy. See docs/DEPLOYMENT.md → "Deploy on Render".
+
+envVarGroups:
+  - name: goodsng-shared
+    envVars:
+      - key: ENVIRONMENT
+        value: staging
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OTP_SECRET
+        generateValue: true
+      - key: DATA_ENCRYPTION_KEY
+        generateValue: true
+      - key: MOCK_PROVIDER_SECRET
+        generateValue: true
+      - key: RATE_LIMIT_MULTIPLIER
+        value: "1"
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: DB_POOL_SIZE
+        value: "5"
+      - key: DB_MAX_OVERFLOW
+        value: "10"
+      - key: DB_POOL_TIMEOUT
+        value: "30"
+      - key: STORAGE_BACKEND
+        value: local
+      - key: LOCAL_MEDIA_DIR
+        value: /app/data/media
+      - key: MEDIA_BASE_URL
+        value: /media
+      - key: PAYMENT_PROVIDER
+        value: mock
+      - key: ESCROW_PROVIDER
+        value: mock
+      - key: BNPL_PROVIDER
+        value: mock
+      - key: BANK_DATA_PROVIDER
+        value: mock
+      - key: SMS_PROVIDER
+        value: console
+      - key: EMAIL_PROVIDER
+        value: console
+      - key: ADMIN_2FA_REQUIRED
+        value: "false"
+
+services:
+  - type: web
+    name: goodsng-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: frankfurt
+    plan: 1c-2g
+    healthCheckPath: /health/ready
+    preDeployCommand: alembic upgrade head
+    envVars:
+      - fromGroup: goodsng-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: goodsng-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: goodsng-redis
+          type: keyvalue
+          property: connectionString
+      - key: FRONTEND_URL
+        fromService:
+          name: goodsng-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: CORS_ORIGINS
+        fromService:
+          name: goodsng-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+    disk:
+      name: goodsng-media
+      mountPath: /app/data
+      sizeGB: 10
+
+  - type: worker
+    name: goodsng-worker
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: python -m app.worker
+    region: frankfurt
+    plan: 0.5c-512mb
+    envVars:
+      - fromGroup: goodsng-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: goodsng-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: goodsng-redis
+          type: keyvalue
+          property: connectionString
+      - key: FRONTEND_URL
+        fromService:
+          name: goodsng-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: CORS_ORIGINS
+        fromService:
+          name: goodsng-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: goodsng-web
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    region: frankfurt
+    plan: 0.5c-512mb
+    healthCheckPath: /
+    envVars:
+      # Private-network address (e.g. goodsng-api:10000); next.config.ts turns it into
+      # the absolute URL used by the /api/v1 and /media rewrites.
+      - key: API_INTERNAL_URL
+        fromService:
+          name: goodsng-api
+          type: web
+          property: hostport
+      # Baked in at build time; must be https and match the public site origin.
+      - key: NEXT_PUBLIC_SITE_URL
+        fromService:
+          name: goodsng-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+
+  - type: keyvalue
+    name: goodsng-redis
+    region: frankfurt
+    plan: 256mb
+    maxmemoryPolicy: allkeys-lru
+    persistenceMode: journal-snapshot
+    ipAllowList: []
+
+databases:
+  - name: goodsng-db
+    region: frankfurt
+    plan: 0.5c-1g
+    postgresMajorVersion: "17"
+    diskSizeGB: 15
+    ipAllowList: []

@@ -1,7 +1,20 @@
 import type { Metadata } from "next";
 import { ProsePage } from "@/components/prose";
+import { ogImageUrl, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Privacy Policy", alternates: { canonical: "/privacy" } };
+export const metadata: Metadata = pageMetadata({
+  title: "Privacy Policy",
+  description:
+    "How Goods.ng collects, uses and protects personal data under the Nigeria Data Protection Act 2023, including bank data and guarantors.",
+  path: "/privacy",
+  image: ogImageUrl({
+    eyebrow: "Legal",
+    title: "Privacy Policy",
+    subtitle: "How Goods.ng collects, uses and protects personal data.",
+    badge: "NDPA 2023",
+  }),
+  keywords: ["Goods.ng privacy policy", "NDPA 2023", "data protection Nigeria", "marketplace privacy"],
+});
 
 export default function Page() {
   return (

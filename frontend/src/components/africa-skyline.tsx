@@ -148,12 +148,12 @@ export function AfricaSkyline({ className = "mt-16" }: { className?: string }) {
       <svg viewBox="0 0 1440 240" preserveAspectRatio="xMidYMax slice" className="block h-32 w-full sm:h-44 lg:h-56" fill={INK}>
         <defs>
           <linearGradient id="sky-sun" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#fbbf24" stopOpacity="0.55" />
-            <stop offset="1" stopColor="#f59e0b" stopOpacity="0.15" />
+            <stop offset="0" stopColor="var(--color-accent-400)" stopOpacity="0.55" />
+            <stop offset="1" stopColor="var(--color-accent-500)" stopOpacity="0.15" />
           </linearGradient>
           <linearGradient id="sky-hills" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#10b86b" stopOpacity="0.28" />
-            <stop offset="1" stopColor="#057a48" stopOpacity="0.45" />
+            <stop offset="0" stopColor="var(--color-brand-500)" stopOpacity="0.28" />
+            <stop offset="1" stopColor="var(--color-brand-700)" stopOpacity="0.45" />
           </linearGradient>
         </defs>
 
@@ -162,7 +162,7 @@ export function AfricaSkyline({ className = "mt-16" }: { className?: string }) {
         {/* Zuma Rock */}
         <path d="M612 240 C626 150 662 94 730 86 C792 80 840 134 864 240Z" fill="url(#sky-hills)" />
         <path d="M674 134 C684 162 688 198 682 236 M730 100 C738 142 738 192 732 236 M788 114 C796 152 802 198 800 236"
-          stroke="#057a48" strokeOpacity="0.25" strokeWidth="3" fill="none" />
+          stroke="var(--color-brand-700)" strokeOpacity="0.25" strokeWidth="3" fill="none" />
         {/* savannah hills */}
         <path d="M0 240 V196 C90 168 160 182 230 200 C330 224 420 176 540 186 C680 198 760 160 880 172 C1010 186 1100 150 1220 164 C1320 176 1390 168 1440 160 V240Z"
           fill="url(#sky-hills)" />

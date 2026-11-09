@@ -2,12 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Bug, HelpCircle, Mail, MapPin, MessageCircle, Phone, ShieldAlert } from "lucide-react";
 import { ProsePage } from "@/components/prose";
+import { ogImageUrl, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Contact us",
   description: "Get help from the Goods.ng customer support team — email, phone, disputes and security reports.",
-  alternates: { canonical: "/contact" },
-};
+  path: "/contact",
+  image: ogImageUrl({
+    eyebrow: "Support",
+    title: "Contact Goods.ng",
+    subtitle: "Customer care, disputes, safety and security reports.",
+    badge: "We're here",
+  }),
+  keywords: ["Goods.ng contact", "customer support Nigeria", "report a dispute", "security report"],
+});
 
 export default function Page() {
   const items = [

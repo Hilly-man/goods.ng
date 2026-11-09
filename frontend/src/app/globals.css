@@ -1,35 +1,35 @@
 @import "tailwindcss";
 
-/* Goods.ng design tokens — emerald trust green + market amber */
+/* Goods.ng design tokens — forest graphite + acid mint */
 @theme {
-  --color-brand-50: #ecfdf4;
-  --color-brand-100: #d1fae4;
-  --color-brand-200: #a7f3cc;
-  --color-brand-300: #6ee7ac;
-  --color-brand-400: #34d388;
-  --color-brand-500: #10b86b;
-  --color-brand-600: #069456;
-  --color-brand-700: #057a48;
-  --color-brand-800: #08603b;
-  --color-brand-900: #084f33;
-  --color-brand-950: #022c1b;
+  --color-brand-50: #f2f7f3;
+  --color-brand-100: #e2ece4;
+  --color-brand-200: #c5d8c9;
+  --color-brand-300: #a0bda6;
+  --color-brand-400: #789b80;
+  --color-brand-500: #537a5d;
+  --color-brand-600: #3a5c44;
+  --color-brand-700: #263a2d;
+  --color-brand-800: #18251d;
+  --color-brand-900: #101a14;
+  --color-brand-950: #0a100c;
 
-  --color-accent-400: #fbbf24;
-  --color-accent-500: #f59e0b;
-  --color-accent-600: #d97706;
+  --color-accent-400: #d3ffa3;
+  --color-accent-500: #b7ff73;
+  --color-accent-600: #3f6b1a;
 
   --color-premium-500: #c79a1e;
   --color-premium-600: #a87f12;
 
-  --color-ink: #0f1d17;
-  --color-muted: #5b6b64;
-  --color-line: #e3e9e6;
-  --color-canvas: #f3f6f4;
+  --color-ink: #0f1611;
+  --color-muted: #55635a;
+  --color-line: #e2e8e3;
+  --color-canvas: #f4f7f4;
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --radius-card: 0.875rem;
-  --shadow-card: 0 1px 2px rgb(15 29 23 / 0.06), 0 1px 3px rgb(15 29 23 / 0.04);
-  --shadow-pop: 0 10px 30px -10px rgb(15 29 23 / 0.25);
+  --shadow-card: 0 1px 2px rgb(9 20 13 / 0.06), 0 1px 3px rgb(9 20 13 / 0.04);
+  --shadow-pop: 0 10px 30px -10px rgb(9 20 13 / 0.25);
 }
 
 @layer base {
@@ -98,7 +98,7 @@
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: #e8eeeb;
+  background: #e6ede7;
 }
 .skeleton::after {
   content: "";

@@ -1,7 +1,20 @@
 import type { Metadata } from "next";
 import { ProsePage } from "@/components/prose";
+import { ogImageUrl, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Goods Flex — Buy now, pay later", alternates: { canonical: "/flex/about" } };
+export const metadata: Metadata = pageMetadata({
+  title: "Goods Flex — Buy now, pay later",
+  description:
+    "Buy what you need now and spread the cost over 3 or 6 months with Goods Flex. Affordability checks, a mandatory guarantor and clear terms.",
+  path: "/flex/about",
+  image: ogImageUrl({
+    eyebrow: "Goods Flex",
+    title: "Buy now, pay over 3 or 6 months",
+    subtitle: "Affordability checks, a mandatory guarantor and clear terms.",
+    badge: "Instalments",
+  }),
+  keywords: ["Goods Flex", "buy now pay later Nigeria", "instalment payment Nigeria", "BNPL Nigeria"],
+});
 
 export default function Page() {
   return (

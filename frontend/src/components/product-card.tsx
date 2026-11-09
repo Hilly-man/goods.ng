@@ -42,16 +42,29 @@ export function ProductThumb({
   );
 }
 
-export function ProductCard({ p, eager, compact, placement = "search" }: { p: P; eager?: boolean; compact?: boolean; placement?: AdPlacement }) {
+/** Height ÷ width for a card photo, clamped so very tall or very wide photos stay tidy (Jiji-style cards). */
+export function cardRatio(p: P): number {
+  if (!p.thumb_url || !p.image_width || !p.image_height) return 0.75;
+  return Math.min(1.35, Math.max(0.7, p.image_height / p.image_width));
+}
+
+export function ProductCard({ p, eager, compact, placement = "search", masonry = false }: { p: P; eager?: boolean; compact?: boolean; placement?: AdPlacement; masonry?: boolean }) {
   return (
     <article className="group card relative flex flex-col overflow-hidden transition hover:shadow-[var(--shadow-pop)]">
-      <Link href={`/item/${p.slug}`} className="relative block aspect-[4/3] overflow-hidden bg-canvas">
+      <Link href={`/item/${p.slug}`} className={clsx("relative block overflow-hidden bg-canvas", !masonry && "aspect-[4/3]")}
+        style={masonry ? { aspectRatio: `1 / ${cardRatio(p)}` } : undefined}>
         <ProductThumb src={p.thumb_url} alt={p.title} categorySlug={p.category.slug} eager={eager}
                       className="transition duration-300 group-hover:scale-[1.03]" />
         <div className="absolute left-2 top-2 flex flex-wrap gap-1">
           {p.sponsored && <SponsoredLabel />}
-          {p.is_featured && <span className="rounded bg-accent-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink">Featured</span>}
-          {p.bnpl_enabled && <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-bold text-white">Flex</span>}
+          {p.promoted_tier === "premium" ? (
+            <span className="rounded bg-brand-700 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Premium</span>
+          ) : p.promoted_tier === "top" ? (
+            <span className="rounded bg-accent-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink">TOP</span>
+          ) : p.is_featured ? (
+            <span className="rounded bg-accent-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink">Featured</span>
+          ) : null}
+          {p.bnpl_enabled && <span className="rounded bg-white/95 px-1.5 py-0.5 text-[10px] font-bold text-brand-800 ring-1 ring-line">Flex</span>}
         </div>
         {p.image_count > 1 && (
           <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded bg-black/55 px-1.5 py-0.5 text-[11px] text-white">
@@ -67,6 +80,7 @@ export function ProductCard({ p, eager, compact, placement = "search" }: { p: P;
         <Link href={`/item/${p.slug}`} className={clsx("mt-0.5 line-clamp-2 leading-snug text-ink hover:text-brand-700 sm:text-sm", compact ? "text-xs" : "text-[13px]")}>
           {p.title}
         </Link>
+        {masonry && p.snippet && <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted">{p.snippet}</p>}
         <div className={clsx("mt-1.5 flex-wrap items-center gap-1", compact ? "hidden sm:flex" : "flex")}>
           <span className="rounded bg-canvas px-1.5 py-0.5 text-[11px] text-muted">{CONDITION_LABEL[p.condition]}</span>
           {p.negotiable && <span className="rounded bg-canvas px-1.5 py-0.5 text-[11px] text-muted">Negotiable</span>}
@@ -90,16 +104,46 @@ export function ProductCard({ p, eager, compact, placement = "search" }: { p: P;
   );
 }
 
-export function ProductGrid({ items, eagerCount = 0, placement }: { items: P[]; eagerCount?: number; placement?: AdPlacement }) {
-  return (
-    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 xl:grid-cols-5">
-      {items.map((p, i) => (
-        <ProductCard key={p.id} p={p} eager={i < eagerCount} placement={placement} />
-      ))}
-    </div>
-  );
+/** Rough card height in "column widths" — used to balance masonry columns (photo + text block). */
+function estimateHeight(p: P): number {
+  return cardRatio(p) + 0.9 + (p.snippet ? 0.2 : 0) + (p.title.length > 38 ? 0.1 : 0);
 }
 
+/** Jiji-style masonry: each card goes into the currently shortest column, so reading order stays left→right. */
+function distribute(items: P[], cols: number): { p: P; i: number }[][] {
+  const out: { p: P; i: number }[][] = Array.from({ length: cols }, () => []);
+  const heights = Array(cols).fill(0);
+  items.forEach((p, i) => {
+    const c = heights.indexOf(Math.min(...heights));
+    out[c].push({ p, i });
+    heights[c] += estimateHeight(p);
+  });
+  return out;
+}
+
+// One pre-computed layout per breakpoint (no layout jump on load); CSS shows exactly one.
+const LAYOUTS = [
+  { cols: 2, className: "flex sm:hidden" },
+  { cols: 3, className: "hidden sm:flex lg:hidden" },
+  { cols: 4, className: "hidden lg:flex xl:hidden" },
+  { cols: 5, className: "hidden xl:flex" },
+];
+
+export function ProductGrid({ items, eagerCount = 0, placement }: { items: P[]; eagerCount?: number; placement?: AdPlacement }) {
+  return (
+    <>
+      {LAYOUTS.map((l) => (
+        <div key={l.cols} className={clsx(l.className, "items-start gap-2.5 sm:gap-3")}>
+          {distribute(items, l.cols).map((col, ci) => (
+            <div key={ci} className="flex min-w-0 flex-1 flex-col gap-2.5 sm:gap-3">
+              {col.map(({ p, i }) => <ProductCard key={p.id} p={p} eager={i < eagerCount} placement={placement} masonry />)}
+            </div>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
 export function ProductGridSkeleton({ count = 10 }: { count?: number }) {
   return (
     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 xl:grid-cols-5">

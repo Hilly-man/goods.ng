@@ -1,0 +1,222 @@
+<div class="cover">
+  <div class="glow"></div><div class="glow2"></div>
+  <div class="brand">GOODS.NG</div>
+  <div class="tagline">Buy. Sell. Trade with Confidence.</div>
+  <div class="eyebrow" style="color:#B7FF73;position:relative;margin-top:30mm">Go-live supplement</div>
+  <h1 style="margin:4mm 0 6mm">Integrations &amp; Licensed Partners</h1>
+  <div class="rule"></div>
+  <div class="sub">Required APIs, escrow custody options and BNPL providers for the Goods.ng launch.</div>
+  <div style="position:relative;margin-top:9mm;color:#B7FF73;font-size:9pt;max-width:132mm">
+    P0/P1/P2 API checklist · escrow custody models · BNPL lenders and orchestrators · suggested launch stack · due diligence and go-live checks
+  </div>
+  <div class="meta">
+    <div><div class="k">Version</div><div class="v">1.0</div></div>
+    <div><div class="k">Date</div><div class="v">8 November 2026</div></div>
+    <div><div class="k">Status</div><div class="v">Go-live planning baseline</div></div>
+    <div><div class="k">Market</div><div class="v">Nigeria · NGN</div></div>
+  </div>
+  <div class="footer">
+    <span>Confidential — internal product, engineering &amp; compliance document</span>
+    <span>goods.ng</span>
+  </div>
+</div>
+
+<div style="page-break-after:always">
+  <div class="eyebrow">Document control</div>
+  <h2>About this supplement</h2>
+  <p>This supplement lists the external APIs that must be integrated before Goods.ng can process live transactions, the licensed custody models available for escrow, and the licensed lenders and BNPL orchestrators that can power Goods Flex. It is a companion to the PRD, TAD and FRD.</p>
+  <table class="doc-meta tight">
+    <tbody>
+      <tr><td>Product</td><td>Goods.ng — multi-vendor marketplace for Nigeria</td></tr>
+      <tr><td>Owner</td><td>Product, Engineering &amp; Compliance, Goods.ng</td></tr>
+      <tr><td>Audience</td><td>Founders, finance, legal, compliance, engineering and integration partners</td></tr>
+      <tr><td>Version</td><td>1.0 · 8 November 2026</td></tr>
+      <tr><td>Companion documents</td><td>PRD (priority) · TAD (implementation) · FRD (acceptance)</td></tr>
+      <tr><td>Change control</td><td>Any provider change, licence change or commercial term requires a new version and a launch-gate review</td></tr>
+    </tbody>
+  </table>
+  <div class="callout warn">
+    <div class="t">Regulatory caveat</div>
+    Provider names and licence categories change. Before signing, confirm the current status on the <strong>CBN licensed payment service providers register</strong> and the <strong>FCCPC digital lending register</strong>, and have counsel review the escrow, lending, guarantor and data-processing agreements. This document is commercial and technical guidance, not legal advice.
+  </div>
+</div>
+
+<div class="toc-page">
+  <h2>Contents</h2>
+  <div class="toc-list">
+    <div class="sub">1. Required API integrations before go-live</div>
+    <div class="sub">2. Escrow: licensing and custody options</div>
+    <div class="sub">3. BNPL: licensed lenders and orchestrators</div>
+    <div class="sub">4. Suggested launch stack</div>
+    <div class="sub">5. Due diligence and go-live checklist</div>
+  </div>
+</div>
+
+<h2>1. Required API integrations before go-live</h2>
+<p>The application already has provider interfaces and development mocks for payments, escrow, BNPL, open banking, KYC, SMS, email, object storage, captcha, Meta CAPI and product feeds. The gap is production contracts, credentials, sandbox certification and operational controls.</p>
+
+<h3>P0 — launch blockers</h3>
+<table>
+  <thead><tr><th style="width:8mm">#</th><th style="width:38mm">Integration</th><th>Why it is required</th><th style="width:52mm">Example providers</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><strong>Payment collection + verification</strong></td><td>Card, transfer and USSD collection; server-to-server verification with exact amount and currency before trusting a payment.</td><td>Paystack, Flutterwave, Interswitch, Remita</td></tr>
+    <tr><td>2</td><td><strong>Escrow / custody partner</strong></td><td>Hold buyer funds with a licensed custodian; hold, release, refund, webhooks and reconciliation.</td><td>Commercial bank, MFB, PSB or MMO; or an escrow API such as EscrowPay, PayScrow, HarrenaPay.</td></tr>
+    <tr><td>3</td><td><strong>Seller payout / transfer</strong></td><td>Move released balances to seller bank accounts and handle failed transfers.</td><td>Paystack Transfers, Flutterwave Transfers, Interswitch, bank API.</td></tr>
+    <tr><td>4</td><td><strong>KYC — BVN / NIN</strong></td><td>Seller verification, Flex borrowers, guarantors and AML checks.</td><td>Dojah, Prembly/IdentityPass, Smile ID, Youverify, VerifyMe.</td></tr>
+    <tr><td>5</td><td><strong>Open banking</strong></td><td>Read-only six-month statements for the Goods Flex affordability assessment.</td><td>Mono (adapter already built), Okra, OnePipe.</td></tr>
+    <tr><td>6</td><td><strong>Credit bureau / decisioning</strong></td><td>Existing loans, repayment history, risk rules and affordability.</td><td>CRC, CreditRegistry, FirstCentral, Indicina, CreditChek, Lendsqr.</td></tr>
+    <tr><td>7</td><td><strong>Direct debit / e-mandate</strong></td><td>BNPL instalment collection and failed-payment retries.</td><td>NIBSS e-mandate, Paystack/Flutterwave direct debit.</td></tr>
+    <tr><td>8</td><td><strong>SMS</strong></td><td>OTP, guarantor consent links and transactional alerts.</td><td>Termii, Africa's Talking, Infobip.</td></tr>
+    <tr><td>9</td><td><strong>Email</strong></td><td>Verification, receipts, dispute and Flex reminders.</td><td>Postmark, SMTP, Amazon SES, SendGrid.</td></tr>
+    <tr><td>10</td><td><strong>Object storage + CDN</strong></td><td>Durable listing media and private KYC documents with signed access.</td><td>AWS S3 + CloudFront, Cloudflare R2, DigitalOcean Spaces.</td></tr>
+    <tr><td>11</td><td><strong>Captcha</strong></td><td>Bot protection on sign-in for new devices and after failed passwords.</td><td>Google reCAPTCHA v2, Cloudflare Turnstile.</td></tr>
+    <tr><td>12</td><td><strong>Error tracking</strong></td><td>Production API and frontend errors, release tracking and alerts.</td><td>Sentry.</td></tr>
+    <tr><td>13</td><td><strong>Webhooks + signatures</strong></td><td>Payment, escrow, payout, KYC and logistics events; reject invalid signatures and de-duplicate.</td><td>Every provider above.</td></tr>
+    <tr><td>14</td><td><strong>Bank account name verification</strong></td><td>Payouts and refunds to the correct account; prevent failed or fraudulent transfers.</td><td>Paystack/Flutterwave resolve API, bank API.</td></tr>
+    <tr><td>15</td><td><strong>Google OAuth</strong></td><td>Optional social sign-in for buyers and sellers; staff excluded.</td><td>Google Identity / OAuth web client.</td></tr>
+  </tbody>
+</table>
+
+<h3>P1 — launch-critical and growth</h3>
+<table>
+  <thead><tr><th style="width:42mm">Integration</th><th>What it adds</th><th style="width:52mm">Example providers</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Logistics / tracking</strong></td><td>Labels, pickup and delivery tracking events; fewer manual updates and disputes.</td><td>GIGL, Sendbox, DHL, Kwik.</td></tr>
+    <tr><td><strong>Google Merchant Center + Ads</strong></td><td>Product listing ads; scheduled feed and campaign measurement.</td><td>Google Ads, Merchant Center.</td></tr>
+    <tr><td><strong>Meta Pixel / Catalog / CAPI</strong></td><td>Catalog ads and consented server-side purchase events.</td><td>Meta Business Manager.</td></tr>
+    <tr><td><strong>GA4 / Google Ads tags</strong></td><td>Acquisition and conversion measurement with consent gating.</td><td>Google.</td></tr>
+    <tr><td><strong>Push notifications</strong></td><td>Re-engagement and order updates; required for native apps.</td><td>FCM, APNs.</td></tr>
+    <tr><td><strong>WhatsApp Business API</strong></td><td>Structured messaging, templates and human handoff.</td><td>Meta Cloud API, Twilio, 360dialog.</td></tr>
+    <tr><td><strong>Fraud / device risk</strong></td><td>Abusive signups, listing spam and payment fraud signals.</td><td>Dojah, Smile ID, SEON.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="t">P2 — scale</div>
+  Dedicated search (OpenSearch/Meilisearch), WebSockets/SSE for messaging and advanced fraud scoring can follow after launch if Postgres FTS, 5-second polling and rule-based controls become bottlenecks.
+</div>
+
+<h2 style="page-break-before:always">2. Escrow: licensing and custody options</h2>
+<div class="callout warn">
+  <div class="t">The key regulatory point</div>
+  The CBN does <strong>not</strong> issue a standalone “escrow licence.” Escrow operates under the payments framework. Only deposit-taking institutions — commercial banks, microfinance banks (MFBs), payment service banks (PSBs) and mobile money operators (MMOs) — can hold customer funds. A PSSP or switching licence (Paystack, Flutterwave, Interswitch, Remita) does <strong>not</strong> permit holding customer funds. Goods.ng must not hold funds itself.
+</div>
+<table>
+  <thead><tr><th style="width:34mm">Option</th><th style="width:46mm">Examples</th><th style="width:34mm">Licence / custody</th><th>API fit</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Commercial bank escrow / trust account</strong></td><td>Access, Zenith, GTBank, FirstBank, UBA, Stanbic IBTC, Fidelity, Wema, Sterling, Providus</td><td>CBN commercial bank; can hold deposits</td><td>Bespoke corporate escrow API or file-based integration; slower onboarding, strongest institutional comfort.</td></tr>
+    <tr><td><strong>MFB / PSB custody</strong></td><td>Rubies MFB (via EscrowPay), FairMoney MFB, 9PSB, Hope PSB, MoMo PSB, SmartCash PSB</td><td>CBN MFB/PSB; can hold deposits</td><td>Partner API; often faster to launch than a tier-1 bank.</td></tr>
+    <tr><td><strong>MMO e-money custody</strong></td><td>OPay, PalmPay, Paga, eTranzact, VTNetwork, NowNow, Abeg</td><td>CBN MMO; can hold e-money</td><td>Wallet APIs; the escrow structure and release instructions must be contracted.</td></tr>
+    <tr><td><strong>Escrow-as-a-service API</strong></td><td>EscrowPay (Rubies MFB), PayScrow (CBN-licensed DMBs), HarrenaPay (licensed partner bank), Posteering, DailyEscrow</td><td>Custody via a partner bank/MFB; provider is not a bank</td><td>REST APIs for create/hold/release/refund plus webhooks; verify custody, licence and commercial terms.</td></tr>
+    <tr><td><strong>Payment processors</strong></td><td>Paystack, Flutterwave, Interswitch, Remita</td><td>Switching / PSSP; <strong>cannot hold funds</strong></td><td>Use for collection, verification and settlement only; pair with a licensed custodian.</td></tr>
+    <tr><td><strong>Law-firm escrow</strong></td><td>D Bar Escrow and similar</td><td>No CBN licence; client/trust account at a bank</td><td>Manual, high-value transactions; not API-first.</td></tr>
+  </tbody>
+</table>
+
+<h3>Recommendation</h3>
+<p>Shortlist <strong>EscrowPay</strong>, <strong>PayScrow</strong> and <strong>HarrenaPay</strong> for an RFP, plus one commercial bank escrow product. Choose based on custody, API completeness, fees, dispute SLA and launch speed — not brand alone. Use Paystack or Flutterwave as collection rails only; do not describe them as the escrow custodian.</p>
+
+<h3>Minimum escrow API contract</h3>
+<ul class="small">
+  <li><strong>Create hold:</strong> order reference, payment reference, amount, currency, idempotency key.</li>
+  <li><strong>Release:</strong> seller amount, platform commission, protection fee, seller payout reference.</li>
+  <li><strong>Refund:</strong> full or partial amount, reason, idempotency, provider reference.</li>
+  <li><strong>Status:</strong> poll and webhook events for funded, delivered, released, refunded and disputed.</li>
+  <li><strong>Dispute metadata:</strong> reason, evidence references, resolution and four-eyes approval.</li>
+  <li><strong>Reconciliation:</strong> daily statement or API for balances and transaction-level matching.</li>
+  <li><strong>Security:</strong> signed webhooks, IP allow-list, API key rotation and audit logs.</li>
+</ul>
+
+<h2 style="page-break-before:always">3. BNPL: licensed lenders and orchestrators</h2>
+<div class="callout warn">
+  <div class="t">The key regulatory point</div>
+  Goods.ng should <strong>not lend directly</strong>. The lender must hold the appropriate CBN licence (MFB, finance company, PSB or commercial bank) and appear on the <strong>FCCPC digital lending register</strong>. Goods.ng can act as a marketplace/agent, but affordability, disclosures, collections and complaint handling must comply with FCCPC rules.
+</div>
+<table>
+  <thead><tr><th style="width:32mm">Provider</th><th>Model / licence</th><th style="width:52mm">Fit for Goods Flex</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Klump</strong></td><td>BNPL orchestrator; lending partners include Fidelity Bank, Credit Direct (FCMB), Stanbic IBTC, FirstBank, Renmoney, Wema and Polaris</td><td>Strong checkout/BNPL API and fastest route to launch; lender is the licensed partner.</td></tr>
+    <tr><td><strong>CredPal</strong></td><td>BNPL up to 6 months; credit offered by Dawakin Kudu MFB (CBN-licensed)</td><td>Merchant API; good retail and e-commerce fit.</td></tr>
+    <tr><td><strong>ImaliPay</strong></td><td>BNPL, credit scoring and disbursement API</td><td>Useful for embedded credit; verify lender partners and licences.</td></tr>
+    <tr><td><strong>Tendar</strong></td><td>BNPL checkout and instalment management API</td><td>Verify lender partners and commercial terms.</td></tr>
+    <tr><td><strong>FairMoney MFB</strong></td><td>CBN-licensed MFB; FCCPC-approved lender</td><td>Direct lending partnership; check business API and pricing.</td></tr>
+    <tr><td><strong>Carbon MFB</strong></td><td>CBN-licensed MFB; FCCPC-approved</td><td>Direct lending partnership; strong digital lending experience.</td></tr>
+    <tr><td><strong>Renmoney MFB</strong></td><td>CBN-licensed MFB; FCCPC-approved</td><td>Direct lending partnership; consumer credit focus.</td></tr>
+    <tr><td><strong>Branch</strong></td><td>FCCPC-approved digital lender</td><td>Verify current CBN/state lending licence and API capability.</td></tr>
+    <tr><td><strong>Page Financials</strong></td><td>Finance company</td><td>Verify licence, product terms and API capability.</td></tr>
+    <tr><td><strong>Credit Direct (FCMB)</strong></td><td>Licensed lender</td><td>Direct or via Klump; strong payroll/consumer lending.</td></tr>
+    <tr><td><strong>Lendsqr / Indicina / CreditChek</strong></td><td>Lending infrastructure, decisioning and bureau APIs — <strong>not lenders</strong></td><td>Build or operate a lending programme with a licensed capital provider.</td></tr>
+    <tr><td><strong>CRC / CreditRegistry / FirstCentral</strong></td><td>CBN-licensed credit bureaus</td><td>Credit checks, repayment history and affordability inputs.</td></tr>
+  </tbody>
+</table>
+
+<h3>Recommendation</h3>
+<p>Launch with <strong>Klump</strong> or <strong>CredPal</strong> as the BNPL front end, or contract directly with one or two MFBs/finance companies for Goods Flex. Keep the existing Goods.ng controls: affordability assessment, mandatory guarantor, transparent instalment schedule, one-plan rule and FCCPC-compliant disclosures.</p>
+
+<h3>Minimum BNPL API contract</h3>
+<ul class="small">
+  <li><strong>Eligibility:</strong> customer, amount, tenor, merchant category; decision reason and reference.</li>
+  <li><strong>Offer terms:</strong> down payment, financing charge, total payable, instalment schedule, expiry.</li>
+  <li><strong>Acceptance:</strong> explicit customer acceptance stored verbatim.</li>
+  <li><strong>Disbursement:</strong> funding confirmation and order reference.</li>
+  <li><strong>Repayment:</strong> schedule, direct debit/e-mandate, retries, early payoff and default states.</li>
+  <li><strong>Refund/cancellation:</strong> cancel the agreement and reverse disbursement or instalments.</li>
+  <li><strong>Webhooks:</strong> approved, accepted, disbursed, repaid, overdue, defaulted, cancelled.</li>
+  <li><strong>Reporting:</strong> daily reconciliation and portfolio/repayment reports.</li>
+</ul>
+
+<h2 style="page-break-before:always">4. Suggested launch stack</h2>
+<table>
+  <thead><tr><th style="width:34mm">Layer</th><th>Primary recommendation</th><th style="width:50mm">Backup / notes</th></tr></thead>
+  <tbody>
+    <tr><td>Collection</td><td>Paystack</td><td>Flutterwave as backup; both are switching/PSSP, not escrow custodians.</td></tr>
+    <tr><td>Escrow</td><td>EscrowPay, PayScrow or HarrenaPay (bank/MFB custody)</td><td>Commercial bank escrow for large/enterprise transactions.</td></tr>
+    <tr><td>BNPL</td><td>Klump or CredPal</td><td>Direct MFB/finance-company partnership as fallback.</td></tr>
+    <tr><td>Open banking</td><td>Mono</td><td>Okra/OnePipe; verify CBN open-banking registration.</td></tr>
+    <tr><td>KYC</td><td>Dojah or Prembly</td><td>Smile ID/Youverify as backup; BVN and NIN coverage.</td></tr>
+    <tr><td>SMS</td><td>Termii</td><td>Africa's Talking/Infobip.</td></tr>
+    <tr><td>Email</td><td>Postmark</td><td>Amazon SES or SMTP.</td></tr>
+    <tr><td>Storage / CDN</td><td>AWS S3 + CloudFront</td><td>Cloudflare R2 or DigitalOcean Spaces.</td></tr>
+    <tr><td>Payouts</td><td>Paystack/Flutterwave Transfers</td><td>Bank payout API where available.</td></tr>
+    <tr><td>Observability</td><td>Sentry</td><td>Log platform, uptime checks and on-call alerts.</td></tr>
+    <tr><td>Logistics</td><td>GIGL or Sendbox</td><td>DHL for premium/ interstate; tracking webhooks.</td></tr>
+  </tbody>
+</table>
+
+<h3>Recommended sequencing</h3>
+<ol class="small">
+  <li>Sign the escrow/custody partner and the BNPL lender; confirm CBN and FCCPC status.</li>
+  <li>Certify payment collection, refunds and payouts in sandbox; configure webhooks and reconciliation.</li>
+  <li>Go live with KYC, SMS, email, captcha and S3/CDN in staging.</li>
+  <li>Complete the Goods Flex open-banking, credit bureau and direct-debit tests.</li>
+  <li>Deploy production infrastructure, Sentry, alerts, backups and the on-call rota.</li>
+  <li>Run the staging end-to-end flow, external penetration test and legal sign-off before the first live transaction.</li>
+</ol>
+
+<h2 style="page-break-before:always">5. Due diligence and go-live checklist</h2>
+<table>
+  <thead><tr><th style="width:52mm">Check</th><th>What to verify</th><th style="width:42mm">Evidence</th></tr></thead>
+  <tbody>
+    <tr><td><strong>CBN licence status</strong></td><td>PSP/MMO/MFB/PSB/commercial bank licence is current and covers the activity.</td><td>CBN register extract; licence certificate.</td></tr>
+    <tr><td><strong>FCCPC registration</strong></td><td>BNPL/lending partner is on the approved digital lending register.</td><td>FCCPC register entry; approval letter.</td></tr>
+    <tr><td><strong>Segregated client funds</strong></td><td>Buyer funds sit in a segregated account at a licensed deposit-taking institution, not the provider's operating account.</td><td>Bank letter; account structure; audit confirmation.</td></tr>
+    <tr><td><strong>API sandbox and certification</strong></td><td>Hold/release/refund, decision/disbursement/repayment, webhooks and idempotency work in sandbox.</td><td>Test report; sandbox credentials; recorded events.</td></tr>
+    <tr><td><strong>Webhook security</strong></td><td>Signatures, replay protection, IP allow-list and de-duplication.</td><td>Provider docs; integration tests.</td></tr>
+    <tr><td><strong>Settlement and payout</strong></td><td>Timing, cut-off, fees, failed-transfer handling and bank account verification.</td><td>Commercial schedule; API docs.</td></tr>
+    <tr><td><strong>Disputes and refunds</strong></td><td>Escrow/provider SLA, evidence requirements, escalation and liability.</td><td>Contract; dispute runbook.</td></tr>
+    <tr><td><strong>Reconciliation</strong></td><td>Daily statement or API matches orders, payments, escrow and ledger.</td><td>Sample file; reconciliation test.</td></tr>
+    <tr><td><strong>NDPA 2023</strong></td><td>Data-processing agreement, lawful basis, retention and data-subject requests.</td><td>DPA; privacy review.</td></tr>
+    <tr><td><strong>Insurance and uptime</strong></td><td>Liability cover, business continuity, uptime SLA and incident notification.</td><td>Contract; security questionnaire.</td></tr>
+    <tr><td><strong>Security</strong></td><td>Pen test, encryption, access control, incident response and key rotation.</td><td>Report; remediation plan.</td></tr>
+    <tr><td><strong>Commercial terms</strong></td><td>Pricing, minimums, termination, exclusivity and volume commitments.</td><td>Signed contract; finance approval.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout risk">
+  <div class="t">Do not launch Protected Checkout without the custodian</div>
+  A payment gateway is not an escrow provider. Until a licensed custodian is contractually and technically live, do not use the “Protected Checkout” or “escrow-protected” label for transactions where Goods.ng cannot actually hold and release funds through a licensed partner.
+</div>
+
+<div class="footer-note">
+  Prepared from the Goods.ng repository, CBN licence categories and publicly available provider information on 8 November 2026. Provider names are examples for an RFP, not endorsements. Confirm current licences, commercial terms and regulatory interpretations with the CBN, FCCPC and counsel before signing.
+</div>

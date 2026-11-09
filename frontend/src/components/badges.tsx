@@ -43,7 +43,7 @@ export function ProtectedBadge({ className }: { className?: string }) {
 
 export function FlexBadge() {
   return (
-    <span className="inline-flex items-center rounded-full bg-violet-50 px-1.5 py-0.5 text-[11px] font-semibold text-violet-700">
+    <span className="inline-flex items-center rounded-full bg-accent-500/20 px-1.5 py-0.5 text-[11px] font-semibold text-brand-800">
       Goods Flex
     </span>
   );

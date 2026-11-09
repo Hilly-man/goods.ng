@@ -14,11 +14,42 @@
 
 - **Frontend:** Vercel. Root `frontend/`, build `pnpm build`. Set `API_INTERNAL_URL` (backend URL) and `NEXT_PUBLIC_SITE_URL`. The `/api/v1` and `/media` rewrites proxy to the backend. Alternative: `frontend/Dockerfile`.
 - **Backend:** container platform (Cloud Run, ECS/Fargate, Fly, Render, Railway…) using `backend/Dockerfile`, with at least 2 instances behind HTTPS. The worker runs the same image with `python -m app.worker` (1+ replicas; jobs take advisory locks).
-- **Database:** managed PostgreSQL 15+ with PITR enabled, private networking and TLS.
+- **Database:** managed PostgreSQL 15+ with PITR enabled, private networking and TLS. Each API process opens `DB_POOL_SIZE + DB_MAX_OVERFLOW` connections, so total = that × `WEB_CONCURRENCY` × replicas: size it against `max_connections` and put **PgBouncer** (transaction pooling) in front once you run more than a handful of API replicas. Add read replicas for search/browse before write throughput becomes the limit.
 - **Cache:** managed Redis (required in production).
 - **Storage:** S3-compatible bucket (`STORAGE_BACKEND=s3`). Public images go behind a CDN (`MEDIA_BASE_URL`). KYC documents live under the `private/` prefix with **no public access**, server-side encryption, and access via short-lived signed URLs only.
 - **Upload limits:** each input is capped by `MAX_UPLOAD_MB` (8 MB), decoded with Pillow (40 MP decompression-bomb guard), and re-encoded to WebP at 1280px (thumbnail 400px). Listing photos are watermarked with the seller's business name and **Goods.ng** before encoding. `MAX_IMAGES_PER_SELLER` (default 200) caps total listing photos per seller, and the worker purges soft-deleted listings after `DELETED_LISTING_RETENTION_DAYS` (default 30).
 - **Secrets:** use a secret manager (not committed `.env` files). `DATA_ENCRYPTION_KEY` must be backed up separately — losing it makes encrypted KYC identifiers unreadable.
+
+## Deploy on Render
+
+`render.yaml` at the repo root is a [Render Blueprint](https://render.com/docs/blueprints) that
+creates the API, worker and web app (all from the existing Dockerfiles), plus managed PostgreSQL
+and Key Value (Redis).
+
+1. Push the repo to GitHub, then in Render choose **New → Blueprint**, select the repo and click
+   **Apply**. The services and datastores are created together. The first build takes a few
+   minutes; the API later runs `alembic upgrade head` as its pre-deploy command.
+2. Open `goodsng-web`'s `onrender.com` URL. If the first API deploy raced database provisioning,
+   redeploy `goodsng-api`.
+3. Seed demo data once from **goodsng-api → Shell**: `python -m app.seed --demo`
+   (optionally `python -m app.seed_images`). Changes made in the shell are not preserved.
+4. To use a custom domain, add it to `goodsng-web`, then update `NEXT_PUBLIC_SITE_URL` (build-time)
+   and the API's `FRONTEND_URL`/`CORS_ORIGINS` to `https://your-domain` and redeploy. These values
+   default to the `onrender.com` URL via `RENDER_EXTERNAL_URL`.
+5. The Blueprint uses `ENVIRONMENT=staging`, mock providers, console SMS/email and local media
+   storage on a disk attached to the API, so it works without third-party credentials. It is **not
+   production-ready**: before switching to `ENVIRONMENT=production`, configure real providers, S3
+   storage, a captcha, SMS/email and `TRUSTED_PROXY_CIDRS` as described above.
+
+Notes specific to the current Blueprint:
+
+- The media disk is attached only to the API. The worker cannot purge deleted listing photos from
+  it; with `STORAGE_BACKEND=local` uploads also do not survive without the disk. Use S3
+  (`STORAGE_BACKEND=s3`) for production.
+- Plans and region (`frankfurt`) are chosen for a small production-like deployment; adjust
+  `plan` values in `render.yaml` to change cost/capacity.
+- Secrets marked `generateValue: true` are created on first sync. Back up
+  `DATA_ENCRYPTION_KEY` separately — losing it makes encrypted KYC identifiers unreadable.
 
 ## Provider configuration (Goods Flex)
 

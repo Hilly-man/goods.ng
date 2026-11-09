@@ -1,7 +1,20 @@
 import type { Metadata } from "next";
 import { ProsePage } from "@/components/prose";
+import { ogImageUrl, pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Refund & Dispute Policy", alternates: { canonical: "/refund-policy" } };
+export const metadata: Metadata = pageMetadata({
+  title: "Refund & Dispute Policy",
+  description:
+    "Cancellations, disputes, refunds and timelines for orders paid through Goods.ng Protected Checkout and Goods Flex.",
+  path: "/refund-policy",
+  image: ogImageUrl({
+    eyebrow: "Legal",
+    title: "Refund & Dispute Policy",
+    subtitle: "Cancellations, disputes, refunds and timelines.",
+    badge: "Buyer protection",
+  }),
+  keywords: ["Goods.ng refund policy", "dispute policy Nigeria", "protected checkout refunds", "Goods Flex refunds"],
+});
 
 export default function Page() {
   return (

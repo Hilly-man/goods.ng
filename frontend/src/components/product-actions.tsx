@@ -176,7 +176,7 @@ export function ProductActions({ p, variant = "sidebar", recordView = true }: {
               </ButtonLink>
             )}
             {p.bnpl_enabled && (
-              <ButtonLink href={`/checkout/${p.slug}?flex=1`} variant="outline" block size="lg" className="border-violet-300 text-violet-800 hover:border-violet-500 hover:text-violet-900">
+              <ButtonLink href={`/checkout/${p.slug}?flex=1`} variant="outline" block size="lg" className="border-brand-300 text-brand-800 hover:border-brand-500 hover:text-brand-900">
                 <CalendarClock className="size-5" />
                 {flex ? <>Goods Flex · from {naira(flex.monthly_installment)}/mo</> : "Pay small-small with Goods Flex"}
               </ButtonLink>

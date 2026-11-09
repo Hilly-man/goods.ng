@@ -165,8 +165,8 @@ DESCRIPTIONS = {
 
 
 def seed_demo(db) -> None:
-    if settings.environment not in ("development", "test"):
-        raise SystemExit("Refusing to seed demo data outside development")
+    if settings.environment not in ("development", "test", "staging"):
+        raise SystemExit("Refusing to seed demo data outside development, test or staging")
     pw = hash_password(DEMO_PASSWORD)
     if not db.scalars(select(User).where(User.email == "admin@goods.ng")).first():
         admin = User(email="admin@goods.ng", full_name="Goods.ng Admin", password_hash=pw, role=UserRole.SUPER_ADMIN,

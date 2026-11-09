@@ -101,7 +101,11 @@ export interface ProductCard {
   thumb_url: string | null;
   image_count: number;
   is_featured: boolean;
+  promoted_tier?: "top" | "premium" | null;
   sponsored?: boolean;
+  image_width?: number | null;
+  image_height?: number | null;
+  snippet?: string | null;
   created_at: string;
   seller: SellerCard;
   category: CategoryRef;
@@ -146,10 +150,12 @@ export interface SellerProductDetail extends ProductDetail {
   enquiries_count: number;
   contact_clicks: number;
   rejection_reason: string | null;
+  is_featured_until?: string | null;
 }
 
 export interface SellerProductRow extends ProductCard {
   status: ProductStatus;
+  promoted_until?: string | null;
   quantity: number;
   views_count: number;
   enquiries_count: number;
@@ -298,6 +304,16 @@ export interface FinancingOption {
   monthly_installment: Money;
   schedule: { sequence: number; due_date: string; amount: Money }[];
   apr_disclosure: string;
+}
+
+export interface PromotionPackage {
+  code: string;
+  name: string;
+  tier: "top" | "premium";
+  days: number;
+  price: Money;
+  tagline: string;
+  sort_order?: number;
 }
 
 export interface Plan {

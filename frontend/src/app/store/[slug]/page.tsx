@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Clock, Globe, MapPin, ShieldCheck, Star } from "lucide-react";
 import { NotFoundError, serverGet } from "@/lib/server-api";
+import { SITE_URL, absoluteMediaUrl, ogImageUrl, pageMetadata, truncate } from "@/lib/seo";
 import type { Page, ProductCard, Review, Storefront } from "@/lib/types";
 import { date } from "@/lib/format";
 import { ProductCollection } from "@/components/product-collection";
@@ -26,11 +27,81 @@ async function getStore(slug: string) {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
   const s = await getStore(slug);
-  return {
-    title: `${s.store_name} — ${s.city ?? ""} ${s.state ?? ""}`.trim(),
-    description: s.description?.slice(0, 160) ?? `Shop ${s.store_name} on Goods.ng.`,
-    alternates: { canonical: `/store/${s.slug}` },
+  const location = [s.city, s.state].filter(Boolean).join(", ");
+  const description = s.description
+    ? truncate(s.description, 155)
+    : `Shop ${s.store_name} on Goods.ng — verified seller in ${location || "Nigeria"} with ${s.active_listings} active listings.`;
+  return pageMetadata({
+    title: `${s.store_name} — ${location}`.trim(),
+    description,
+    path: `/store/${s.slug}`,
+    image: ogImageUrl({
+      eyebrow: "Verified store",
+      title: s.store_name,
+      subtitle: `${location || "Nigeria"} · ${s.active_listings} active listings · ${Number(s.rating_avg).toFixed(1)} rating`,
+      image: s.logo_url ?? s.banner_url,
+      badge: s.is_premium ? "Premium seller" : "Verified seller",
+    }),
+    imageAlt: s.store_name,
+    keywords: [
+      s.store_name,
+      `buy from ${s.store_name}`,
+      `${s.store_name} ${location}`,
+      "verified seller Nigeria",
+      "Goods.ng store",
+    ],
+  });
+}
+
+function StoreJsonLd({ s }: { s: Storefront }) {
+  const url = `${SITE_URL}/store/${s.slug}`;
+  const images = [absoluteMediaUrl(s.logo_url), absoluteMediaUrl(s.banner_url)].filter(
+    (image): image is string => Boolean(image),
+  );
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "Store",
+    name: s.store_name,
+    url,
+    description: s.description ?? `Shop ${s.store_name} on Goods.ng.`,
+    ...(images.length ? { image: images } : {}),
+    ...(s.website ? { sameAs: [s.website] } : {}),
+    address: {
+      "@type": "PostalAddress",
+      ...(s.city ? { addressLocality: s.city } : {}),
+      ...(s.state ? { addressRegion: s.state } : {}),
+      addressCountry: "NG",
+    },
+    ...(s.rating_count > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: s.rating_avg,
+            reviewCount: s.rating_count,
+          },
+        }
+      : {}),
   };
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: s.store_name, item: url },
+    ],
+  };
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb).replace(/</g, "\\u003c") }}
+      />
+    </>
+  );
 }
 
 async function Content({ params }: Params) {
@@ -42,6 +113,7 @@ async function Content({ params }: Params) {
   ]);
   return (
     <>
+      <StoreJsonLd s={s} />
       <section className="card overflow-hidden">
         <div className="h-28 bg-gradient-to-r from-brand-700 via-brand-600 to-brand-800 sm:h-40">
           {/* eslint-disable-next-line @next/next/no-img-element */}

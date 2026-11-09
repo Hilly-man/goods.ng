@@ -1,6 +1,8 @@
 import "server-only";
 
-const API = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
+const rawApi = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
+// Accept both a full URL and a Render private-network "host:port" value.
+const API = (/^https?:\/\//i.test(rawApi) ? rawApi : `http://${rawApi}`).replace(/\/+$/, "");
 
 export class NotFoundError extends Error {}
 

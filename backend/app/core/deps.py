@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
-from app.core.errors import Forbidden, Unauthorized
+from app.core.errors import AppError, Forbidden, Unauthorized
 from app.core.security import decode_access_token
 from app.models import SellerProfile, User
 
@@ -111,3 +111,24 @@ def resolve_client_ip(remote: str | None, forwarded: str | None, trusted_cidrs: 
 def client_ip(request: Request) -> str:
     return resolve_client_ip(request.client.host if request.client else None,
                              request.headers.get("x-forwarded-for"), settings.trusted_proxy_cidrs)
+
+
+def rate_limit_identity(request: Request) -> str:
+    """Bucket requests per signed-in user or anonymous device rather than per IP alone.
+
+    Mobile networks put thousands of people behind one carrier-grade NAT address, so an
+    IP-only bucket throttles unrelated users. X-Anon-Id is client-supplied and can be rotated,
+    so callers must also keep a coarse per-IP ceiling.
+    """
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer "):
+        try:
+            sub = decode_access_token(auth[7:]).get("sub")
+        except AppError:
+            sub = None
+        if sub:
+            return f"user:{sub}"
+    anon = request.headers.get("x-anon-id")
+    if anon and 8 <= len(anon) <= 64:
+        return f"anon:{anon}"
+    return f"ip:{client_ip(request)}"

@@ -28,8 +28,8 @@ function greeting() {
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 }
 
-function Kpi({ icon: Icon, label, value, hint, tone = "brand" }: { icon: React.ElementType; label: string; value: React.ReactNode; hint?: string; tone?: "brand" | "amber" | "violet" | "sky" | "rose" }) {
-  const tones = { brand: "bg-brand-50 text-brand-700", amber: "bg-amber-50 text-amber-700", violet: "bg-violet-50 text-violet-700", sky: "bg-sky-50 text-sky-700", rose: "bg-rose-50 text-rose-700" };
+function Kpi({ icon: Icon, label, value, hint, tone = "brand" }: { icon: React.ElementType; label: string; value: React.ReactNode; hint?: string; tone?: "brand" | "amber" | "mint" | "sky" | "rose" }) {
+  const tones = { brand: "bg-brand-50 text-brand-700", amber: "bg-amber-50 text-amber-700", mint: "bg-accent-500/25 text-brand-800", sky: "bg-sky-50 text-sky-700", rose: "bg-rose-50 text-rose-700" };
   return (
     <div className="card flex items-start gap-3 p-4">
       <span className={clsx("grid size-10 shrink-0 place-items-center rounded-xl", tones[tone])}><Icon className="size-5" /></span>
@@ -111,14 +111,14 @@ export default function Page() {
           <Section title="Money">
             <Kpi icon={Coins} label="Completed sales value" value={naira(String(o.total_transaction_value))} hint={`${o.completed_protected} protected orders completed`} />
             <Kpi icon={Landmark} label="Held in escrow now" value={naira(String(o.in_escrow_value))} tone="sky" hint="Released when buyers confirm" />
-            <Kpi icon={PiggyBank} label="Platform revenue" value={naira(String(o.platform_revenue))} tone="violet" hint="Commission, protection fees & Premium" />
+            <Kpi icon={PiggyBank} label="Platform revenue" value={naira(String(o.platform_revenue))} tone="mint" hint="Commission, protection fees & Premium" />
             <Kpi icon={Receipt} label="Paid orders" value={Number(o.total_orders).toLocaleString()} tone="amber" />
           </Section>
 
           <Section title="Marketplace">
             <Kpi icon={Users} label="Registered users" value={Number(o.total_users).toLocaleString()} hint={`${o.active_buyers_30d} bought in the last 30 days`} />
             <Kpi icon={Store} label="Active sellers" value={o.active_sellers} tone="sky" hint={`${o.total_sellers} seller profiles`} />
-            <Kpi icon={UserCheck} label="Verified sellers" value={o.verified_sellers} tone="violet" hint={`${o.premium_sellers} on Premium`} />
+            <Kpi icon={UserCheck} label="Verified sellers" value={o.verified_sellers} tone="mint" hint={`${o.premium_sellers} on Premium`} />
             <Kpi icon={Package} label="Live listings" value={Number(o.active_listings).toLocaleString()} tone="amber" hint={`${o.pending_listings} waiting for review`} />
           </Section>
 
@@ -129,8 +129,8 @@ export default function Page() {
           </Section>
 
           <Section title="Goods Flex (pay in instalments)" cols="lg:grid-cols-4">
-            <Kpi icon={CalendarClock} label="Applications" value={o.bnpl.applications} tone="violet" hint={`${o.bnpl.approved} approved`} />
-            <Kpi icon={Wallet} label="Active plans" value={o.bnpl.active_agreements} tone="violet" />
+            <Kpi icon={CalendarClock} label="Applications" value={o.bnpl.applications} tone="mint" hint={`${o.bnpl.approved} approved`} />
+            <Kpi icon={Wallet} label="Active plans" value={o.bnpl.active_agreements} tone="mint" />
             <Kpi icon={Coins} label="Outstanding balance" value={naira(String(o.bnpl.outstanding))} tone="sky" />
             <Kpi icon={Flag} label="Overdue instalments" value={o.bnpl.overdue_installments} tone={Number(o.bnpl.overdue_installments) > 0 ? "rose" : "brand"} />
           </Section>
