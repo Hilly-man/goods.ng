@@ -9,12 +9,33 @@ import { Filters, ResultsToolbar } from "./filters";
 export type SP = Record<string, string | string[] | undefined>;
 
 const KEYS = ["q", "state", "city", "min_price", "max_price", "condition", "brand", "verified", "premium", "negotiable",
-  "bnpl", "protected", "with_photos", "posted_within", "sort", "page"];
+  "bnpl", "protected", "with_photos", "posted_within", "sort"];
+
+// Search and category pages intentionally show every matching listing (no pagination). The API caps
+// page_size at 100, so fetch the remaining pages in parallel and de-duplicate blended sponsored ads.
+const MAX_PAGES = 50;
 
 export function pickQuery(sp: SP, extra: Record<string, string> = {}) {
   const out: Record<string, string | string[] | undefined> = {};
   for (const k of KEYS) if (sp[k] !== undefined) out[k] = sp[k];
-  return { ...out, ...extra, page_size: "24" };
+  return { ...out, ...extra, page_size: "100" };
+}
+
+async function allProducts(query: Record<string, string | string[] | undefined>): Promise<Page<ProductCard>> {
+  const first = await serverGet<Page<ProductCard>>("/products", query);
+  if (first.pages <= 1) return first;
+  const totalPages = Math.min(first.pages, MAX_PAGES);
+  const rest = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, i) =>
+      serverGet<Page<ProductCard>>("/products", { ...query, page: String(i + 2) })),
+  );
+  const seen = new Set<string>();
+  const items = [first.items, ...rest.map((p) => p.items)].flat().filter((p) => {
+    if (seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
+  return { ...first, items, pages: 1 };
 }
 
 export async function ListingResults({ sp, category, title }: { sp: SP; category?: string; title: string }) {
@@ -22,20 +43,9 @@ export async function ListingResults({ sp, category, title }: { sp: SP; category
   const facetQuery: Record<string, string | string[] | undefined> = { ...query };
   ["sort", "page", "page_size"].forEach((k) => delete facetQuery[k]);
   const [data, facets] = await Promise.all([
-    serverGet<Page<ProductCard>>("/products", query),
+    allProducts(query),
     serverGet<Facets>("/products/facets", facetQuery),
   ]);
-  const page = data.page;
-  const href = (p: number) => {
-    const s = new URLSearchParams();
-    for (const [k, v] of Object.entries(sp)) {
-      if (v === undefined || k === "page") continue;
-      (Array.isArray(v) ? v : [v]).forEach((x) => s.append(k, x));
-    }
-    if (p > 1) s.set("page", String(p));
-    const qs = s.toString();
-    return qs ? `?${qs}` : "?";
-  };
   return (
     <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
       <Filters facets={facets} />
@@ -60,13 +70,7 @@ export async function ListingResults({ sp, category, title }: { sp: SP; category
         ) : (
           <ProductCollection items={data.items} eagerCount={4} placement={category ? "category" : "search"} />
         )}
-        {data.pages > 1 && (
-          <nav aria-label="Pagination" className="mt-6 flex items-center justify-center gap-2">
-            {page > 1 && <Link className="chip" href={href(page - 1)} rel="prev">← Previous</Link>}
-            <span className="px-2 text-sm text-muted">Page {page} of {data.pages}</span>
-            {page < data.pages && <Link className="chip" href={href(page + 1)} rel="next">Next →</Link>}
-          </nav>
-        )}
+
       </div>
     </div>
   );
