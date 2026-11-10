@@ -200,7 +200,7 @@ function WhyUs() {
   const items = [
     { icon: ShieldCheck, tone: "bg-brand-50 text-brand-700", title: "Protected payments", body: "We hold your money until you get your item." },
     { icon: Handshake, tone: "bg-amber-50 text-amber-700", title: "Negotiate in-app", body: "Make offers; the agreed price goes to checkout." },
-    { icon: CalendarClock, tone: "bg-accent-500/25 text-brand-800", title: "Pay small-small", body: "Spread the cost over 3 or 6 months with Goods Flex." },
+    { icon: CalendarClock, tone: "bg-accent-500/25 text-brand-800", title: "Pay small-small", body: "Pay 40% today, then spread the remaining 60% over 3 or 6 months with Goods Flex." },
     { icon: BadgeCheck, tone: "bg-sky-50 text-sky-700", title: "Verified sellers", body: "Look for the badge and real buyer reviews." },
   ];
   return (

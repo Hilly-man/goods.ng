@@ -32,7 +32,7 @@ Last updated: 10 November 2026.
 | 11 | Payments abstraction (mock, Paystack, Flutterwave adapters) and checkout choice: Protected Checkout or pay the seller directly outside the app | Done — **Paystack/Flutterwave not yet exercised against sandbox** |
 | 12 | Protected checkout & escrow (state machine, ledger, disputes, refunds) | Done against **mock escrow partner** |
 | 13 | Orders & delivery (manual tracking, evidence, auto-release, buyer-only delivery PIN, carrier provider abstraction — mock, arrange-outside-app delivery option) | Done |
-| 14 | BNPL (Goods Flex): bank-statement credit limit, **mandatory guarantor**, verification tiers, **one running plan at a time** | Done against **mock lending partner and mock open-banking provider** |
+| 14 | BNPL (Goods Flex): 40% down + 60% over 3/6 months at 3%/month, bank-statement credit limit, **mandatory guarantor**, verification tiers, **one running plan at a time**, per-listing seller opt-in with 70/30 financing-charge share | Done against **mock lending partner and mock open-banking provider**; monthly seller settlement engine pending |
 | 15 | Reviews & ratings | Done |
 | 16 | Notifications (in-app, outbox for email/SMS, preferences) | Done — **email/SMS senders are console stubs** |
 | 17 | Administration (19 sections, granular RBAC, audit logs, live traffic stats: daily/weekly/monthly/quarterly/yearly visitors + active users) | Done |
@@ -63,3 +63,4 @@ Last updated: 10 November 2026.
 8. Integrate live carriers (Shipbubble first, then GIG/Fez) behind the new `DeliveryProvider` interface; **coming soon** — until then courier deliveries are seller-arranged and tracked manually.
 9. WebSocket or SSE messaging if polling load becomes significant.
 10. Paid promotions: per-listing TOP (7 or 30 days) and Boost Premium (28 days) packages are live with one-off checkout and automatic expiry — no subscription required. Prices can be overridden via the `promotion_packages` platform setting.
+11. **Goods Flex seller settlement:** implement the hold-and-release schedule so the seller receives the down-payment share after delivery and the financed 60% + their 70% share of the financing charge monthly as instalments are collected (the current mock flow still releases in full at delivery).

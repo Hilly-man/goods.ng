@@ -104,12 +104,14 @@ Before applying, a customer builds a credit profile: verified phone → BVN (enc
 1. Classify six months of transactions; loan disbursements, reversals, self-transfers and failed debits are not income.
 2. Salary is detected by keywords or a dominant regular credit across at least three months; otherwise income is 70% of the median eligible monthly inflow (a haircut for irregular traders).
 3. Deduct existing loan repayments, then apply a risk factor from income volatility, missing months, betting share and failed debits.
-4. The affordable monthly instalment is converted to a purchase-price limit using the down-payment rate, flat monthly charge and longest tenor.
+4. The affordable monthly instalment is converted to a purchase-price limit using the financed share (60%), the 3% flat monthly charge on the financed balance, and the longest tenor.
 5. The final limit is `min(statement limit, verification-tier cap, repayment-history cap, lender maximum)`, and is zero unless the customer has a verified phone, BVN, connected bank and a consented guarantor. The assessment is stored immutably as a snapshot with an expiry; tier caps, DTI and the first-plan cap are admin-editable (`flex_rules`).
 
 ### Application and the one-plan rule
 
-Apply → partner decision (stored as `credit_decision_ref`, with the partner's offer terms stored verbatim) → buyer explicitly accepts → down payment → partner disburses → the order is funded through the same escrow path. Instalments are paid through the payment layer. The worker marks overdue instalments and sends reminders. Refunding a Flex order cancels the agreement with the partner.
+Apply → partner decision (stored as `credit_decision_ref`, with the partner's offer terms stored verbatim) → buyer explicitly accepts → 40% down payment → partner funds the order through the same escrow path. The remaining 60% is spread over 3 or 6 months with a 3% flat monthly charge on the financed balance. Instalments are paid through the payment layer. The worker marks overdue instalments and sends reminders. Refunding a Flex order cancels the agreement with the partner.
+
+Goods Flex is **opt-in per listing**. The published seller terms provide that the seller receives the down-payment share after delivery and the financed balance in monthly instalments as the buyer pays, keeping 70% of the financing charge. The current mock flow still releases the seller's full released amount at delivery; a hold-and-release schedule keyed to each instalment is an outstanding implementation item (see STATUS.md).
 
 A customer may have **only one plan running** (`approved`, `accepted`, `active` or `defaulted`). The check is enforced in the service layer under a row lock and again by a partial unique index (`uq_bnpl_one_running_plan`), so concurrent requests cannot create two. Unpaid offers expire after 24 hours; withdrawing an unpaid application, seller decline and refund release the slot. A new plan is allowed only after every instalment is paid (or the plan is cancelled).
 

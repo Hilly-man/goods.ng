@@ -95,7 +95,7 @@ function TrustStrip() {
         <Wallet className="absolute -right-4 -top-4 size-32 text-ink/10" aria-hidden />
         <p className="text-xs font-bold uppercase tracking-wider text-brand-800">Goods Flex</p>
         <h2 className="mt-1 text-lg font-bold sm:text-xl">Buy now, pay in 3 or 6 monthly instalments</h2>
-        <p className="mt-1 max-w-md text-sm text-ink/75">Pay a down payment today and spread the rest. Financing by our licensed lending partner, subject to approval.</p>
+        <p className="mt-1 max-w-md text-sm text-ink/75">Pay 40% today, then spread the 60% balance over 3 or 6 months at 3% per month. Financing by our licensed lending partner, subject to approval.</p>
         <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold">Check eligibility <ArrowRight className="size-4 transition group-hover:translate-x-0.5" /></span>
       </Link>
     </div>

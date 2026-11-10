@@ -73,8 +73,9 @@ and Key Value (Redis).
 `render.free.yaml` runs a demo on Render's free plans: API + web (no worker, no disk), free
 Postgres and free Key Value. Select it as the **Blueprint Path** when creating the Blueprint.
 
-- No background worker, so escrow auto-release, unpaid-order expiry, notifications and promo
-  expiry do not run.
+- No background worker, so escrow auto-release, unpaid-order expiry, payout processing and promo
+  expiry need an external scheduler. Call `/internal/cron?scope=frequent` (and `?scope=daily`) with
+  `Authorization: Bearer $CRON_SECRET`; the Vercel backend project also has a daily Vercel cron.
 - No persistent disk: photos are lost whenever the API sleeps (15 minutes idle) or redeploys.
 - Free Postgres expires 30 days after creation and has no backups.
 - Free services cannot receive private traffic, so the web app calls the API's public
