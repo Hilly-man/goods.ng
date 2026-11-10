@@ -6,6 +6,7 @@ import { Alert, Button, Input, PageLoader, Select, Stat, useToast } from "@/comp
 import { errorMessage, http } from "@/lib/api";
 import { date, naira } from "@/lib/format";
 import { useApi } from "@/lib/hooks";
+import { BANK_GROUPS, findBank, NG_BANKS } from "@/lib/ng-banks";
 import type { Money } from "@/lib/types";
 
 type BankAccount = { id: string; bank_code: string; bank_name: string; account_last4: string; account_name: string; is_default: boolean; is_verified: boolean };
@@ -23,7 +24,7 @@ function View() {
   const { data, error, reload } = useApi<Wallet>("/seller/wallet");
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const [acct, setAcct] = useState({ bank_name: "", account_name: "", account_number: "" });
+  const [acct, setAcct] = useState({ bank_code: "", account_name: "", account_number: "" });
   const [amount, setAmount] = useState("");
   const [bankId, setBankId] = useState("");
 
@@ -35,11 +36,15 @@ function View() {
 
   async function addAccount(e: React.FormEvent) {
     e.preventDefault();
+    const bank = findBank(acct.bank_code);
+    if (!bank) return toast("Choose your bank from the list", "bad");
     setBusy(true);
     try {
-      await http.post("/seller/bank-accounts", { ...acct, is_default: !data!.bank_accounts.length });
+      await http.post("/seller/bank-accounts", { bank_name: bank.name, bank_code: bank.code,
+        account_name: acct.account_name, account_number: acct.account_number,
+        is_default: !data!.bank_accounts.length });
       toast("Bank account saved");
-      setAcct({ bank_name: "", account_name: "", account_number: "" });
+      setAcct({ bank_code: "", account_name: "", account_number: "" });
       reload();
     } catch (err) {
       toast(errorMessage(err), "bad");
@@ -138,11 +143,20 @@ function View() {
             </ul>
           ) : <p className="text-sm text-muted">No bank account yet.</p>}
           <form onSubmit={addAccount} className="space-y-2 border-t border-line pt-3">
-            <Input label="Bank name" placeholder="GTBank" value={acct.bank_name} onChange={(e) => setAcct({ ...acct, bank_name: e.target.value })} required />
+            <Select label="Bank name" value={acct.bank_code} onChange={(e) => setAcct({ ...acct, bank_code: e.target.value })} required>
+              <option value="">Select your bank</option>
+              {BANK_GROUPS.map((group) => (
+                <optgroup key={group} label={group}>
+                  {NG_BANKS.filter((b) => b.group === group).map((b) => (
+                    <option key={b.code} value={b.code}>{b.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </Select>
             <Input label="Account name" placeholder="Okafor Phones Hub" value={acct.account_name} onChange={(e) => setAcct({ ...acct, account_name: e.target.value })} required />
             <Input label="Account number" inputMode="numeric" placeholder="0123456789" value={acct.account_number} onChange={(e) => setAcct({ ...acct, account_number: e.target.value })} required />
             <p className="text-xs text-muted">The account name must be your business name, or the business owner&apos;s name exactly as shown on your verification documents.</p>
-            <Button type="submit" variant="outline" block loading={busy} disabled={!acct.bank_name || !acct.account_name || acct.account_number.length < 10}>
+            <Button type="submit" variant="outline" block loading={busy} disabled={!acct.bank_code || !acct.account_name || acct.account_number.length < 10}>
               Add bank account
             </Button>
           </form>
