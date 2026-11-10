@@ -52,7 +52,7 @@ class QuoteIn(BaseModel):
 
 
 class CheckoutIn(QuoteIn):
-    address: Address
+    address: Address | None = None
     note: CleanStr | None = Field(None, max_length=500)
     marketing_consent: bool = False  # buyer accepted marketing cookies (ads measurement)
 
@@ -82,7 +82,8 @@ def checkout(data: CheckoutIn, user: CurrentUser, db: DB, idempotency_key: str |
     check_rate_limit(f"checkout:{user.id}", 30, 3600)
     order, pay = service.create_checkout(
         db, user, product_id=data.product_id, quantity=data.quantity, negotiation_id=data.negotiation_id,
-        delivery_index=data.delivery_option_index, address=data.address.model_dump(), note=data.note,
+        delivery_index=data.delivery_option_index, address=data.address.model_dump() if data.address else None,
+        note=data.note,
         idempotency_key=idempotency_key,
     )
     if data.marketing_consent and not order.marketing_consent:

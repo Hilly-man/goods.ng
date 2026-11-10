@@ -115,7 +115,7 @@ export interface ProductCard {
 }
 
 export interface DeliveryOption {
-  type: "pickup" | "seller_delivery" | "courier";
+  type: "pickup" | "seller_delivery" | "courier" | "arrange";
   label: string;
   fee: Money;
   eta_days: number;

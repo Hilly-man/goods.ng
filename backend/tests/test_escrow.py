@@ -78,6 +78,20 @@ def test_checkout_requires_verified_email_and_phone(make_seller, make_user, make
     assert unverified_phone.post("/checkout", {"product_id": p["id"], "address": ADDRESS}).status_code == 201
 
 
+def test_arrange_delivery_outside_app_has_no_delivery_fee(make_seller, make_user, make_product):
+    seller, buyer = make_seller(), make_user()
+    p = make_product(seller, delivery_options=[{"type": "arrange", "label": "Arrange delivery with seller",
+                                                 "fee": "5000", "eta_days": 0}])
+    q = buyer.post("/checkout/quote", {"product_id": p["id"], "delivery_option_index": 0}).json()
+    assert q["delivery_fee"] == "0.00"
+    # No address is required when delivery is arranged directly between buyer and seller.
+    r = buyer.post("/checkout", {"product_id": p["id"], "delivery_option_index": 0})
+    assert r.status_code == 201, r.text
+    d = buyer.get(f"/orders/{r.json()['order_id']}").json()
+    assert d["delivery_fee"] == "0.00" and d["delivery_address"] == {}
+    assert d["delivery"]["method"] == "arrange"
+
+
 def test_client_cannot_set_price(db, make_seller, make_user, make_product):
     seller, buyer = make_seller(), make_user()
     p = make_product(seller)

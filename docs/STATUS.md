@@ -29,9 +29,9 @@ Last updated: 10 November 2026.
 | 8 | Premium subscriptions (plans, paid activation, featured credits, admin grants) and per-listing paid promotions (TOP / Boost Premium) | Done |
 | 9 | Messaging (product-linked chats, read receipts, unread counts, reports) | Done — polling, not WebSockets |
 | 10 | Negotiation (offers, counters, expiry, concurrency, agreed-price checkout) | Done |
-| 11 | Payments abstraction (mock, Paystack, Flutterwave adapters) | Done — **Paystack/Flutterwave not yet exercised against sandbox** |
+| 11 | Payments abstraction (mock, Paystack, Flutterwave adapters) and checkout choice: Protected Checkout or pay the seller directly outside the app | Done — **Paystack/Flutterwave not yet exercised against sandbox** |
 | 12 | Protected checkout & escrow (state machine, ledger, disputes, refunds) | Done against **mock escrow partner** |
-| 13 | Orders & delivery (manual tracking, evidence, auto-release, buyer-only delivery PIN, carrier provider abstraction — mock) | Done |
+| 13 | Orders & delivery (manual tracking, evidence, auto-release, buyer-only delivery PIN, carrier provider abstraction — mock, arrange-outside-app delivery option) | Done |
 | 14 | BNPL (Goods Flex): bank-statement credit limit, **mandatory guarantor**, verification tiers, **one running plan at a time** | Done against **mock lending partner and mock open-banking provider** |
 | 15 | Reviews & ratings | Done |
 | 16 | Notifications (in-app, outbox for email/SMS, preferences) | Done — **email/SMS senders are console stubs** |

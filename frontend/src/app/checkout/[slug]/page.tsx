@@ -23,6 +23,8 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
   const router = useRouter();
   const negotiationId = sp.get("negotiation") ?? undefined;
   const [flex, setFlex] = useState(sp.get("flex") === "1");
+  const [outside, setOutside] = useState(false);
+  const [outsideAck, setOutsideAck] = useState(false);
   const [p, setP] = useState<ProductDetail | null>(null);
   const [delivery, setDelivery] = useState(0);
   const [qty, setQty] = useState(1);
@@ -66,8 +68,10 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (outside) return;
     setErr(null); setErrs({}); setBusy(true);
-    const address = { ...addr, landmark: addr.landmark || undefined };
+    const arranging = p!.delivery_options[delivery]?.type === "arrange";
+    const address = arranging ? undefined : { ...addr, landmark: addr.landmark || undefined };
     try {
       if (flex) {
         const a = await http.post<{ id: string; status: string }>("/bnpl/applications", {
@@ -105,7 +109,24 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
       )}
       <TrackEvent name="begin_checkout" items={[{ id: p.id, price: p.price, name: p.title }]} value={quote ? Number(quote.total) : Number(p.price)} />
       <div className="space-y-4">
-        {p.bnpl_enabled && (
+        <section className="card p-4 sm:p-5">
+          <h2 className="font-semibold">How do you want to pay?</h2>
+          <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-canvas p-1">
+            <button type="button" onClick={() => setOutside(false)} className={clsx("rounded-lg p-3 text-sm font-semibold", !outside ? "bg-brand-700 text-white" : "text-muted")}>
+              Pay on Goods.ng<span className="block text-xs font-normal opacity-90">Protected Checkout</span>
+            </button>
+            <button type="button" onClick={() => setOutside(true)} className={clsx("rounded-lg p-3 text-sm font-semibold", outside ? "bg-brand-700 text-white" : "text-muted")}>
+              Pay seller outside<span className="block text-xs font-normal opacity-90">No protection</span>
+            </button>
+          </div>
+          {outside && (
+            <Alert tone="warn" className="mt-3" title="You are paying outside Goods.ng">
+              Arrange delivery and payment directly with the seller. Goods.ng cannot recover your money, hold it in escrow, or handle
+              a dispute for an outside transaction. Use the message button to agree the details.
+            </Alert>
+          )}
+        </section>
+        {!outside && p.bnpl_enabled && (
           <div className="card grid grid-cols-2 gap-1 p-1">
             <button type="button" onClick={() => setFlex(false)} className={clsx("rounded-lg p-3 text-sm font-semibold", !flex ? "bg-brand-700 text-white" : "text-muted")}><ShieldCheck className="mr-1 inline size-4" />Pay in full</button>
             <button type="button" onClick={() => setFlex(true)} className={clsx("rounded-lg p-3 text-sm font-semibold", flex ? "bg-brand-700 text-white" : "text-muted")}><CalendarClock className="mr-1 inline size-4" />Goods Flex</button>
@@ -125,14 +146,20 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
           {p.delivery_options.some((o) => o.type === "courier") && (
             <p className="mt-2 text-xs text-muted">Courier partnership integration is coming soon — the seller arranges this delivery and tracking manually.</p>
           )}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Input label="Recipient name" required value={addr.full_name} onChange={set("full_name")} error={errs.full_name} />
-            <Input label="Phone" type="tel" required value={addr.phone} onChange={set("phone")} error={errs.phone} />
-            <StateCitySelect required state={addr.state} city={addr.city} errors={{ state: errs.state, city: errs.city }} onChange={(v) => setAddr({ ...addr, ...v })} />
-            <div className="sm:col-span-2"><Input label="Street address" required value={addr.street} onChange={set("street")} error={errs.street} /></div>
-            <div className="sm:col-span-2"><Input label="Landmark (optional)" value={addr.landmark} onChange={set("landmark")} /></div>
-            <div className="sm:col-span-2"><Textarea label="Note to seller (optional)" rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></div>
-          </div>
+          {p.delivery_options[delivery]?.type === "arrange" ? (
+            <Alert tone="info" className="mt-4" title="Delivery to be arranged with the seller">
+              No delivery fee is charged here. After checkout, agree the delivery method and cost directly with the seller.
+            </Alert>
+          ) : (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Input label="Recipient name" required value={addr.full_name} onChange={set("full_name")} error={errs.full_name} />
+              <Input label="Phone" type="tel" required value={addr.phone} onChange={set("phone")} error={errs.phone} />
+              <StateCitySelect required state={addr.state} city={addr.city} errors={{ state: errs.state, city: errs.city }} onChange={(v) => setAddr({ ...addr, ...v })} />
+              <div className="sm:col-span-2"><Input label="Street address" required value={addr.street} onChange={set("street")} error={errs.street} /></div>
+              <div className="sm:col-span-2"><Input label="Landmark (optional)" value={addr.landmark} onChange={set("landmark")} /></div>
+            </div>
+          )}
+          <div className="mt-3"><Textarea label="Note to seller (optional)" rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></div>
           <p className="mt-2 text-xs text-muted">Your address is only shared with the seller after your payment is confirmed.</p>
         </section>
         {flex && (
@@ -204,10 +231,21 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
             </dl>
           )}
           {err && <Alert tone="bad" className="mt-3">{err}</Alert>}
-          <Button type="submit" block size="lg" className="mt-4" loading={busy} disabled={!quote || !user.email_verified || !user.phone_verified || (flex && (!consent || flexBlocked))}>
-            <Lock className="size-4" />{flex ? "Apply for Goods Flex" : quote ? `Pay ${naira(quote.total)} securely` : "Pay securely"}
-          </Button>
-          <p className="mt-3 flex gap-2 text-xs text-muted"><ShieldCheck className="size-4 shrink-0 text-brand-700" />Funds are held by our licensed escrow partner and released to the seller only after you confirm delivery.</p>
+          {outside ? (
+            <>
+              <Checkbox checked={outsideAck} onChange={(e) => setOutsideAck(e.target.checked)} label="I understand this transaction is outside Goods.ng protection and I will pay the seller directly." />
+              <Link href={`/item/${slug}`} className={clsx("mt-3 flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold", outsideAck ? "bg-brand-700 text-white" : "pointer-events-none bg-line text-muted")}>
+                Message seller to arrange
+              </Link>
+            </>
+          ) : (
+            <>
+              <Button type="submit" block size="lg" className="mt-4" loading={busy} disabled={!quote || !user.email_verified || !user.phone_verified || (flex && (!consent || flexBlocked))}>
+                <Lock className="size-4" />{flex ? "Apply for Goods Flex" : quote ? `Pay ${naira(quote.total)} securely` : "Pay securely"}
+              </Button>
+              <p className="mt-3 flex gap-2 text-xs text-muted"><ShieldCheck className="size-4 shrink-0 text-brand-700" />Funds are held by our licensed escrow partner and released to the seller only after you confirm delivery.</p>
+            </>
+          )}
         </div>
       </aside>
     </form>

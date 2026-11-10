@@ -17,7 +17,7 @@ NG_STATES = [
 
 
 class DeliveryOption(BaseModel):
-    type: Literal["pickup", "seller_delivery", "courier"]
+    type: Literal["pickup", "seller_delivery", "courier", "arrange"]
     label: str = Field(max_length=80)
     fee: Decimal = Field(ge=0, le=1_000_000, decimal_places=2)
     eta_days: int = Field(1, ge=0, le=60)

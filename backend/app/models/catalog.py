@@ -74,7 +74,7 @@ class Product(UUIDPk, Timestamps, SoftDelete, Base):
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     state: Mapped[str] = mapped_column(String(60))
     city: Mapped[str] = mapped_column(String(80))
-    # [{"type": "pickup"|"seller_delivery"|"courier", "fee": "1500.00", "eta_days": 2, "label": "..."}]
+    # [{"type": "pickup"|"seller_delivery"|"courier"|"arrange", "fee": "1500.00", "eta_days": 2, "label": "..."}]
     delivery_options: Mapped[list] = mapped_column(JSONB, default=list)
     protected_checkout_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     bnpl_enabled: Mapped[bool] = mapped_column(Boolean, default=False)

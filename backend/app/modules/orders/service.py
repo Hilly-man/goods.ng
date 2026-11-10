@@ -84,7 +84,8 @@ def price_checkout(db: Session, buyer: User, product: Product, quantity: int, ne
     option = opts[delivery_index]
     fees = fee_config(db)
     subtotal = money(unit_price * quantity)
-    delivery_fee = money(option.get("fee", 0))
+    # "Arrange with seller" means delivery is planned and paid outside the app.
+    delivery_fee = Decimal("0") if option.get("type") == "arrange" else money(option.get("fee", 0))
     protection_fee = min(money(subtotal * fees["protection_fee_rate"]), fees["protection_fee_cap"])
     commission = money(subtotal * fees["commission_rate"])
     total = subtotal + delivery_fee + protection_fee
@@ -101,7 +102,7 @@ def _order_number() -> str:
 
 
 def create_checkout(db: Session, buyer: User, *, product_id, quantity: int, negotiation_id, delivery_index: int,
-                    address: dict, note: str | None, idempotency_key: str | None,
+                    address: dict | None, note: str | None, idempotency_key: str | None,
                     payment_method: PaymentMethod = PaymentMethod.FULL) -> tuple[Order, Payment | None]:
     from app.core.deps import ensure_customer
 
@@ -125,11 +126,18 @@ def create_checkout(db: Session, buyer: User, *, product_id, quantity: int, nego
                 raise NotFound("Accepted offer not found")
             pay = db.scalars(select(Payment).where(Payment.order_id == live.id).order_by(Payment.created_at.desc())).first()
             return live, pay
-    address = {**address, "city": canonical_city(db, address.get("state"), address.get("city"), field="address.city")}
     product = db.query(Product).filter_by(id=product_id).with_for_update().one_or_none()
     if not product:
         raise NotFound("Listing not found")
     q = price_checkout(db, buyer, product, quantity, negotiation_id, delivery_index, lock_negotiation=True)
+    arranging = q["delivery_option"].get("type") == "arrange"
+    if arranging:
+        address = {}  # delivery is planned directly between buyer and seller
+    else:
+        if not address:
+            raise AppError("Add a delivery address", code="address_required")
+        address = {**address, "city": canonical_city(db, address.get("state"), address.get("city"),
+                                                     field="address.city")}
     if payment_method == PaymentMethod.BNPL and not product.bnpl_enabled:
         raise AppError("Goods Flex is not available for this listing", code="bnpl_unavailable")
     # Reserve stock atomically.
