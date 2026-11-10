@@ -22,7 +22,7 @@ const SELLER_DETAIL = /^\/sellers\/[0-9a-fA-F-]{36}$/;
 const SECTIONS = new Set([
   "users", "sellers", "verifications", "products", "categories", "orders", "payments", "escrow", "disputes",
   "refunds", "bnpl", "subscriptions", "promotions", "reviews", "reports", "settings", "audit", "staff", "roles",
-  "live", "payouts",
+  "live", "payouts", "wallets",
 ]);
 
 function stripAdmin(pathname: string) {
