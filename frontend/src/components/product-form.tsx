@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ImagePlus, Plus, Sparkles, Trash2, X } from "lucide-react";
@@ -27,6 +28,7 @@ export function ProductForm({ existing }: { existing?: SellerProductDetail }) {
     state: existing?.state ?? "", city: existing?.city ?? "", protected_checkout_enabled: existing?.protected_checkout_enabled ?? true, bnpl_enabled: existing?.bnpl_enabled ?? false,
   });
   const [delivery, setDelivery] = useState<DeliveryOption[]>(existing?.delivery_options ?? [{ type: "pickup", label: "Pickup from my location", fee: "0", eta_days: 0 }]);
+  const [flexAck, setFlexAck] = useState(existing?.bnpl_enabled ?? false);
   const [images, setImages] = useState(existing?.images ?? []);
   const [files, setFiles] = useState<File[]>([]);
   const [errs, setErrs] = useState<Record<string, string>>({});
@@ -76,6 +78,7 @@ export function ProductForm({ existing }: { existing?: SellerProductDetail }) {
     if (!f.category_id) return setErrs({ subcategory: "Choose a subcategory" });
     if (!f.state) return setErrs({ state: "Select a state" });
     if (!f.city) return setErrs({ city: "Select a city / area" });
+    if (f.bnpl_enabled && !flexAck) return setErr("Accept the Goods Flex seller terms to enable instalments.");
     const body = {
       ...f, price, quantity: Number(f.quantity || 0), brand: f.brand || null, model: f.model || null,
       delivery_options: delivery.map((d) => ({ ...d, fee: toMoneyString(String(d.fee)) ?? "0.00" })),
@@ -209,7 +212,18 @@ export function ProductForm({ existing }: { existing?: SellerProductDetail }) {
       <section className="card space-y-3 p-4 sm:p-5">
         <h2 className="font-semibold">Payment options</h2>
         <Checkbox checked={f.protected_checkout_enabled} onChange={(e) => setF({ ...f, protected_checkout_enabled: e.target.checked })} label={<><strong>Protected Checkout</strong> — buyers pay through escrow; you&apos;re paid after delivery (5% commission).</>} />
-        <Checkbox checked={f.bnpl_enabled} onChange={(e) => setF({ ...f, bnpl_enabled: e.target.checked })} label={<><strong>Goods Flex</strong> — let buyers pay in instalments. You&apos;re still paid in full via escrow.</>} />
+        <div className="rounded-xl border border-line p-3">
+          <Checkbox checked={f.bnpl_enabled} onChange={(e) => { setF({ ...f, bnpl_enabled: e.target.checked }); if (!e.target.checked) setFlexAck(false); }} label={<><strong>Allow pay small-small (Goods Flex)</strong></>} />
+          <p className="mt-1 text-xs text-muted">Buyer pays 40% today; the remaining 60% is spread over 3 or 6 months at 3% per month on the financed balance.</p>
+          {f.bnpl_enabled && (
+            <div className="mt-3 space-y-2 border-t border-line pt-3 text-xs text-muted">
+              <p><b className="text-ink">You will be paid in instalments:</b> you receive the down-payment share after delivery, then the financed 60% monthly as the buyer pays — this can take 3 to 6 months.</p>
+              <p><b className="text-ink">Your share of the charge:</b> 70% of the 3% monthly financing charge; Goods.ng keeps 30% for checks, collections and support.</p>
+              <p>If the buyer misses payments, the unpaid instalments are not released to you. Only enable this if you can wait. <Link href="/seller/flex-terms" className="font-semibold text-brand-700 underline">Read the seller terms</Link>.</p>
+              <Checkbox checked={flexAck} onChange={(e) => setFlexAck(e.target.checked)} label="I understand and accept the Goods Flex seller terms." />
+            </div>
+          )}
+        </div>
       </section>
       <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button><Button type="submit" size="lg" loading={busy}>{existing ? "Save changes" : "Post listing"}</Button></div>
     </form>
