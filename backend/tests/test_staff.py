@@ -34,7 +34,7 @@ def test_roles_are_seeded_and_super_admin_only(make_admin, make_user):
     codes = {r["code"] for r in sup.get("/admin/roles").json()}
     assert {"super_admin", "operations_manager", "finance", "customer_support", "trust_safety", "kyc_officer",
             "marketing", "auditor"} <= codes
-    assert len(sup.get("/admin/permissions").json()) == 17
+    assert len(sup.get("/admin/permissions").json()) == 18
     ordinary_admin = make_admin(["users.manage", "settings.manage"])
     for path in ("/admin/staff", "/admin/roles", "/admin/permissions"):
         r = ordinary_admin.get(path)

@@ -26,7 +26,8 @@ from app.modules.ledger import service as ledger
 
 FUNDED = (EscrowStatus.AWAITING_SELLER, EscrowStatus.PROCESSING, EscrowStatus.DISPATCHED,
           EscrowStatus.DELIVERED, EscrowStatus.AWAITING_BUYER_CONFIRMATION, EscrowStatus.DISPUTED)
-OPEN_PAYOUT = (PayoutStatus.REQUESTED, PayoutStatus.PROCESSING)
+OPEN_PAYOUT = (PayoutStatus.REQUESTED, PayoutStatus.APPROVED, PayoutStatus.PROCESSING)
+PAYABLE = (PayoutStatus.APPROVED, PayoutStatus.PROCESSING)
 
 
 def _released(db: Session, seller_id) -> Decimal:
@@ -164,10 +165,14 @@ def remove_bank_account(db: Session, seller: SellerProfile, account_id) -> None:
 
 def payout_out(p: Payout) -> dict:
     return {"id": str(p.id), "amount": f"{p.amount:.2f}", "fee": f"{p.fee:.2f}", "status": p.status,
+            "seller_id": str(p.seller_id), "seller_name": p.seller.store_name if p.seller else None,
             "bank_account": {"id": str(p.bank_account.id), "bank_name": p.bank_account.bank_name,
+                             "account_name": p.bank_account.account_name,
                              "account_last4": p.bank_account.account_number_last4}
             if p.bank_account else None,
             "provider_reference": p.provider_reference, "requested_at": p.requested_at,
+            "reviewed_by_id": str(p.reviewed_by_id) if p.reviewed_by_id else None,
+            "reviewed_at": p.reviewed_at, "review_note": p.review_note,
             "processing_at": p.processing_at, "paid_at": p.paid_at, "failed_at": p.failed_at,
             "failure_reason": p.failure_reason}
 
@@ -209,10 +214,32 @@ def request_payout(db: Session, seller: SellerProfile, *, amount: Decimal, bank_
     return payout
 
 
+def approve_payout(db: Session, payout_id, *, admin_id) -> Payout:
+    payout = db.get(Payout, payout_id)
+    if not payout or payout.status != PayoutStatus.REQUESTED:
+        raise NotFound("Payout awaiting review not found")
+    payout.status = PayoutStatus.APPROVED
+    payout.reviewed_by_id, payout.reviewed_at = admin_id, utcnow()
+    db.commit()
+    return payout
+
+
+def reject_payout(db: Session, payout_id, *, admin_id, reason: str) -> Payout:
+    payout = db.get(Payout, payout_id)
+    if not payout or payout.status != PayoutStatus.REQUESTED:
+        raise NotFound("Payout awaiting review not found")
+    payout.status = PayoutStatus.REJECTED
+    payout.reviewed_by_id, payout.reviewed_at = admin_id, utcnow()
+    payout.review_note = reason[:300]
+    # Nothing was ever debited, so rejecting simply returns the amount to "available".
+    db.commit()
+    return payout
+
+
 def process_due_payouts(db: Session, limit: int = 50) -> int:
-    """Advance requested payouts through the licensed partner. Safe to run repeatedly."""
+    """Send admin-approved payouts to the licensed partner. Safe to run repeatedly."""
     provider = get_payout_provider()
-    rows = db.scalars(select(Payout).where(Payout.status.in_(OPEN_PAYOUT))
+    rows = db.scalars(select(Payout).where(Payout.status.in_(PAYABLE))
                       .order_by(Payout.created_at).limit(limit).with_for_update(skip_locked=True)).all()
     processed = 0
     for payout in rows:
@@ -249,12 +276,14 @@ def _fail(db: Session, payout: Payout, reason: str) -> None:
     # No ledger entry was posted at request time, so failing just returns the amount to "available".
 
 
-def retry_payout(db: Session, payout_id) -> Payout:
+def retry_payout(db: Session, payout_id, *, admin_id=None) -> Payout:
     payout = db.get(Payout, payout_id)
     if not payout or payout.status != PayoutStatus.FAILED:
         raise NotFound("Failed payout not found")
-    payout.status = PayoutStatus.REQUESTED
+    payout.status = PayoutStatus.APPROVED
     payout.failure_reason = None
+    if admin_id:
+        payout.reviewed_by_id, payout.reviewed_at = admin_id, utcnow()
     db.commit()
     return payout
 

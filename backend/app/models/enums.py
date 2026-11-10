@@ -20,6 +20,7 @@ class AdminPermission(_S):
     SUBSCRIPTIONS_MANAGE = "subscriptions.manage"
     ORDERS_VIEW = "orders.view"
     PAYMENTS_VIEW = "payments.view"
+    PAYOUTS_APPROVE = "payouts.approve"
     DISPUTES_RESOLVE = "disputes.resolve"
     REFUNDS_REQUEST = "refunds.request"
     REFUNDS_APPROVE = "refunds.approve"
@@ -142,10 +143,12 @@ class PaymentPurpose(_S):
 
 
 class PayoutStatus(_S):
-    REQUESTED = "requested"
+    REQUESTED = "requested"  # waiting for an administrator to review
+    APPROVED = "approved"  # reviewer released it to the payout partner queue
     PROCESSING = "processing"
     PAID = "paid"
     FAILED = "failed"
+    REJECTED = "rejected"  # reviewer declined; nothing was sent
     CANCELLED = "cancelled"
 
 

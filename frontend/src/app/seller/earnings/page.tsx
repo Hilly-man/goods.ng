@@ -17,7 +17,7 @@ type Wallet = {
   bank_accounts: BankAccount[]; holds: Hold[]; payouts: Payout[];
 };
 
-const PAYOUT_STATUS: Record<string, string> = { requested: "Requested", processing: "Processing", paid: "Paid", failed: "Failed", cancelled: "Cancelled" };
+const PAYOUT_STATUS: Record<string, string> = { requested: "Awaiting review", approved: "Approved", processing: "Processing", paid: "Paid", failed: "Failed", rejected: "Rejected", cancelled: "Cancelled" };
 
 function View() {
   const { data, error, reload } = useApi<Wallet>("/seller/wallet");
@@ -70,7 +70,7 @@ function View() {
     try {
       await http.post("/seller/payouts", { amount, bank_account_id: selectedBank },
         { "Idempotency-Key": crypto.randomUUID() });
-      toast("Withdrawal requested — it will be paid to your bank account");
+      toast("Withdrawal requested — an administrator will review it before payment");
       setAmount("");
       reload();
     } catch (err) {
@@ -119,7 +119,7 @@ function View() {
           <Button type="submit" block loading={busy} disabled={data.payouts_frozen || !data.bank_accounts.length || !amount}>
             Request withdrawal
           </Button>
-          <p className="text-xs text-muted">Payouts are executed by our licensed payout partner. A failed transfer returns the funds to your available balance.</p>
+          <p className="text-xs text-muted">Each withdrawal is checked by an administrator before our licensed payout partner sends it. A rejected or failed transfer returns the funds to your available balance.</p>
         </form>
 
         <div className="card space-y-3 p-4">

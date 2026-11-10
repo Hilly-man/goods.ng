@@ -61,12 +61,3 @@ def request_payout(data: PayoutIn, seller: CurrentSeller, db: DB,
                                     idempotency_key=idempotency_key)
     return service.payout_out(payout)
 
-
-@router.post("/seller/payouts/{payout_id}/retry")
-def retry_payout(payout_id: uuid.UUID, seller: CurrentSeller, db: DB):
-    payout = service.retry_payout(db, payout_id)
-    if payout.seller_id != seller.id:
-        from app.core.errors import NotFound
-
-        raise NotFound("Payout not found")
-    return service.payout_out(payout)

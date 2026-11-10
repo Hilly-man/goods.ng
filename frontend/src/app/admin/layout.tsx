@@ -5,7 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  BadgeCheck, BarChart3, BookOpen, CalendarClock, ChevronDown, Crown, ExternalLink, FileWarning, Flag, FolderTree, Gavel,
+  BadgeCheck, Banknote, BarChart3, BookOpen, CalendarClock, ChevronDown, Crown, ExternalLink, FileWarning, Flag,
+  FolderTree, Gavel,
   KeyRound, Landmark, LayoutDashboard, LogOut, Megaphone, Menu, Package, Receipt, RotateCcw, Search, Settings, ShieldCheck,
   Star, Store, UserCog, UserRound, Users, X,
 } from "lucide-react";
@@ -33,6 +34,7 @@ const GROUPS: { title: string | null; items: Item[] }[] = [
     { href: "/admin/orders", label: "Orders", icon: Receipt, perm: "orders.view" },
     { href: "/admin/disputes", label: "Disputes", icon: Gavel, perm: "disputes.resolve", count: "disputes", keywords: "complaints resolve" },
     { href: "/admin/refunds", label: "Refunds", icon: RotateCcw, perm: "refunds.approve", count: "refunds", keywords: "approve second approver" },
+    { href: "/admin/payouts", label: "Seller payouts", icon: Banknote, perm: "payouts.approve", keywords: "withdrawals approve seller bank" },
     { href: "/admin/payments", label: "Payments", icon: BarChart3, perm: "payments.view", keywords: "transactions paystack" },
     { href: "/admin/escrow", label: "Escrow & ledger", icon: Landmark, perm: "payments.view", keywords: "reconciliation balance" },
     { href: "/admin/bnpl", label: "Goods Flex", icon: CalendarClock, perm: "bnpl.view", keywords: "bnpl instalments credit loans" },

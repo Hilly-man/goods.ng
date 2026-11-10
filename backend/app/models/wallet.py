@@ -58,12 +58,16 @@ class Payout(UUIDPk, Timestamps, Base):
     provider_reference: Mapped[str | None] = mapped_column(String(120), index=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(80), unique=True)
     requested_at: Mapped[datetime]
+    reviewed_by_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    reviewed_at: Mapped[datetime | None]
+    review_note: Mapped[str | None] = mapped_column(String(300))
     processing_at: Mapped[datetime | None]
     paid_at: Mapped[datetime | None]
     failed_at: Mapped[datetime | None]
     failure_reason: Mapped[str | None] = mapped_column(String(300))
 
     bank_account = relationship("SellerBankAccount")
+    seller = relationship("SellerProfile")
 
 
 class WalletHold(UUIDPk, Timestamps, Base):

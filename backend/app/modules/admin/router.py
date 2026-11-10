@@ -582,17 +582,32 @@ def admin_payouts(db: DB, status: str | None = None, params: PageParams = Depend
     stmt = select(Payout)
     if status:
         stmt = stmt.where(Payout.status == status)
-    return paginate(db, stmt.order_by(Payout.created_at.desc()), params, lambda p: {
-        "id": str(p.id), "seller_id": str(p.seller_id), "amount": f"{p.amount:.2f}", "status": p.status,
-        "provider_reference": p.provider_reference, "bank_name": p.bank_account.bank_name,
-        "account_last4": p.bank_account.account_number_last4, "requested_at": p.requested_at,
-        "paid_at": p.paid_at, "failure_reason": p.failure_reason})
+    return paginate(db, stmt.order_by(Payout.created_at.desc()), params, wallet.payout_out)
+
+
+@router.post("/payouts/{payout_id}/approve")
+def approve_payout(payout_id: uuid.UUID, request: Request, db: DB, admin: User = perm(P.PAYOUTS_APPROVE)):
+    audit(db, admin, "payout.approve", "payout", payout_id, {}, client_ip(request))
+    p = wallet.approve_payout(db, payout_id, admin_id=admin.id)
+    return wallet.payout_out(p)
+
+
+class PayoutRejectIn(BaseModel):
+    reason: str = Field(min_length=5, max_length=300)
+
+
+@router.post("/payouts/{payout_id}/reject")
+def reject_payout(payout_id: uuid.UUID, data: PayoutRejectIn, request: Request, db: DB,
+                  admin: User = perm(P.PAYOUTS_APPROVE)):
+    audit(db, admin, "payout.reject", "payout", payout_id, data.model_dump(), client_ip(request))
+    p = wallet.reject_payout(db, payout_id, admin_id=admin.id, reason=data.reason)
+    return wallet.payout_out(p)
 
 
 @router.post("/payouts/{payout_id}/retry")
-def retry_payout(payout_id: uuid.UUID, request: Request, db: DB, admin: User = perm(P.PAYMENTS_VIEW)):
+def retry_payout(payout_id: uuid.UUID, request: Request, db: DB, admin: User = perm(P.PAYOUTS_APPROVE)):
     audit(db, admin, "payout.retry", "payout", payout_id, {}, client_ip(request))
-    p = wallet.retry_payout(db, payout_id)
+    p = wallet.retry_payout(db, payout_id, admin_id=admin.id)
     return {"id": str(p.id), "status": p.status}
 
 

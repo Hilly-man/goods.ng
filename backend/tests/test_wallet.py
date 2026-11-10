@@ -58,7 +58,7 @@ def test_carrier_webhook_marks_delivered_without_pin(client, db, paid_order):
     assert bad.status_code == 403
 
 
-def test_wallet_clears_after_hold_window_and_pays_out(db, paid_order):
+def test_wallet_clears_after_hold_window_and_pays_out(make_admin, db, paid_order):
     from app.modules.ledger import service as ledger
     from app.modules.wallet import service as wallet
 
@@ -101,11 +101,39 @@ def test_wallet_clears_after_hold_window_and_pays_out(db, paid_order):
     assert Decimal(seller.get("/seller/wallet").json()["available"]) == Decimal("0.00")
     assert ledger.balance(db, ledger.seller_payable(seller.seller["id"])[0]) == amount
 
+    # A payout is never sent without a reviewer with the payout approval permission.
+    assert wallet.process_due_payouts(db) == 0
+    assert make_admin(["payments.view"]).post(f"/admin/payouts/{payout['id']}/approve").status_code == 403
+    approved = make_admin(["payouts.approve"]).post(f"/admin/payouts/{payout['id']}/approve")
+    assert approved.status_code == 200 and approved.json()["status"] == "approved"
+
     assert wallet.process_due_payouts(db) == 1
     paid = seller.get("/seller/payouts").json()[0]
     assert paid["status"] == "paid"
     assert ledger.balance(db, ledger.seller_payable(seller.seller["id"])[0]) == Decimal("0.00")
     assert ledger.trial_balance(db)["balanced"]
+
+
+def test_admin_can_reject_a_withdrawal(make_admin, db, paid_order):
+    buyer, seller, _, order = paid_order()
+    oid = order["id"]
+    pin = _dispatch(buyer, seller, oid)
+    seller.post(f"/orders/{oid}/delivered", {"evidence_urls": [], "pin": pin})
+    buyer.post(f"/orders/{oid}/confirm")
+    amount = Decimal(seller.get(f"/orders/{oid}").json()["seller_earnings"])
+    acct = seller.post("/seller/bank-accounts", {"bank_name": "GTBank", "account_name": "Chinedu Okafor",
+                                                 "account_number": "0123456789"}).json()
+    db.query(EscrowTransaction).filter_by(order_id=oid).update(
+        {"released_at": utcnow() - timedelta(hours=25)})
+    db.commit()
+    payout = seller.post("/seller/payouts", {"amount": f"{amount:.2f}", "bank_account_id": acct["id"]}).json()
+    assert payout["status"] == "requested"
+
+    admin = make_admin(["payouts.approve"])
+    rejected = admin.post(f"/admin/payouts/{payout['id']}/reject", {"reason": "Account name does not match KYC"})
+    assert rejected.status_code == 200 and rejected.json()["status"] == "rejected"
+    w = seller.get("/seller/wallet").json()
+    assert Decimal(w["pending_payouts"]) == Decimal("0.00") and Decimal(w["available"]) == amount
 
 
 def test_buyer_complaint_freezes_payouts_until_admin_releases(make_admin, db, paid_order):
