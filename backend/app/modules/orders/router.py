@@ -1,14 +1,16 @@
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, Header, Query, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Header, Query, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
 from app.core.cache import check_rate_limit
+from app.core.config import settings
 from app.core.deps import DB, CurrentSeller, CurrentUser
-from app.core.errors import NotFound
-from app.core.security import CleanStr
+from app.core.errors import Forbidden, NotFound
+from app.core.security import CleanStr, decrypt_field
+from app.integrations.delivery import get_delivery_provider
 from app.integrations.storage import store_image
 from app.models import Dispute, EscrowTransaction, Order, Payment, Product, Refund
 from app.models.enums import DisputeReason, EscrowStatus, PaymentMethod
@@ -16,6 +18,7 @@ from app.modules.auth.schemas import normalize_ng_phone
 from app.modules.common import PageParams, paginate
 from app.modules.orders import service
 from app.modules.products.schemas import NG_STATES
+from app.modules.wallet import service as wallet
 
 router = APIRouter(tags=["orders"])
 
@@ -117,7 +120,11 @@ def order_out(db, o: Order, role: str, detail: bool = False) -> dict:
             delivery={"status": d.status, "method": d.method, "carrier": d.carrier,
                       "tracking_reference": d.tracking_reference, "tracking_url": d.tracking_url,
                       "evidence_urls": d.evidence_urls, "dispatched_at": d.dispatched_at,
-                      "delivered_at": d.delivered_at, "updates": d.updates} if d else None,
+                      "delivered_at": d.delivered_at, "updates": d.updates,
+                      # The PIN is the buyer's proof-of-handover secret; never expose it to the seller.
+                      "delivery_pin": (decrypt_field(d.pin_enc) if role == "buyer" and d.pin_enc
+                                       and d.pin_verified_at is None and d.status in ("dispatched", "delivered")
+                                       else None)} if d else None,
             escrow={"status": esc.status, "funded_at": esc.funded_at, "release_eligible_at": esc.release_eligible_at,
                     "released_at": esc.released_at, "refunded_at": esc.refunded_at,
                     "timeline": [{"from": e.from_status, "to": e.to_status, "actor": e.actor_role, "note": e.note,
@@ -164,6 +171,8 @@ def _actions(o: Order, role: str) -> list[str]:
             acts += ["dispute"]
         if s == S.COMPLETED:
             acts += ["review"]
+            if wallet.complaint_window_open(o):
+                acts += ["complaint"]
     elif role == "seller":
         if s == S.AWAITING_SELLER:
             acts += ["accept", "decline"]
@@ -229,6 +238,8 @@ class DispatchIn(BaseModel):
 class DeliveredIn(BaseModel):
     evidence_urls: list[str] = Field(default_factory=list, max_length=5)
     notes: str | None = Field(None, max_length=500)
+    # Buyer's delivery PIN, collected by the seller/courier at handover.
+    pin: str | None = Field(None, pattern=r"^\d{6}$")
 
 
 class UpdateIn(BaseModel):
@@ -286,7 +297,7 @@ async def upload_evidence(order_id: uuid.UUID, user: CurrentUser, db: DB, file: 
 
 @router.post("/orders/{order_id}/delivered")
 def delivered(order_id: uuid.UUID, data: DeliveredIn, user: CurrentUser, db: DB):
-    service.seller_mark_delivered(db, user, order_id, data.evidence_urls, data.notes)
+    service.seller_mark_delivered(db, user, order_id, data.evidence_urls, data.notes, data.pin)
     return _detail(db, user, order_id)
 
 
@@ -307,6 +318,29 @@ def dispute(order_id: uuid.UUID, data: DisputeIn, user: CurrentUser, db: DB):
     check_rate_limit(f"dispute:{user.id}", 10, 86400)
     service.open_dispute(db, user, order_id, data.reason, data.description, data.evidence_urls)
     return _detail(db, user, order_id)
+
+
+class ComplaintIn(BaseModel):
+    description: str = Field(min_length=20, max_length=3000)
+
+
+@router.post("/orders/{order_id}/complaints", status_code=201)
+def complaint(order_id: uuid.UUID, data: ComplaintIn, user: CurrentUser, db: DB):
+    check_rate_limit(f"complaint:{user.id}", 10, 86400)
+    hold = service.post_delivery_complaint(db, user, order_id, data.description)
+    return {"id": str(hold.id), "amount": f"{hold.amount:.2f}", "status": "open",
+            "note": "The seller's payout is on hold while this complaint is reviewed."}
+
+
+@router.post("/delivery/webhooks/{provider}")
+def delivery_webhook(provider: str, db: DB, payload: dict = Body(...),
+                     x_mock_signature: str | None = Header(None)):
+    if provider != get_delivery_provider().name:
+        raise NotFound("Unknown delivery provider")
+    if provider == "mock" and x_mock_signature != settings.mock_provider_secret:
+        raise Forbidden("Invalid delivery webhook signature", code="invalid_signature")
+    event = get_delivery_provider().parse_webhook(payload)
+    return {"status": "ok", "updated": service.delivery_webhook(db, event)}
 
 
 @router.post("/disputes/{dispute_id}/messages", status_code=201)

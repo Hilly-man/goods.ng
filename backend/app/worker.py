@@ -25,6 +25,7 @@ from app.modules.orders.service import auto_release_due, expire_unpaid
 from app.modules.products.service import purge_deleted_listings
 from app.modules.promotions.service import bump_active_premium
 from app.modules.recommendations.router import purge_old_signals
+from app.modules.wallet.service import process_due_payouts
 
 log = logging.getLogger("goodsng.worker")
 
@@ -53,6 +54,7 @@ JOBS = {
     "expire_unpaid_orders": (60, expire_unpaid),
     "expire_negotiations": (60, expire_negotiations),
     "auto_release_escrow": (300, auto_release_due),
+    "process_payouts": (60, process_due_payouts),
     "expire_subscriptions": (300, expire_subscriptions_and_features),
     "refresh_promotion_bumps": (3600, bump_active_premium),
     "bnpl_reminders": (3600, mark_overdue_and_remind),

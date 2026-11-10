@@ -38,6 +38,8 @@ class SellerProfile(UUIDPk, Timestamps, Base):
     rating_count: Mapped[int] = mapped_column(Integer, default=0)
     completed_sales: Mapped[int] = mapped_column(Integer, default=0)
     is_suspended: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Set when a buyer raises a post-delivery complaint; blocks new payout requests until resolved.
+    payouts_frozen: Mapped[bool] = mapped_column(Boolean, default=False)
 
     user = relationship("User", back_populates="seller_profile")
     subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="seller")

@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import AppError, Forbidden, InvalidState, NotFound
-from app.core.security import clean_text
+from app.core.security import clean_text, decrypt_field, encrypt_field
 from app.core.time import utcnow
+from app.integrations.delivery import get_delivery_provider
 from app.models import (
     DeliveryRecord,
     Dispute,
@@ -292,9 +293,19 @@ def seller_dispatch(db: Session, user: User, order_id, carrier: str | None, trac
     d.status, d.carrier, d.tracking_reference, d.tracking_url = DeliveryStatus.DISPATCHED, clean_text(carrier), \
         clean_text(tracking), tracking_url
     d.notes, d.dispatched_at = clean_text(notes), now
+    if settings.environment in ("development", "test"):
+        # No live carrier is configured yet. Production falls back to the buyer PIN only, never a fake
+        # mock shipment; a real adapter (Shipbubble/GIG/Fez) will populate these fields.
+        shipment = get_delivery_provider().create_shipment(
+            order_reference=order.order_number, carrier=carrier, tracking_reference=tracking)
+        d.provider, d.provider_reference = get_delivery_provider().name, shipment.reference
+        d.tracking_url = tracking_url or shipment.tracking_url
+    pin = f"{secrets.randbelow(10 ** 6):06d}"
+    d.pin_enc, d.pin_attempts, d.pin_expires_at = encrypt_field(pin), 0, now + timedelta(days=14)
     d.updates = [*d.updates, {"at": now.isoformat(), "status": "dispatched", "note": clean_text(notes) or ""}]
     notify(db, order.buyer_id, "seller_dispatch", "Your order is on the way",
-           f"Order {order.order_number} has been dispatched" + (f". Tracking: {tracking}" if tracking else "."),
+           f"Order {order.order_number} has been dispatched. Open the order to see your delivery PIN and share it "
+           "only when the item is handed over.",
            link=f"/orders/{order.id}")
     db.commit()
     return order
@@ -315,22 +326,62 @@ def add_delivery_update(db: Session, user: User, order_id, note: str) -> Order:
     return order
 
 
-def seller_mark_delivered(db: Session, user: User, order_id, evidence_urls: list[str], notes: str | None) -> Order:
-    order, role = get_for(db, user, order_id)
-    if role != "seller":
-        raise Forbidden("Only the seller can mark delivery")
-    order, esc = escrow.lock(db, order.id)
-    escrow.mark_delivered(db, order, esc, user.id, "seller")
+def _verify_delivery_pin(db: Session, d: DeliveryRecord, pin: str | None) -> None:
+    """The buyer-only PIN proves physical handover. Five wrong attempts lock the order for support."""
+    if not d.pin_enc or not d.pin_expires_at:
+        raise InvalidState("This order has no delivery PIN; contact support", code="delivery_pin_missing")
+    if d.pin_expires_at < utcnow():
+        raise AppError("The delivery PIN has expired; contact support", code="delivery_pin_expired")
+    if d.pin_attempts >= 5:
+        raise AppError("Too many incorrect delivery PIN attempts; contact support", code="delivery_pin_locked")
+    if not pin or decrypt_field(d.pin_enc) != pin:
+        d.pin_attempts += 1
+        db.commit()
+        raise AppError("The delivery PIN is incorrect", code="invalid_delivery_pin")
+    d.pin_verified_at = utcnow()
+
+
+def _mark_delivered(db: Session, order: Order, esc: EscrowTransaction, *, actor_id, actor_role,
+                    evidence_urls: list[str], notes: str | None) -> None:
+    escrow.mark_delivered(db, order, esc, actor_id, actor_role)
     d = order.delivery
     now = utcnow()
     d.status, d.delivered_at = DeliveryStatus.DELIVERED, now
     d.evidence_urls = [*d.evidence_urls, *evidence_urls]
     d.updates = [*d.updates, {"at": now.isoformat(), "status": "delivered", "note": clean_text(notes) or ""}]
     notify(db, order.buyer_id, "delivery_update", "Order delivered — please confirm",
-           f"The seller marked order {order.order_number} as delivered. Confirm receipt or report a problem within "
+           f"Order {order.order_number} was marked delivered. Confirm receipt or report a problem within "
            f"{settings.auto_release_days} days.", link=f"/orders/{order.id}")
+
+
+def seller_mark_delivered(db: Session, user: User, order_id, evidence_urls: list[str], notes: str | None,
+                          pin: str | None = None) -> Order:
+    order, role = get_for(db, user, order_id)
+    if role != "seller":
+        raise Forbidden("Only the seller can mark delivery")
+    order, esc = escrow.lock(db, order.id)
+    _verify_delivery_pin(db, order.delivery, pin)
+    _mark_delivered(db, order, esc, actor_id=user.id, actor_role="seller",
+                    evidence_urls=evidence_urls, notes=notes)
     db.commit()
     return order
+
+
+def delivery_webhook(db: Session, event) -> int:
+    """Handle a carrier event. A verified carrier delivery does not need the buyer's PIN."""
+    if event.status != "delivered":
+        return 0
+    order = db.scalars(select(Order).where(Order.order_number == event.order_reference)).first()
+    if not order or order.status in (S.COMPLETED, S.REFUNDED, S.CANCELLED):
+        return 0
+    order, esc = escrow.lock(db, order.id)
+    if esc.status not in (S.DISPATCHED, S.DELIVERED):
+        db.rollback()
+        return 0
+    if order.status == S.DISPATCHED:
+        _mark_delivered(db, order, esc, actor_id=None, actor_role="provider", evidence_urls=[], notes="Carrier webhook")
+    db.commit()
+    return 1
 
 
 def seller_decline(db: Session, user: User, order_id, reason: str) -> Order:
@@ -450,6 +501,29 @@ def execute_refund(db: Session, refund: Refund, order: Order, esc: EscrowTransac
 # ---------------- disputes ----------------
 BUYER_DISPUTABLE = {S.AWAITING_SELLER, S.PROCESSING, S.DISPATCHED, S.DELIVERED, S.AWAITING_BUYER_CONFIRMATION}
 SELLER_DISPUTABLE = {S.DELIVERED, S.AWAITING_BUYER_CONFIRMATION}
+
+
+def post_delivery_complaint(db: Session, user: User, order_id, description: str):
+    """A buyer can freeze the seller's just-released payout during the clearing window."""
+    from app.modules.wallet import service as wallet
+
+    order, role = get_for(db, user, order_id)
+    if role != "buyer":
+        raise Forbidden("Only the buyer can raise a complaint")
+    if not wallet.complaint_window_open(order):
+        raise InvalidState("The complaint window for this order has closed", code="complaint_window_closed")
+    existing = db.query(wallet.WalletHold).filter_by(order_id=order.id, released_at=None).first()
+    if existing:
+        raise AppError("A complaint is already open for this order", code="complaint_exists")
+    hold = wallet.place_hold(db, seller_id=order.seller_id, amount=order.escrow.seller_amount,
+                             reason="post_delivery_claim", order_id=order.id, note=clean_text(description),
+                             created_by_id=user.id, freeze=True)
+    seller_user = _seller_user(db, order)
+    notify(db, seller_user.user_id, "payout_hold", "Payout on hold",
+           f"A buyer complaint on order {order.order_number} is under review. Withdrawals are paused meanwhile.",
+           link=f"/seller/orders/{order.id}")
+    db.commit()
+    return hold
 
 
 def open_dispute(db: Session, user: User, order_id, reason: DisputeReason, description: str,

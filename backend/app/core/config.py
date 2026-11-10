@@ -108,6 +108,12 @@ class Settings(BaseSettings):
     accepted_offer_checkout_hours: int = 24
     unpaid_order_ttl_minutes: int = 60
     auto_release_days: int = 3
+    # Seller wallet: released funds clear for this long before they can be withdrawn, so a buyer can
+    # raise a post-delivery complaint. Payouts are executed by the licensed partner, never by us.
+    seller_payout_hold_hours: int = 24
+    min_payout_amount: Decimal = Decimal("1000.00")
+    payout_provider: Literal["mock"] = "mock"
+    delivery_provider: Literal["mock"] = "mock"
 
     rate_limit_per_minute: int = 240
     # Coarse ceiling per public IP, as a multiple of the per-user/device limit. Keeps a client
@@ -190,6 +196,8 @@ class Settings(BaseSettings):
                 problems.append("A real open-banking provider is required in production")
             if self.bank_data_provider == "mono" and not self.mono_secret_key:
                 problems.append("MONO_SECRET_KEY is required when BANK_DATA_PROVIDER=mono")
+            if self.payout_provider == "mock":
+                problems.append("A licensed seller-payout partner integration is required in production")
             if self.captcha_provider in ("mock", "off"):
                 problems.append("CAPTCHA_PROVIDER must be 'recaptcha' or 'turnstile' in production")
             elif not (self.captcha_site_key and self.captcha_secret_key):

@@ -35,7 +35,9 @@ def test_full_protected_checkout_lifecycle(db, paid_order):
     assert r.json()["error"]["code"] == "tracking_required"  # courier requires tracking
     r = seller.post(f"/orders/{oid}/dispatch", {"carrier": "GIG Logistics", "tracking_reference": "GIG123456"})
     assert r.json()["status"] == "dispatched"
-    r = seller.post(f"/orders/{oid}/delivered", {"evidence_urls": [], "notes": "Handed to buyer"})
+    pin = buyer.get(f"/orders/{oid}").json()["delivery"]["delivery_pin"]
+    assert pin and len(pin) == 6
+    r = seller.post(f"/orders/{oid}/delivered", {"evidence_urls": [], "notes": "Handed to buyer", "pin": pin})
     assert r.json()["status"] == "awaiting_buyer_confirmation"
     assert r.json()["escrow"]["release_eligible_at"] is not None
     # Seller cannot confirm on buyer's behalf
@@ -219,7 +221,8 @@ def test_dispute_resolved_for_seller_releases(db, paid_order, make_admin):
     oid = order["id"]
     seller.post(f"/orders/{oid}/accept")
     seller.post(f"/orders/{oid}/dispatch", {"carrier": "GIG", "tracking_reference": "T1"})
-    seller.post(f"/orders/{oid}/delivered", {"evidence_urls": []})
+    pin = buyer.get(f"/orders/{oid}").json()["delivery"]["delivery_pin"]
+    seller.post(f"/orders/{oid}/delivered", {"evidence_urls": [], "pin": pin})
     r = seller.post(f"/orders/{oid}/disputes", {"reason": "buyer_refuses_confirmation",
                                                 "description": "Delivered with signed waybill but buyer will not confirm."})
     dispute_id = r.json()["disputes"][0]["id"]
@@ -235,7 +238,8 @@ def test_auto_release_after_window(db, paid_order):
     oid = order["id"]
     seller.post(f"/orders/{oid}/accept")
     seller.post(f"/orders/{oid}/dispatch", {"carrier": "GIG", "tracking_reference": "T1"})
-    seller.post(f"/orders/{oid}/delivered", {"evidence_urls": []})
+    pin = buyer.get(f"/orders/{oid}").json()["delivery"]["delivery_pin"]
+    seller.post(f"/orders/{oid}/delivered", {"evidence_urls": [], "pin": pin})
     assert orders.auto_release_due(db) == 0
     db.query(EscrowTransaction).update({"release_eligible_at": utcnow() - timedelta(seconds=1)})
     db.commit()

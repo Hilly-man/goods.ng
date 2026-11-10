@@ -42,5 +42,6 @@ from app.models.misc import (
 )
 from app.models.seller import SellerProfile, SellerVerification, Subscription, SubscriptionPlan
 from app.models.user import AdminRole, NotificationPreference, OtpCode, Profile, RefreshToken, User
+from app.models.wallet import Payout, SellerBankAccount, WalletHold
 
 __all__ = [n for n in dir() if not n.startswith("_")]

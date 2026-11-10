@@ -248,6 +248,7 @@ export interface OrderDetail extends Order {
     dispatched_at: string | null;
     delivered_at: string | null;
     updates: { at: string; status: string; note: string }[];
+    delivery_pin: string | null;
   } | null;
   escrow: {
     status: OrderStatus;

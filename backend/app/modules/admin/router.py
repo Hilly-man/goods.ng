@@ -30,6 +30,7 @@ from app.models import (
     MessageReport,
     Order,
     Payment,
+    Payout,
     PlatformSetting,
     Product,
     Promotion,
@@ -42,6 +43,7 @@ from app.models import (
     Subscription,
     SubscriptionPlan,
     User,
+    WalletHold,
     WebhookEvent,
 )
 from app.models.enums import (
@@ -71,6 +73,7 @@ from app.modules.orders import service as orders
 from app.modules.orders.router import order_out
 from app.modules.reviews.router import recompute_rating
 from app.modules.subscriptions.premium import premium_exists_for
+from app.modules.wallet import service as wallet
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin_2fa)])
 
@@ -570,6 +573,40 @@ def reject_refund(refund_id: uuid.UUID, data: RejectIn, request: Request, db: DB
     audit(db, admin, "refund.reject", "refund", refund_id, data.model_dump(), client_ip(request))
     r = orders.reject_refund(db, admin, refund_id, data.reason)
     return {"id": str(r.id), "status": r.status}
+
+
+# ---------------- seller wallet & payouts ----------------
+@router.get("/payouts")
+def admin_payouts(db: DB, status: str | None = None, params: PageParams = Depends(),
+                  admin: User = perm(P.PAYMENTS_VIEW)):
+    stmt = select(Payout)
+    if status:
+        stmt = stmt.where(Payout.status == status)
+    return paginate(db, stmt.order_by(Payout.created_at.desc()), params, lambda p: {
+        "id": str(p.id), "seller_id": str(p.seller_id), "amount": f"{p.amount:.2f}", "status": p.status,
+        "provider_reference": p.provider_reference, "bank_name": p.bank_account.bank_name,
+        "account_last4": p.bank_account.account_number_last4, "requested_at": p.requested_at,
+        "paid_at": p.paid_at, "failure_reason": p.failure_reason})
+
+
+@router.post("/payouts/{payout_id}/retry")
+def retry_payout(payout_id: uuid.UUID, request: Request, db: DB, admin: User = perm(P.PAYMENTS_VIEW)):
+    audit(db, admin, "payout.retry", "payout", payout_id, {}, client_ip(request))
+    p = wallet.retry_payout(db, payout_id)
+    return {"id": str(p.id), "status": p.status}
+
+
+@router.get("/wallet/holds")
+def wallet_holds(db: DB, params: PageParams = Depends(), admin: User = perm(P.DISPUTES_RESOLVE)):
+    stmt = select(WalletHold).where(WalletHold.released_at.is_(None))
+    return paginate(db, stmt.order_by(WalletHold.created_at.desc()), params, wallet.serialize_hold)
+
+
+@router.post("/wallet/holds/{hold_id}/release")
+def release_wallet_hold(hold_id: uuid.UUID, request: Request, db: DB, admin: User = perm(P.DISPUTES_RESOLVE)):
+    audit(db, admin, "wallet_hold.release", "wallet_hold", hold_id, {}, client_ip(request))
+    h = wallet.release_hold(db, hold_id, actor_id=admin.id)
+    return wallet.serialize_hold(h)
 
 
 # ---------------- BNPL ----------------

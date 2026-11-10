@@ -16,7 +16,8 @@ from app.core.logging import RequestContextMiddleware, configure_logging
 
 ROUTERS = [
     "auth", "users", "sellers", "categories", "products", "subscriptions", "messaging", "negotiation",
-    "payments", "orders", "promotions", "bnpl", "reviews", "notifications", "admin", "staff", "stats", "recommendations", "ads", "marketing",
+    "payments", "orders", "promotions", "bnpl", "reviews", "notifications", "admin", "staff", "stats", "recommendations", "ads",
+    "marketing", "wallet",
 ]
 
 

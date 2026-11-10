@@ -1,12 +1,12 @@
 # Goods.ng — Build Status
 
-Last updated: 5 November 2026.
+Last updated: 10 November 2026.
 
 ## Verification at this checkpoint
 
 | Check | Result |
 |---|---|
-| Backend tests (pytest, real PostgreSQL) | **205 passed** |
+| Backend tests (pytest, real PostgreSQL) | **217 passed** |
 | Frontend unit tests (vitest) | **5 passed** |
 | E2E (Playwright, mobile viewport, production build) | **6 passed**: redesigned product page; full protected purchase lifecycle; negotiation → checkout at agreed price; direct-contact warning gate; mandatory-guarantor and one-running-plan rules; TOTP 2FA login challenge |
 | Security controls | TOTP 2FA with recovery codes and replay protection · trusted-proxy IP resolution · CSP and HSTS headers |
@@ -31,7 +31,7 @@ Last updated: 5 November 2026.
 | 10 | Negotiation (offers, counters, expiry, concurrency, agreed-price checkout) | Done |
 | 11 | Payments abstraction (mock, Paystack, Flutterwave adapters) | Done — **Paystack/Flutterwave not yet exercised against sandbox** |
 | 12 | Protected checkout & escrow (state machine, ledger, disputes, refunds) | Done against **mock escrow partner** |
-| 13 | Orders & delivery (manual tracking, evidence, auto-release) | Done |
+| 13 | Orders & delivery (manual tracking, evidence, auto-release, buyer-only delivery PIN, carrier provider abstraction — mock) | Done |
 | 14 | BNPL (Goods Flex): bank-statement credit limit, **mandatory guarantor**, verification tiers, **one running plan at a time** | Done against **mock lending partner and mock open-banking provider** |
 | 15 | Reviews & ratings | Done |
 | 16 | Notifications (in-app, outbox for email/SMS, preferences) | Done — **email/SMS senders are console stubs** |
@@ -47,7 +47,8 @@ Last updated: 5 November 2026.
 - **Open banking (Goods Flex credit limit):** `MockBankDataProvider` generates deterministic six-month statements for test personas, and a `MonoBankDataProvider` adapter is implemented against Mono's v2 API. The Mono adapter is **not yet tested against a Mono sandbox account**; set `BANK_DATA_PROVIDER=mono` with `test_sk_…` keys in staging. The credit engine's thresholds are configurable but illustrative and need review against the lender's credit policy and FCCPC digital lending rules.
 - **Payments:** development uses the mock provider. The Paystack and Flutterwave adapters follow the providers' public documentation but **have not been tested against a sandbox account**.
 - **Email/SMS:** messages are queued in an outbox. Development uses a console logger; production adapters for **Termii SMS**, **Postmark** and **SMTP** are implemented but have **not been sandbox-tested** yet. Set `SMS_PROVIDER=termii` and `EMAIL_PROVIDER=postmark|smtp` with credentials in staging.
-- **Payouts to sellers:** recorded as `seller_payable` in the ledger. Actual disbursement is the escrow partner's job and isn't integrated yet.
+- **Seller payouts:** a ledger-backed wallet, bank accounts, withdrawal requests, 24h clearing and admin payout controls are implemented against a **mock payout provider**. Live disbursement needs a licensed payout partner adapter (`backend/app/integrations/payouts.py`).
+- **Carrier delivery:** order delivery uses a buyer-only 6-digit PIN. A `DeliveryProvider` interface and mock adapter exist (`backend/app/integrations/delivery.py`); real carrier webhooks (Shipbubble/GIG/Fez) are not integrated yet.
 
 ## Outstanding before launch (prioritised)
 
@@ -57,7 +58,7 @@ Last updated: 5 November 2026.
 4. Security follow-ups in SECURITY.md (upload malware scanning, licensed KYC provider, external penetration test, DPO/data-subject workflow).
 5. **Legal review** of the Terms, Privacy, Refund & Dispute, Goods Flex and guarantor consent copy. The current text is a draft written for product purposes, not legal advice. See the Goods Flex compliance checklist in SECURITY.md.
 6. Partial refunds (the model supports amounts, but the UI and dispute flow only offer full refunds today).
-7. Seller payout and bank-account management UI, once the escrow partner's payout API is known.
-8. Logistics provider integrations (the delivery model already has carrier, tracking URL and updates).
+7. Connect a licensed payout partner (bank transfer/PSSP) and replace `MockPayoutProvider`; sandbox-test failed-transfer retries and reconciliation.
+8. Integrate live carriers (Shipbubble first, then GIG/Fez) behind the new `DeliveryProvider` interface; verify webhooks and PIN fallback.
 9. WebSocket or SSE messaging if polling load becomes significant.
 10. Paid promotions: per-listing TOP (7 or 30 days) and Boost Premium (28 days) packages are live with one-off checkout and automatic expiry — no subscription required. Prices can be overridden via the `promotion_packages` platform setting.

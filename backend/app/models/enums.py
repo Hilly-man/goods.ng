@@ -141,6 +141,14 @@ class PaymentPurpose(_S):
     PROMOTION = "promotion"
 
 
+class PayoutStatus(_S):
+    REQUESTED = "requested"
+    PROCESSING = "processing"
+    PAID = "paid"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
 class RefundStatus(_S):
     PENDING_APPROVAL = "pending_approval"
     APPROVED = "approved"

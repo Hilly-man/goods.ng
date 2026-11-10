@@ -193,6 +193,14 @@ class DeliveryRecord(UUIDPk, Timestamps, Base):
     carrier: Mapped[str | None] = mapped_column(String(80))
     tracking_reference: Mapped[str | None] = mapped_column(String(120))
     tracking_url: Mapped[str | None] = mapped_column(String(500))
+    # Buyer-only delivery PIN. Encrypted at rest; the seller must collect it to mark the order delivered.
+    pin_enc: Mapped[str | None] = mapped_column(Text)
+    pin_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    pin_verified_at: Mapped[datetime | None]
+    pin_expires_at: Mapped[datetime | None]
+    # Carrier integration (see app/integrations/delivery.py). Manual couriers leave these empty.
+    provider: Mapped[str | None] = mapped_column(String(30))
+    provider_reference: Mapped[str | None] = mapped_column(String(120), index=True)
     evidence_urls: Mapped[list] = mapped_column(JSONB, default=list)
     notes: Mapped[str | None] = mapped_column(Text)
     dispatched_at: Mapped[datetime | None]

@@ -52,7 +52,7 @@ const DISPUTE_REASONS: Record<string, [string, string][]> = {
 export function OrderView({ id, justPaid = false }: { id: string; justPaid?: boolean }) {
   const { data: o, setData, error } = useApi<OrderDetail>(`/orders/${id}`);
   const toast = useToast();
-  const [modal, setModal] = useState<null | "dispatch" | "delivered" | "dispute" | "decline" | "cancel" | "review" | "update">(null);
+  const [modal, setModal] = useState<null | "dispatch" | "delivered" | "dispute" | "complaint" | "decline" | "cancel" | "review" | "update">(null);
   const [busy, setBusy] = useState(false);
   const [f, setF] = useState<Record<string, string>>({});
   const [evidence, setEvidence] = useState<string[]>([]);
@@ -110,6 +110,13 @@ export function OrderView({ id, justPaid = false }: { id: string; justPaid?: boo
             <h2 className="flex items-center gap-2 font-semibold"><Truck className="size-5 text-brand-700" />Delivery</h2>
             <p className="mt-1 text-sm">{o.delivery_option?.label} · {Number(o.delivery_fee) ? naira(o.delivery_fee) : "Free"}</p>
             {o.delivery.tracking_reference && <p className="mt-1 text-sm">Tracking: <span className="font-mono">{o.delivery.tracking_reference}</span> {o.delivery.carrier && `(${o.delivery.carrier})`} {o.delivery.tracking_url && <a href={o.delivery.tracking_url} target="_blank" rel="noopener noreferrer" className="text-brand-700 underline">Track</a>}</p>}
+            {o.delivery.delivery_pin && (
+              <div className="mt-3 rounded-lg border border-brand-200 bg-brand-50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand-800">Your delivery PIN</p>
+                <p className="mt-1 font-mono text-2xl font-bold tracking-[0.35em]">{o.delivery.delivery_pin}</p>
+                <p className="mt-1 text-xs text-brand-900/80">Share this only with the courier when the item is handed to you. It confirms delivery and releases your protection.</p>
+              </div>
+            )}
             {o.delivery_address && <p className="mt-2 text-sm text-muted">{o.delivery_address.full_name}, {o.delivery_address.phone} — {o.delivery_address.street}, {o.delivery_address.city}, {o.delivery_address.state}{o.delivery_address.landmark ? ` (near ${o.delivery_address.landmark})` : ""}</p>}
             {!o.delivery_address && o.role === "seller" && <p className="mt-2 text-sm text-muted">The buyer&apos;s address will appear once payment is confirmed.</p>}
             {o.buyer_note && <p className="mt-2 rounded-lg bg-canvas p-2 text-sm"><span className="font-semibold">Buyer note:</span> {o.buyer_note}</p>}
@@ -178,6 +185,7 @@ export function OrderView({ id, justPaid = false }: { id: string; justPaid?: boo
             {has("confirm") && <Button block size="lg" onClick={() => { if (confirm("Confirm you received the item as described? This releases payment to the seller.")) run("confirm", undefined, "Thanks! Payment released to the seller."); }}><CheckCircle2 className="size-5" />Confirm receipt</Button>}
             {has("review") && <Button block variant="accent" onClick={() => setModal("review")}><Star className="size-4" />Rate this seller</Button>}
             {has("dispute") && <Button block variant="ghost" className="text-red-600" onClick={() => setModal("dispute")}><AlertTriangle className="size-4" />Report a problem</Button>}
+            {has("complaint") && <Button block variant="ghost" className="text-red-600" onClick={() => setModal("complaint")}><AlertTriangle className="size-4" />Problem after delivery</Button>}
             {has("decline") && <Button block variant="ghost" className="text-red-600" onClick={() => setModal("decline")}>Decline & refund buyer</Button>}
             {has("cancel") && <Button block variant="ghost" onClick={() => setModal("cancel")}>Cancel order</Button>}
           </div>
@@ -196,7 +204,9 @@ export function OrderView({ id, justPaid = false }: { id: string; justPaid?: boo
       <Modal open={modal === "update"} onClose={() => setModal(null)} title="Delivery update" footer={<Button loading={busy} onClick={() => run("delivery-update", { note: f.note }, "Update posted")}>Post update</Button>}>
         <Input label="Update" placeholder="e.g. Arrived at Ikeja hub" value={f.note ?? ""} onChange={set("note")} />
       </Modal>
-      <Modal open={modal === "delivered"} onClose={() => setModal(null)} title="Mark as delivered" footer={<Button loading={busy} onClick={() => run("delivered", { evidence_urls: evidence, notes: f.notes || undefined }, "Marked as delivered")}>Confirm delivery</Button>}>
+      <Modal open={modal === "delivered"} onClose={() => setModal(null)} title="Mark as delivered" footer={<Button loading={busy} disabled={(f.pin ?? "").length !== 6} onClick={() => run("delivered", { evidence_urls: evidence, notes: f.notes || undefined, pin: f.pin }, "Marked as delivered")}>Confirm delivery</Button>}>
+        <p className="text-sm text-muted">Ask the buyer for the 6-digit delivery PIN at handover and enter it below. Never mark an order delivered without the item in the buyer&apos;s hands.</p>
+        <Input label="Buyer's delivery PIN" inputMode="numeric" maxLength={6} placeholder="123456" value={f.pin ?? ""} onChange={set("pin")} />
         <p className="text-sm text-muted">Add proof of delivery (signed waybill, photo of handover). It protects you if the buyer disputes.</p>
         <div className="mt-3 space-y-3">{EvidenceInput}<Textarea label="Notes" rows={2} value={f.notes ?? ""} onChange={set("notes")} /></div>
       </Modal>
@@ -206,6 +216,14 @@ export function OrderView({ id, justPaid = false }: { id: string; justPaid?: boo
           <Textarea label="Describe the problem (min. 20 characters)" rows={4} value={f.desc ?? ""} onChange={set("desc")} />
           {EvidenceInput}
         </div>
+      </Modal>
+      <Modal open={modal === "complaint"} onClose={() => setModal(null)} title="Problem after delivery" footer={<Button variant="danger" loading={busy} disabled={(f.cdesc ?? "").length < 20} onClick={async () => {
+        setBusy(true);
+        try { await http.post(`/orders/${o.id}/complaints`, { description: f.cdesc }); toast("Complaint opened — the seller's payout is on hold"); setModal(null); setF({}); setData(await http.get<OrderDetail>(`/orders/${o.id}`)); }
+        catch (e) { toast(errorMessage(e), "bad"); } finally { setBusy(false); }
+      }}>Open complaint</Button>}>
+        <p className="text-sm text-muted">This order was completed within the last 24 hours. Opening a complaint freezes the seller&apos;s payout for this order until support reviews it.</p>
+        <div className="mt-3"><Textarea label="Describe the problem (min. 20 characters)" rows={4} value={f.cdesc ?? ""} onChange={set("cdesc")} /></div>
       </Modal>
       <Modal open={modal === "decline"} onClose={() => setModal(null)} title="Decline order" footer={<Button variant="danger" loading={busy} onClick={() => run("decline", { reason: f.reason || "Unable to fulfil" }, "Order declined and buyer refunded")}>Decline & refund</Button>}>
         <p className="text-sm text-muted">The buyer will receive a full refund automatically.</p>

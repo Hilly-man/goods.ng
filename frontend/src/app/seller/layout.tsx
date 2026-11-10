@@ -17,7 +17,7 @@ const NAV = [
   { href: "/messages", label: "Messages", icon: MessageCircle },
   { href: "/seller/offers", label: "Offers", icon: Handshake },
   { href: "/seller/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/seller/earnings", label: "Earnings", icon: Wallet },
+  { href: "/seller/earnings", label: "Wallet", icon: Wallet },
   { href: "/seller/storefront", label: "Storefront", icon: Store },
   { href: "/seller/verification", label: "Verification", icon: BadgeCheck },
   { href: "/seller/subscription", label: "Subscription", icon: Crown },
