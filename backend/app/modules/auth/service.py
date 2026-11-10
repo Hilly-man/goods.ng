@@ -47,6 +47,7 @@ def register(db: Session, data, ip: str) -> User:
     user.profile = Profile()
     db.add(user)
     db.flush()
+    request_email_verification(db, user)
     notify(db, user.id, "registration", "Welcome to Goods.ng",
            "Your account is ready. Buy. Sell. Trade with Confidence.", link="/account")
     db.commit()
@@ -292,6 +293,26 @@ def verify_phone_otp(db: Session, user: User, code: str) -> None:
     seller = user.seller_profile
     if seller and seller.verification_level == VerificationLevel.UNVERIFIED:
         seller.verification_level = VerificationLevel.PHONE
+    db.commit()
+
+
+def request_email_verification(db: Session, user: User) -> str | None:
+    """Email the customer a 6-digit code. Returns the code for the router's dev echo only."""
+    if user.email_verified:
+        return None
+    code = _create_otp(db, user.email, OtpPurpose.EMAIL_VERIFY, user.id)
+    send_direct(
+        db, "email", user.email,
+        f"Your Goods.ng email verification code is {code}. It expires in {settings.otp_ttl_minutes} minutes.",
+        subject="Verify your email", event_type="email_verification",
+        link=f"{settings.frontend_url}/account", code=code, recipient_name=user.full_name,
+    )
+    return code
+
+
+def verify_email(db: Session, user: User, code: str) -> None:
+    _consume_otp(db, user.email, OtpPurpose.EMAIL_VERIFY, code)
+    user.email_verified = True
     db.commit()
 
 

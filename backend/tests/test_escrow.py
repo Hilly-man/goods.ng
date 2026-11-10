@@ -59,6 +59,25 @@ def test_full_protected_checkout_lifecycle(db, paid_order):
     assert db.query(LedgerTransaction).filter(LedgerTransaction.idempotency_key.like("escrow:%:settle")).count() == 1
 
 
+def test_checkout_requires_verified_email_and_phone(make_seller, make_user, make_product):
+    seller = make_seller()
+    p = make_product(seller)
+
+    unverified_email = make_user(email_verified=False)
+    r = unverified_email.post("/checkout", {"product_id": p["id"], "address": ADDRESS})
+    assert r.status_code == 403 and r.json()["error"]["code"] == "email_unverified"
+    code = unverified_email.post("/auth/email/resend").json()["dev_code"]
+    assert unverified_email.post("/auth/email/verify", {"code": code}).status_code == 200
+    assert unverified_email.post("/checkout", {"product_id": p["id"], "address": ADDRESS}).status_code == 201
+
+    unverified_phone = make_user(phone_verified=False)
+    r = unverified_phone.post("/checkout", {"product_id": p["id"], "address": ADDRESS})
+    assert r.status_code == 403 and r.json()["error"]["code"] == "phone_unverified"
+    code = unverified_phone.post("/auth/otp/request", {}).json()["dev_code"]
+    assert unverified_phone.post("/auth/otp/verify", {"code": code}).status_code == 200
+    assert unverified_phone.post("/checkout", {"product_id": p["id"], "address": ADDRESS}).status_code == 201
+
+
 def test_client_cannot_set_price(db, make_seller, make_user, make_product):
     seller, buyer = make_seller(), make_user()
     p = make_product(seller)

@@ -61,6 +61,10 @@ class OtpVerifyIn(BaseModel):
     purpose: OtpPurpose = OtpPurpose.PHONE_VERIFY
 
 
+class EmailVerifyIn(BaseModel):
+    code: str = Field(pattern=r"^\d{6}$")
+
+
 class PasswordResetRequestIn(BaseModel):
     email: EmailStr
 

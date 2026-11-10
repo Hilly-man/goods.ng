@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import clsx from "clsx";
-import { Bell, CalendarClock, Camera, ChevronRight, Copy, Handshake, Heart, KeyRound, Loader2, MessageCircle, Package, Phone, Store, Trash2 } from "lucide-react";
+import { Bell, CalendarClock, Camera, ChevronRight, Copy, Handshake, Heart, KeyRound, Loader2, Mail, MessageCircle, Package, Phone, Store, Trash2 } from "lucide-react";
 import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/components/auth-provider";
 import { Alert, Badge, Button, Input, useToast } from "@/components/ui";
@@ -50,6 +50,48 @@ function PhoneVerify({ user }: { user: User }) {
             }}>Verify</Button>
           </div>
           <button className="text-sm text-brand-700 hover:underline" onClick={() => setSent(false)}>Change number or resend</button>
+        </div>
+      )}
+      {err && <Alert tone="bad">{err}</Alert>}
+    </div>
+  );
+}
+
+function EmailVerify({ user }: { user: User }) {
+  const { setUser } = useAuth();
+  const toast = useToast();
+  const [sent, setSent] = useState(false);
+  const [dev, setDev] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (user.email_verified) {
+    return <p className="flex items-center gap-2 text-sm"><Mail className="size-4 text-brand-700" />{user.email} <Badge tone="good">Verified</Badge></p>;
+  }
+  async function resend() {
+    setBusy(true); setErr(null);
+    try {
+      const r = await http.post<{ dev_code?: string }>("/auth/email/resend", {});
+      setDev(r.dev_code ?? null); setSent(true);
+    } catch (e) { setErr(errorMessage(e)); } finally { setBusy(false); }
+  }
+  return (
+    <div className="space-y-3">
+      <Alert tone="warn" title="Verify your email address">Required before checkout. We&apos;ll send a 6-digit code to {user.email}.</Alert>
+      {!sent ? (
+        <Button loading={busy} onClick={resend}>Send verification code</Button>
+      ) : (
+        <div className="space-y-2">
+          {dev && <Alert tone="info" title="Development mode">Email is not connected in development. Your code is {dev}.</Alert>}
+          <div className="flex gap-2">
+            <div className="flex-1"><Input aria-label="Email verification code" inputMode="numeric" maxLength={6} placeholder="6-digit code" value={code} onChange={(e) => setCode(e.target.value)} /></div>
+            <Button loading={busy} onClick={async () => {
+              setBusy(true); setErr(null);
+              try { setUser(await http.post<User>("/auth/email/verify", { code })); toast("Email verified"); }
+              catch (e) { setErr(errorMessage(e)); } finally { setBusy(false); }
+            }}>Verify</Button>
+          </div>
+          <button className="text-sm text-brand-700 hover:underline" onClick={resend}>Resend code</button>
         </div>
       )}
       {err && <Alert tone="bad">{err}</Alert>}
@@ -312,6 +354,7 @@ export default function AccountPage() {
             </Link>
           </div>
           <section id="personal-details" className="card p-5 sm:p-6"><h2 className="mb-5 text-lg font-semibold">Personal details</h2><Profile user={user} /></section>
+          <section className="card space-y-3 p-5"><h2 className="font-semibold">Email address</h2><EmailVerify user={user} /></section>
           <section className="card space-y-3 p-5"><h2 className="font-semibold">Phone number</h2><PhoneVerify user={user} /></section>
           <section className="card space-y-3 p-5"><h2 className="font-semibold">Two-factor authentication</h2><TwoFactor user={user} /></section>
         </div>

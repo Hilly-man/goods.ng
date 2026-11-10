@@ -16,6 +16,7 @@ def test_register_login_me(client):
     assert r.status_code == 201
     body = r.json()
     assert body["user"]["email"] == "ada@example.com"
+    assert body["user"]["email_verified"] is False
     assert body["user"]["phone"] == "+2348031234567"
     assert "password_hash" not in body["user"]
     me = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {body['access_token']}"})

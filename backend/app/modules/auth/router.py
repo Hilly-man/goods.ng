@@ -11,6 +11,7 @@ from app.modules.audit import audit_auth
 from app.modules.auth import captcha, service
 from app.modules.auth.schemas import (
     ChangePasswordIn,
+    EmailVerifyIn,
     LoginIn,
     MfaChallengeOut,
     MfaVerifyIn,
@@ -183,6 +184,21 @@ def otp_request(data: OtpRequestIn, user: CurrentUser, db: DB):
 def otp_verify(data: OtpVerifyIn, user: CurrentUser, db: DB):
     service.verify_phone_otp(db, user, data.code)
     return user_out(db, user)
+
+
+@router.post("/email/verify", response_model=UserOut)
+def email_verify(data: EmailVerifyIn, user: CurrentUser, db: DB):
+    check_rate_limit(f"email-verify:{user.id}", 10, 3600)
+    service.verify_email(db, user, data.code)
+    return user_out(db, user)
+
+
+@router.post("/email/resend")
+def email_resend(user: CurrentUser, db: DB):
+    check_rate_limit(f"email-resend:{user.id}", 5, 3600)
+    code = service.request_email_verification(db, user)
+    db.commit()
+    return {"message": "Verification email sent" if code else "Email already verified", **_dev_echo(code)}
 
 
 @router.post("/password/forgot")

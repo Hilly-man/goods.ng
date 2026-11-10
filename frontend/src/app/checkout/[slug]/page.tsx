@@ -96,6 +96,13 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
   const set = (k: keyof typeof addr) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setAddr({ ...addr, [k]: e.target.value });
   return (
     <form onSubmit={submit} className="grid gap-5 lg:grid-cols-[1fr_380px]">
+      {(!user.email_verified || !user.phone_verified) && (
+        <div className="lg:col-span-2">
+          <Alert tone="warn" title="Verify your account before checkout">
+            For your protection, checkout requires a verified email and phone number. <Link href="/account" className="underline">Verify in account settings</Link>.
+          </Alert>
+        </div>
+      )}
       <TrackEvent name="begin_checkout" items={[{ id: p.id, price: p.price, name: p.title }]} value={quote ? Number(quote.total) : Number(p.price)} />
       <div className="space-y-4">
         {p.bnpl_enabled && (
@@ -194,7 +201,7 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
             </dl>
           )}
           {err && <Alert tone="bad" className="mt-3">{err}</Alert>}
-          <Button type="submit" block size="lg" className="mt-4" loading={busy} disabled={!quote || (flex && (!consent || !user.phone_verified || flexBlocked))}>
+          <Button type="submit" block size="lg" className="mt-4" loading={busy} disabled={!quote || !user.email_verified || !user.phone_verified || (flex && (!consent || flexBlocked))}>
             <Lock className="size-4" />{flex ? "Apply for Goods Flex" : quote ? `Pay ${naira(quote.total)} securely` : "Pay securely"}
           </Button>
           <p className="mt-3 flex gap-2 text-xs text-muted"><ShieldCheck className="size-4 shrink-0 text-brand-700" />Funds are held by our licensed escrow partner and released to the seller only after you confirm delivery.</p>

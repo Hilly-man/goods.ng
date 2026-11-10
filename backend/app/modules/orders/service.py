@@ -106,6 +106,10 @@ def create_checkout(db: Session, buyer: User, *, product_id, quantity: int, nego
     from app.core.deps import ensure_customer
 
     ensure_customer(buyer)
+    if not buyer.email_verified:
+        raise Forbidden("Verify your email address before checkout", code="email_unverified")
+    if not buyer.phone_verified:
+        raise Forbidden("Verify your phone number before checkout", code="phone_unverified")
     if idempotency_key:
         existing = db.scalars(select(Order).where(Order.buyer_id == buyer.id,
                                                   Order.idempotency_key == idempotency_key)).first()

@@ -23,7 +23,7 @@ Last updated: 10 November 2026.
 |---|---|---|
 | 1–3 | Requirements, architecture, project setup | Done |
 | 4 | Database (46 tables, constraints, partial unique indexes, integrity triggers) | Done |
-| 5 | Authentication (JWT + rotating refresh, OTP, lockout, reset) | Done |
+| 5 | Authentication (JWT + rotating refresh, email verification, phone OTP, lockout, reset) | Done |
 | 6 | Marketplace (categories, listings, watermarked WebP images, full-text search, filters, favourites, keyword-rich auto-title suggestions) | Done |
 | 7 | Seller management (profiles, dashboard, analytics, verification) | Done |
 | 8 | Premium subscriptions (plans, paid activation, featured credits, admin grants) and per-listing paid promotions (TOP / Boost Premium) | Done |
@@ -48,6 +48,7 @@ Last updated: 10 November 2026.
 - **Payments:** development uses the mock provider. The Paystack and Flutterwave adapters follow the providers' public documentation but **have not been tested against a sandbox account**.
 - **Email/SMS:** messages are queued in an outbox. Development uses a console logger; production adapters for **Termii SMS**, **Postmark** and **SMTP** are implemented but have **not been sandbox-tested** yet. Set `SMS_PROVIDER=termii` and `EMAIL_PROVIDER=postmark|smtp` with credentials in staging.
 - **Seller payouts:** a ledger-backed wallet, bank accounts, withdrawal requests, 24h clearing and a staff review/approval step (`payouts.approve`) are implemented against a **mock payout provider**. Live disbursement needs a licensed payout partner adapter (`backend/app/integrations/payouts.py`).
+- **Buyer verification:** a verified email and phone are required for checkout and Goods Flex. Emails are sent at registration; phone verification uses SMS OTP.
 - **Carrier delivery:** order delivery uses a buyer-only 6-digit PIN. A `DeliveryProvider` interface and mock adapter exist (`backend/app/integrations/delivery.py`); real carrier webhooks (Shipbubble/GIG/Fez) are not integrated yet.
 
 ## Outstanding before launch (prioritised)

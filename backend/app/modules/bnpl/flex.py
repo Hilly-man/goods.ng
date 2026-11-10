@@ -375,6 +375,10 @@ def guarantor_respond(db: Session, token: str, agree: bool, ip: str) -> Guaranto
 
 def ensure_can_apply(db: Session, user: User, amount: Decimal) -> dict:
     """Raises if the customer can't take this Flex purchase; returns the limit info otherwise."""
+    if not user.email_verified:
+        raise Forbidden("Verify your email address before applying for Goods Flex", code="email_unverified")
+    if not user.phone_verified:
+        raise Forbidden("Verify your phone number before applying for Goods Flex", code="phone_unverified")
     # Serialise applications per customer (pairs with the partial unique index on running plans).
     db.query(User).filter_by(id=user.id).with_for_update().one()
     running = running_plan(db, user.id)

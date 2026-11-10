@@ -95,12 +95,15 @@ def _phone() -> str:
 
 @pytest.fixture
 def make_user(client):
-    def _make(name="Test User", phone_verified=True, email=None) -> Api:
+    def _make(name="Test User", phone_verified=True, email=None, email_verified=True) -> Api:
         email = email or f"u{uuid.uuid4().hex[:10]}@example.com"
         r = client.post("/api/v1/auth/register", json={"full_name": name, "email": email, "phone": _phone(),
                                                        "password": PASSWORD})
         assert r.status_code == 201, r.text
         api = Api(client, r.json()["access_token"], r.json()["user"])
+        if email_verified:
+            code = api.post("/auth/email/resend", {}).json()["dev_code"]
+            assert api.post("/auth/email/verify", {"code": code}).status_code == 200
         if phone_verified:
             code = api.post("/auth/otp/request", {}).json()["dev_code"]
             assert api.post("/auth/otp/verify", {"code": code}).status_code == 200

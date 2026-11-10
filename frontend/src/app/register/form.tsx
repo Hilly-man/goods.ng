@@ -43,7 +43,7 @@ export function RegisterForm() {
       {err && <Alert tone="bad">{err}</Alert>}
       <GoogleButton next={next} label="Sign up with Google" divider="or sign up with email" />
       <Input label="Full name" autoComplete="name" required value={f.full_name} onChange={set("full_name")} error={errs.full_name} />
-      <Input label="Email" type="email" autoComplete="email" required value={f.email} onChange={set("email")} error={errs.email} />
+      <Input label="Email" type="email" autoComplete="email" required value={f.email} onChange={set("email")} error={errs.email} hint="We'll email you a 6-digit verification code." />
       <Input label="Phone number" type="tel" autoComplete="tel" placeholder="0803 123 4567" value={f.phone} onChange={set("phone")} error={errs.phone} hint="Needed to sell, verify your account and use Goods Flex." />
       <Input label="Password" type="password" autoComplete="new-password" required value={f.password} onChange={set("password")} error={errs.password} />
       <div>
