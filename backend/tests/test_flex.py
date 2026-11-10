@@ -63,7 +63,7 @@ def test_limit_grows_with_verification_steps(make_user):
     r = u.post("/bnpl/profile/bank/connect", {"code": "mock:salary_earner:GTBank"}).json()
     a = r["assessment"]
     assert a["income_source"] == "salary" and a["monthly_income"] == "450000.00" and a["monthly_debt"] == "20000.00"
-    assert Decimal(a["statement_limit"]) > Decimal("800000")
+    assert Decimal(a["statement_limit"]) > Decimal("700000")
     # A guarantor is required: without one there is no usable limit even with a good statement.
     assert r["credit_limit"] == "0.00" and r["steps"]["guarantor"] is None and r["can_apply"] is False
     assert any("guarantor" in t.lower() for t in r["tips"])

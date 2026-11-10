@@ -9,7 +9,7 @@ import { http, errorMessage } from "@/lib/api";
 type FlexRules = {
   max_dti: string; tier1_max: string; tier2_max: string; lender_max: string;
   first_plan_cap: string; growth_per_completed_plan: string; assessment_valid_days: string;
-  max_active_guarantees: string;
+  max_active_guarantees: string; first_payment_rate: string; financed_rate: string; monthly_interest_rate: string;
 };
 type Marketing = {
   feed_enabled: boolean; feed_excluded_categories: string[]; meta_pixel_id: string; ga4_id: string; google_ads_id: string;
@@ -65,6 +65,9 @@ export default function Page() {
           <Input label="First plan cap ₦" inputMode="numeric" value={s.flex_rules.first_plan_cap} onChange={(e) => setFlex("first_plan_cap", e.target.value.replace(/[^\d.]/g, ""))} />
           <Input label="Limit growth per repaid plan (%)" inputMode="decimal" value={pct(s.flex_rules.growth_per_completed_plan)} onChange={(e) => setFlex("growth_per_completed_plan", frac(e.target.value))} />
           <Input label="Max customers per guarantor" inputMode="numeric" value={s.flex_rules.max_active_guarantees} onChange={(e) => setFlex("max_active_guarantees", e.target.value.replace(/\D/g, ""))} />
+          <Input label="First payment (% of price, incl. interest)" inputMode="decimal" value={pct(s.flex_rules.first_payment_rate)} onChange={(e) => setFlex("first_payment_rate", frac(e.target.value))} />
+          <Input label="Financed share (% of price)" inputMode="decimal" value={pct(s.flex_rules.financed_rate)} onChange={(e) => setFlex("financed_rate", frac(e.target.value))} />
+          <Input label="Interest (% of price, per month)" inputMode="decimal" value={pct(s.flex_rules.monthly_interest_rate)} onChange={(e) => setFlex("monthly_interest_rate", frac(e.target.value))} />
         </div>
       </section>
       <section className="card space-y-4 p-5">

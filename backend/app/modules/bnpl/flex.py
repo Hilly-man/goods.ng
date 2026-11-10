@@ -51,8 +51,9 @@ DEFAULT_RULES = {
     "first_plan_cap": "500000",
     "growth_per_completed_plan": "0.5",
     "assessment_valid_days": 90,
-    "down_payment_rate": "0.30",
-    "monthly_charge_rate": "0.035",
+    "first_payment_rate": "0.70",
+    "financed_rate": "0.40",
+    "monthly_interest_rate": "0.10",
     "max_tenor_months": 6,
     "max_active_guarantees": 3,
 }
@@ -69,8 +70,10 @@ def rules(db: Session) -> dict:
 
 def policy(db: Session) -> credit.Policy:
     r = rules(db)
-    return credit.Policy(max_dti=Decimal(str(r["max_dti"])), down_payment_rate=Decimal(str(r["down_payment_rate"])),
-                         monthly_charge_rate=Decimal(str(r["monthly_charge_rate"])), max_tenor_months=int(r["max_tenor_months"]))
+    return credit.Policy(max_dti=Decimal(str(r["max_dti"])), first_payment_rate=Decimal(str(r["first_payment_rate"])),
+                         financed_rate=Decimal(str(r["financed_rate"])),
+                         monthly_interest_rate=Decimal(str(r["monthly_interest_rate"])),
+                         max_tenor_months=int(r["max_tenor_months"]))
 
 
 def profile(db: Session, user: User) -> FlexProfile:

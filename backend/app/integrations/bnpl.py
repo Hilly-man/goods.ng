@@ -4,8 +4,11 @@ Goods.ng does not lend. Credit decisions, financing charges and repayment terms 
 lending partner and are shown to the buyer verbatim before acceptance. Goods.ng stores the partner's
 decision reference and the exact accepted terms for audit.
 
-Only a MOCK partner exists today. Its pricing (30% down payment, 3.5% flat monthly charge) and
-affordability rule are ILLUSTRATIVE PLACEHOLDERS for development, not real credit terms.
+Only a MOCK partner exists today. Its pricing is an ILLUSTRATIVE PLACEHOLDER for development:
+* first payment = 60% of the item price + 10% interest = 70% of the item price
+* the remaining 40% is spread over 3 or 6 months
+* every instalment month adds 10% of the original item price as interest
+Real credit terms come from the licensed lending partner.
 """
 
 import uuid
@@ -87,13 +90,14 @@ class MockFinancingProvider:
     min_amount = Decimal("20000")
     max_amount = Decimal("3000000")
     tenors = (3, 6)
-    down_rate = Decimal("0.30")
-    monthly_charge_rate = Decimal("0.035")
+    first_payment_rate = Decimal("0.70")  # 60% principal + 10% interest
+    financed_rate = Decimal("0.40")
+    monthly_interest_rate = Decimal("0.10")  # of the original item price, per instalment month
 
     def _option(self, amount: Decimal, tenor: int, start: date) -> FinancingOption:
-        down = q(amount * self.down_rate)
-        financed = amount - down
-        charge = q(financed * self.monthly_charge_rate * tenor)
+        down = q(amount * self.first_payment_rate)
+        financed = q(amount * self.financed_rate)
+        charge = q(amount * self.monthly_interest_rate * tenor)
         repay = financed + charge
         monthly = q(repay / tenor)
         schedule, remaining = [], repay
@@ -104,7 +108,8 @@ class MockFinancingProvider:
         return FinancingOption(
             tenor_months=tenor, down_payment=down, financed_amount=financed, financing_charge=charge,
             total_payable=down + financed + charge, monthly_installment=monthly, schedule=schedule,
-            apr_disclosure="ILLUSTRATIVE mock terms (3.5% flat per month). Real terms come from the lending partner.",
+            apr_disclosure=("ILLUSTRATIVE mock terms: 70% first payment (60% + 10% interest), then 10% of the item "
+                            "price per month for 3 or 6 months. Real terms come from the lending partner."),
         )
 
     def quote(self, amount, start):

@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Goods.ng — Goods Flex (BNPL) motion ad</title>
+<style>
+  :root{
+    --bg:#18251D; --bg2:#0B120E; --panel:#1C2B22; --panel2:#233629;
+    --mint:#B7FF73; --mint2:#D3FFA3; --white:#F4F7F4; --muted:#A4B7A9;
+    --line:rgba(183,255,115,.18); --ink:#0F1611;
+    --u:1vmin;
+    --font:"Avenir Next","Helvetica Neue",Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg2)}
+  body{font-family:var(--font);color:var(--white);-webkit-font-smoothing:antialiased}
+  #stage{position:relative;width:100vw;height:100vh;overflow:hidden;
+    background:radial-gradient(120% 120% at 16% 0%, #2A4232 0%, #18251D 48%, #0B120E 100%)}
+  .bg-grid{position:absolute;inset:0;opacity:.2;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:calc(var(--u)*8) calc(var(--u)*8);
+    -webkit-mask-image:radial-gradient(74% 74% at 50% 46%,#000 26%,transparent 100%);
+    mask-image:radial-gradient(74% 74% at 50% 46%,#000 26%,transparent 100%)}
+  .blob{position:absolute;border-radius:50%;filter:blur(calc(var(--u)*9));pointer-events:none}
+  .b1{width:calc(var(--u)*86);height:calc(var(--u)*86);left:-14%;top:-18%;background:rgba(183,255,115,.15)}
+  .b2{width:calc(var(--u)*74);height:calc(var(--u)*74);right:-12%;bottom:-20%;background:rgba(183,255,115,.10)}
+  .b3{width:calc(var(--u)*40);height:calc(var(--u)*40);left:44%;top:60%;background:rgba(183,255,115,.07)}
+
+  .brand{position:absolute;top:calc(var(--u)*5);left:calc(var(--u)*6);display:flex;align-items:center;gap:calc(var(--u)*1.2);
+    font-size:calc(var(--u)*2.7);font-weight:800;letter-spacing:-.04em;z-index:5;opacity:.95}
+  .brand svg{width:calc(var(--u)*4);height:calc(var(--u)*4)}
+  .brand .ng{color:var(--mint)}
+  .progress{position:absolute;left:0;right:0;bottom:0;height:calc(var(--u)*.55);background:rgba(255,255,255,.08);z-index:6}
+  .progress i{display:block;height:100%;width:100%;transform-origin:left center;transform:scaleX(0);background:var(--mint)}
+
+  .scene{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:calc(var(--u)*7.5) calc(var(--u)*6.5) calc(var(--u)*6);gap:calc(var(--u)*2);opacity:0;text-align:center}
+  .eyebrow{font-size:calc(var(--u)*2);letter-spacing:.2em;text-transform:uppercase;font-weight:700;color:var(--mint);margin:0;
+    display:flex;align-items:center;gap:calc(var(--u)*1.1)}
+  .eyebrow:before{content:"";width:calc(var(--u)*3.4);height:2px;background:var(--mint);border-radius:2px}
+  h1{font-size:calc(var(--u)*10.6);line-height:.96;letter-spacing:-.045em;margin:0;font-weight:800;max-width:calc(var(--u)*150)}
+  h2{font-size:calc(var(--u)*7.2);line-height:1.02;letter-spacing:-.04em;margin:0;font-weight:800;max-width:calc(var(--u)*140)}
+  .lead{font-size:calc(var(--u)*2.6);line-height:1.38;color:var(--muted);margin:0;max-width:calc(var(--u)*95)}
+  .mint{color:var(--mint)}
+  .fine{font-size:calc(var(--u)*1.65);line-height:1.45;color:var(--muted);margin:0;max-width:calc(var(--u)*105)}
+
+  /* scene 1 */
+  .hookchips{display:flex;gap:calc(var(--u)*1.3);flex-wrap:wrap;justify-content:center;margin-top:calc(var(--u)*.6)}
+  .chip{display:inline-flex;align-items:center;gap:calc(var(--u)*.8);padding:calc(var(--u)*1) calc(var(--u)*1.8);border-radius:999px;
+    border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:calc(var(--u)*1.85);font-weight:600;white-space:nowrap}
+  .chip svg{width:calc(var(--u)*2.2);height:calc(var(--u)*2.2);color:var(--mint)}
+
+  /* scene 2 — price card */
+  .pricecard{width:100%;max-width:calc(var(--u)*118);background:linear-gradient(165deg,var(--panel2),var(--panel));
+    border:1px solid rgba(255,255,255,.1);border-radius:calc(var(--u)*2.6);padding:calc(var(--u)*3.2) calc(var(--u)*3.4);
+    display:flex;flex-direction:column;gap:calc(var(--u)*1.6);text-align:left;box-shadow:0 calc(var(--u)*3) calc(var(--u)*8) rgba(0,0,0,.35)}
+  .prow{display:flex;align-items:baseline;justify-content:space-between;gap:calc(var(--u)*2);padding-bottom:calc(var(--u)*1.3);
+    border-bottom:1px solid rgba(255,255,255,.08)}
+  .prow:last-of-type{border-bottom:0;padding-bottom:0}
+  .prow span{font-size:calc(var(--u)*2.1);color:var(--muted);font-weight:500}
+  .prow b{font-size:calc(var(--u)*3);font-weight:800;letter-spacing:-.02em}
+  .prow.today b{color:var(--mint);font-size:calc(var(--u)*4.4)}
+  .prow.today span{color:var(--white);font-weight:700}
+  .bar{height:calc(var(--u)*1.5);border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;display:flex}
+  .bar i{display:block;height:100%}
+  .bar .down{background:var(--mint)}
+  .bar .fin{background:rgba(183,255,115,.34);flex:1}
+  .barlegend{display:flex;justify-content:space-between;font-size:calc(var(--u)*1.55);color:var(--muted);margin-top:calc(var(--u)*.6)}
+
+  /* scene 3 — steps */
+  .steps{display:grid;grid-template-columns:repeat(2,1fr);gap:calc(var(--u)*1.6);width:100%;max-width:calc(var(--u)*132)}
+  .step{display:flex;gap:calc(var(--u)*1.6);align-items:flex-start;text-align:left;padding:calc(var(--u)*2.1);
+    border-radius:calc(var(--u)*2);background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09)}
+  .step .ico{width:calc(var(--u)*5.2);height:calc(var(--u)*5.2);border-radius:calc(var(--u)*1.4);display:grid;place-items:center;
+    background:rgba(183,255,115,.14);border:1px solid rgba(183,255,115,.3);flex-shrink:0}
+  .step .ico svg{width:calc(var(--u)*2.7);height:calc(var(--u)*2.7);color:var(--mint)}
+  .step .n{font-size:calc(var(--u)*1.5);font-weight:800;color:var(--mint);letter-spacing:.16em}
+  .step b{display:block;font-size:calc(var(--u)*2.5);letter-spacing:-.02em;margin-top:calc(var(--u)*.25)}
+  .step p{margin:calc(var(--u)*.5) 0 0;font-size:calc(var(--u)*1.75);line-height:1.4;color:var(--muted)}
+  .strip{display:inline-flex;align-items:center;gap:calc(var(--u)*1);padding:calc(var(--u)*1.2) calc(var(--u)*2);border-radius:999px;
+    background:rgba(183,255,115,.12);border:1px solid rgba(183,255,115,.35);color:var(--mint2);
+    font-size:calc(var(--u)*1.9);font-weight:700}
+  .strip svg{width:calc(var(--u)*2.3);height:calc(var(--u)*2.3)}
+
+  /* scene 4 — benefits */
+  .benefits{display:grid;grid-template-columns:repeat(5,1fr);gap:calc(var(--u)*1.2);width:100%;max-width:calc(var(--u)*146)}
+  .benefit{padding:calc(var(--u)*2) calc(var(--u)*1.4);border-radius:calc(var(--u)*1.8);background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.09);display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*1.1);min-height:calc(var(--u)*19)}
+  .benefit svg{width:calc(var(--u)*4);height:calc(var(--u)*4);color:var(--mint)}
+  .benefit b{font-size:calc(var(--u)*1.95);letter-spacing:-.01em;line-height:1.25}
+  .benefit span{font-size:calc(var(--u)*1.5);color:var(--muted);line-height:1.35;margin-top:auto}
+
+  /* scene 5 — end card */
+  .endlogo{display:flex;align-items:center;gap:calc(var(--u)*2);font-size:calc(var(--u)*8.4);font-weight:800;letter-spacing:-.05em}
+  .endlogo svg{width:calc(var(--u)*10);height:calc(var(--u)*10)}
+  .cta{display:inline-flex;align-items:center;gap:calc(var(--u)*1.2);background:var(--mint);color:var(--ink);
+    padding:calc(var(--u)*1.7) calc(var(--u)*3.4);border-radius:999px;font-size:calc(var(--u)*2.5);font-weight:800}
+  .cta svg{width:calc(var(--u)*2.6);height:calc(var(--u)*2.6)}
+  .url{font-size:calc(var(--u)*3.4);font-weight:800;letter-spacing:-.02em;color:var(--mint2)}
+
+  @media (max-aspect-ratio: 1/1){
+    .scene{padding:calc(var(--u)*8) calc(var(--u)*8) calc(var(--u)*8);gap:calc(var(--u)*1.7)}
+    h1{font-size:calc(var(--u)*8.6);max-width:100%}
+    h2{font-size:calc(var(--u)*6.2);max-width:100%}
+    .lead{font-size:calc(var(--u)*2.25);max-width:92%}
+    .pricecard{max-width:92%}
+    .steps{grid-template-columns:1fr;max-width:92%;gap:calc(var(--u)*1.25)}
+    .step{padding:calc(var(--u)*1.9)}
+    .step b{font-size:calc(var(--u)*2.3)}
+    .benefits{grid-template-columns:repeat(2,1fr);max-width:92%}
+    .benefit{min-height:calc(var(--u)*15)}
+    .benefit:last-child{grid-column:1 / -1}
+    .endlogo{font-size:calc(var(--u)*7)}
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="bg-grid"></div>
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+
+  <svg style="display:none" aria-hidden="true">
+    <symbol id="i-shield" viewBox="0 0 32 32"><path d="M16 2 4 6.5v8.2C4 22.4 9.2 28.6 16 30c6.8-1.4 12-7.6 12-15.3V6.5L16 2Z" fill="currentColor"/><path d="m10.5 16.2 3.6 3.6 7.6-7.6" fill="none" stroke="#18251D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-shieldcheck" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.4 3.4 8.4 8 9 4.6-.6 8-4.6 8-9V6l-8-3Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="m8.5 12 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 9.5 12 4l9 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M5 10.5V19M9.7 10.5V19M14.3 10.5V19M19 10.5V19M3 21h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-usercheck" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 20c.6-3.4 3-5.2 6-5.2 1.1 0 2.1.2 3 .7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="m15 17 2 2 4-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M7 15h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="7" cy="18" r="1.8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="18" r="1.8" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.2 5.6L20 11l-5.8 2.4L12 19l-2.2-5.6L4 11l5.8-2.4L12 3Z" fill="currentColor"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.4 4.4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </svg>
+
+  <div class="brand"><svg><use href="#i-shield"/></svg><span>Goods<span class="ng">.ng</span></span></div>
+
+  <!-- 1. Hook -->
+  <section class="scene" id="s1">
+    <p class="eyebrow" data-in="0.10">Goods Flex</p>
+    <h1 data-in="0.35">Get it now.<br><span class="mint">Pay 60% today.</span></h1>
+    <p class="lead" data-in="0.75">Spread the remaining 40% over 3 or 6 months.</p>
+    <div class="hookchips">
+      <span class="chip" data-in="1.15"><svg><use href="#i-calendar"/></svg>3 or 6 months</span>
+      <span class="chip" data-in="1.32"><svg><use href="#i-shieldcheck"/></svg>Escrow-protected</span>
+      <span class="chip" data-in="1.49"><svg><use href="#i-bank"/></svg>Bank-based limit</span>
+    </div>
+  </section>
+
+  <!-- 2. What it is -->
+  <section class="scene" id="s2">
+    <p class="eyebrow" data-in="3.55">What is Goods Flex?</p>
+    <h2 data-in="3.75">Split the cost.<br><span class="mint">Take it home today.</span></h2>
+    <div class="pricecard" data-in="4.15">
+      <div class="prow"><span>Item price</span><b>&#8358;1,500,000</b></div>
+      <div class="prow today"><span>Pay today · 60% + 10% interest</span><b>&#8358;1,050,000</b></div>
+      <div class="prow"><span>Then 3 months · 10% interest/month</span><b class="mint">&#8358;350,000/mo</b></div>
+      <div class="bar"><i class="down" style="width:60%"></i><i class="fin" style="width:40%"></i></div>
+      <div class="barlegend"><span>60% paid today</span><span>40% financed</span></div>
+    </div>
+    <p class="fine" data-in="6.4">Illustration only: a &#8358;1.5m item over 3 months. The 6-month option spreads the same 40% further, with 10% of the item price added each month. Final terms are shown before you accept.</p>
+  </section>
+
+  <!-- 3. How it works -->
+  <section class="scene" id="s3">
+    <p class="eyebrow" data-in="8.65">4 easy steps</p>
+    <h2 data-in="8.85">From limit to <span class="mint">doorstep.</span></h2>
+    <div class="steps">
+      <div class="step" data-in="9.25">
+        <span class="ico"><svg><use href="#i-phone"/></svg></span>
+        <div><span class="n">STEP 01</span><b>Build your profile</b><p>Verify your phone and BVN, then connect your bank account (read-only).</p></div>
+      </div>
+      <div class="step" data-in="9.55">
+        <span class="ico"><svg><use href="#i-usercheck"/></svg></span>
+        <div><span class="n">STEP 02</span><b>Add a guarantor</b><p>A guarantor is required. They consent securely by SMS.</p></div>
+      </div>
+      <div class="step" data-in="9.85">
+        <span class="ico"><svg><use href="#i-bank"/></svg></span>
+        <div><span class="n">STEP 03</span><b>Get your limit</b><p>Your limit is based on your bank statement and verification level.</p></div>
+      </div>
+      <div class="step" data-in="10.15">
+        <span class="ico"><svg><use href="#i-truck"/></svg></span>
+        <div><span class="n">STEP 04</span><b>Pay 60% + interest, take it home</b><p>Pay the first 60% plus 10% interest. Your order is funded, delivered and escrow-protected.</p></div>
+      </div>
+    </div>
+    <div class="strip" data-in="11.05"><svg><use href="#i-calendar"/></svg>Then pay your monthly instalments in the app</div>
+    <p class="fine" data-in="12.2">One Goods Flex plan at a time. An unpaid offer expires after 24 hours.</p>
+  </section>
+
+  <!-- 4. Benefits -->
+  <section class="scene" id="s4">
+    <p class="eyebrow" data-in="15.6">Why Goods Flex</p>
+    <h2 data-in="15.8">More breathing room.<br><span class="mint">Less upfront stress.</span></h2>
+    <div class="benefits">
+      <div class="benefit" data-in="16.35"><svg><use href="#i-spark"/></svg><b>Take it home today</b><span>Don't wait months to save the full amount.</span></div>
+      <div class="benefit" data-in="16.55"><svg><use href="#i-bank"/></svg><b>Protect your cash flow</b><span>Spread the cost and keep your business running.</span></div>
+      <div class="benefit" data-in="16.75"><svg><use href="#i-calendar"/></svg><b>Clear schedule upfront</b><span>See every instalment before you accept.</span></div>
+      <div class="benefit" data-in="16.95"><svg><use href="#i-shieldcheck"/></svg><b>Escrow-protected</b><span>Seller is paid after delivery, just like normal checkout.</span></div>
+      <div class="benefit" data-in="17.15"><svg><use href="#i-check"/></svg><b>Build repayment history</b><span>Paying on time can raise your limit.</span></div>
+    </div>
+  </section>
+
+  <!-- 5. CTA -->
+  <section class="scene" id="s5">
+    <div class="endlogo" data-in="20.6"><svg><use href="#i-shield"/></svg><span>Goods<span class="mint">.ng</span></span></div>
+    <h2 data-in="20.95">Shop eligible items<br>with <span class="mint">Goods Flex.</span></h2>
+    <div class="cta" data-in="21.45">Start on goods.ng <svg><use href="#i-arrow"/></svg></div>
+    <div class="url" data-in="21.85">goods.ng</div>
+    <p class="fine" data-in="22.3">Subject to approval and credit limit. One plan at a time. 10% of the item price is added to each payment period. Illustration only — final terms are shown before you accept.</p>
+  </section>
+
+  <div class="progress"><i></i></div>
+</div>
+
+<script>
+  const DUR = 25.0;
+  const scenes = [
+    ["s1", 0.00, 3.35],
+    ["s2", 3.35, 8.55],
+    ["s3", 8.55, 15.35],
+    ["s4", 15.35, 20.45],
+    ["s5", 20.45, 25.00],
+  ];
+  const els = scenes.map(([id, start, end]) => ({ el: document.getElementById(id), start, end }));
+  const progress = document.querySelector(".progress i");
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const ease = (x) => { x = clamp(x, 0, 1); return 1 - Math.pow(1 - x, 3); };
+
+  function render(t) {
+    for (const s of els) {
+      const fade = 0.3;
+      const o = Math.min(clamp((t - (s.start - fade)) / fade, 0, 1), clamp(((s.end + fade) - t) / fade, 0, 1));
+      s.el.style.opacity = String(o);
+    }
+    document.querySelectorAll("[data-in]").forEach((el) => {
+      const at = parseFloat(el.dataset.in);
+      const p = ease((t - at) / 0.55);
+      el.style.opacity = String(p);
+      el.style.transform = `translateY(${(1 - p) * 16}px)`;
+    });
+    progress.style.transform = `scaleX(${clamp(t / DUR, 0, 1)})`;
+  }
+
+  window.__duration = DUR;
+  window.render = render;
+  render(0);
+  window.__ready = true;
+</script>
+</body>
+</html>

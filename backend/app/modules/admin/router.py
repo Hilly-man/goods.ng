@@ -828,6 +828,9 @@ class FlexRulesIn(BaseModel):
     growth_per_completed_plan: Decimal = Field(ge=0, le=Decimal("5"))
     assessment_valid_days: int = Field(ge=7, le=365)
     max_active_guarantees: int = Field(3, ge=1, le=20)
+    first_payment_rate: Decimal = Field(Decimal("0.70"), ge=0, le=1)
+    financed_rate: Decimal = Field(Decimal("0.40"), ge=0, le=1)
+    monthly_interest_rate: Decimal = Field(Decimal("0.10"), ge=0, le=1)
 
 
 class MarketingIn(BaseModel):

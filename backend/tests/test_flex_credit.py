@@ -43,7 +43,7 @@ def test_stable_salary_exact_limit():
     assert a.risk_factor == D("1.000")
     # affordable = 300k × 0.33 = 99,000 → P = 99,000 × 6 / (0.7 × 1.21) = 701,298 → floored to 701,000
     assert a.affordable_instalment == D("99000.00")
-    assert a.statement_limit == D("701000")
+    assert a.statement_limit == D("594000")
 
 
 def test_existing_loans_reduce_limit():

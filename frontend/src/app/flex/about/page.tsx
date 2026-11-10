@@ -35,7 +35,7 @@ export default function Page() {
       <h2>Your credit limit</h2>
       <p>Your limit starts with your bank statement and rises as you verify more about yourself: workplace verification and a consented guarantor unlock higher caps. Repaying your first plan on time also increases your limit. All limits, caps and the factors used are shown on your Goods Flex page — there are no hidden criteria.</p>
       <h2>Example</h2>
-      <p>For a ₦1,500,000 item, a plan might be a ₦450,000 down payment, with the ₦1,050,000 balance plus financing charges paid over 3 months. <strong>This is only an illustration</strong> — your actual charges and schedule are set by the lending partner and always shown before you accept.</p>
+      <p>For a ₦1,500,000 item: the first payment is <strong>₦1,050,000</strong> (60% of the price plus 10% interest), then <strong>₦350,000/month for 3 months</strong> (the 40% balance plus 10% of the original price each month). Over 6 months the remaining balance and monthly interest are spread further. <strong>This is only an illustration</strong> — your actual charges and schedule are set by the lending partner and always shown before you accept.</p>
       <h2>Borrow responsibly</h2>
       <ul>
         <li>Only commit to instalments you can comfortably afford.</li>

@@ -10,7 +10,7 @@ def test_bnpl_quote_matches_partner_terms(client, make_seller, make_product):
     p = make_product(s)
     opts = client.get("/api/v1/bnpl/quote", params={"product_id": p["id"]}).json()["options"]
     three = next(o for o in opts if o["tenor_months"] == 3)
-    assert three["down_payment"] == "450000.00" and three["financed_amount"] == "1050000.00"
+    assert three["down_payment"] == "1050000.00" and three["financed_amount"] == "600000.00"
     assert Decimal(three["total_payable"]) == Decimal(three["down_payment"]) + Decimal(three["financed_amount"]) + \
         Decimal(three["financing_charge"])
 

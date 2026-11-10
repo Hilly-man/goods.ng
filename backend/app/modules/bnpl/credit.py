@@ -50,8 +50,9 @@ class Txn:
 @dataclass
 class Policy:
     max_dti: Decimal = Decimal("0.33")          # instalments + existing loans ≤ 33% of income
-    down_payment_rate: Decimal = Decimal("0.30")
-    monthly_charge_rate: Decimal = Decimal("0.035")
+    first_payment_rate: Decimal = Decimal("0.70")    # 60% principal + 10% interest
+    financed_rate: Decimal = Decimal("0.40")
+    monthly_interest_rate: Decimal = Decimal("0.10")  # of the original item price, per month
     max_tenor_months: int = 6
     irregular_income_haircut: Decimal = Decimal("0.70")
     min_months: int = 3                          # need at least 3 full months of data
@@ -208,10 +209,10 @@ def assess(txns: list[Txn], policy: Policy | None = None) -> Assessment:
 
     affordable = max(Decimal("0"), income * p.max_dti - debt) * factor
     t = p.max_tenor_months
-    financed_share = Decimal("1") - p.down_payment_rate
-    # instalment = P × financed_share × (1 + rate × T) / T  ≤ affordable  →  solve for purchase price P
-    limit = affordable * t / (financed_share * (1 + p.monthly_charge_rate * t)) if affordable > 0 else Decimal("0")
-    limit = (limit / 1000).to_integral_value(rounding=ROUND_DOWN) * 1000
+    # monthly instalment = P × (financed_rate / T + monthly_interest_rate)
+    monthly_per_price = p.financed_rate / t + p.monthly_interest_rate
+    limit = affordable / monthly_per_price if affordable > 0 else Decimal("0")
+    limit = (limit.quantize(Decimal("0.01")) / 1000).to_integral_value(rounding=ROUND_DOWN) * 1000
 
     dti_used = (debt / income) if income > 0 else Decimal("1")
     score = int(max(0, min(100, float(factor) * 70 + float(max(Decimal("0"), Decimal("0.33") - dti_used)) * 90)))
