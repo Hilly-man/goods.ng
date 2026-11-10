@@ -182,12 +182,16 @@ export function ProductForm({ existing }: { existing?: SellerProductDetail }) {
       </section>
       <section className="card space-y-3 p-4 sm:p-5">
         <div className="flex items-center justify-between"><h2 className="font-semibold">Delivery options</h2>
-          {delivery.length < 5 && <Button type="button" size="sm" variant="secondary" onClick={() => setDelivery([...delivery, { type: "courier", label: "Courier delivery", fee: "3500", eta_days: 3 }])}><Plus className="size-4" />Add option</Button>}
+          {delivery.length < 5 && <Button type="button" size="sm" variant="secondary" onClick={() => setDelivery([...delivery, { type: "seller_delivery", label: "I deliver", fee: "1500", eta_days: 2 }])}><Plus className="size-4" />Add option</Button>}
         </div>
+        <Alert tone="info" title="Courier partnerships coming soon">
+          Integrated carriers (GIG, Fez, Shipbubble) are coming soon. Until then choose Pickup or I deliver; if you use a private courier,
+          enter the waybill/tracking reference when you dispatch the order.
+        </Alert>
         {delivery.map((d, i) => (
           <div key={i} className="grid grid-cols-2 gap-2 rounded-xl border border-line p-3 sm:grid-cols-[140px_1fr_120px_90px_auto]">
             <select aria-label="Delivery type" className="input" value={d.type} onChange={(e) => setDelivery(delivery.map((x, j) => (j === i ? { ...x, type: e.target.value as DeliveryOption["type"] } : x)))}>
-              <option value="pickup">Pickup</option><option value="seller_delivery">I deliver</option><option value="courier">Courier</option>
+              <option value="pickup">Pickup</option><option value="seller_delivery">I deliver</option><option value="courier">Courier (seller-arranged)</option>
             </select>
             <input aria-label="Label" className="input" value={d.label} onChange={(e) => setDelivery(delivery.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
             <input aria-label="Fee" className="input" inputMode="numeric" placeholder="Fee ₦" value={d.fee} onChange={(e) => setDelivery(delivery.map((x, j) => (j === i ? { ...x, fee: e.target.value.replace(/[^\d.]/g, "") } : x)))} />

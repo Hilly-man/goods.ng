@@ -195,6 +195,7 @@ export function OrderView({ id, justPaid = false }: { id: string; justPaid?: boo
 
       <Modal open={modal === "dispatch"} onClose={() => setModal(null)} title="Dispatch order" footer={<Button loading={busy} onClick={() => run("dispatch", { carrier: f.carrier || undefined, tracking_reference: f.tracking || undefined, tracking_url: f.url || undefined, notes: f.notes || undefined }, "Marked as dispatched")}>Confirm dispatch</Button>}>
         <div className="space-y-3">
+          <p className="text-xs text-muted">Courier partner tracking is coming soon. Enter the rider/carrier and waybill manually so the buyer can follow the delivery.</p>
           <Input label="Carrier / rider" placeholder="e.g. GIG Logistics, Kwik, own rider" value={f.carrier ?? ""} onChange={set("carrier")} />
           <Input label={`Tracking / waybill number${o.delivery?.method === "courier" ? " (required)" : ""}`} value={f.tracking ?? ""} onChange={set("tracking")} />
           <Input label="Tracking link (optional)" placeholder="https://" value={f.url ?? ""} onChange={set("url")} />

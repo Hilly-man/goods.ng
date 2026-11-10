@@ -122,6 +122,9 @@ function Checkout({ slug, user }: { slug: string; user: User }) {
               </label>
             ))}
           </div>
+          {p.delivery_options.some((o) => o.type === "courier") && (
+            <p className="mt-2 text-xs text-muted">Courier partnership integration is coming soon — the seller arranges this delivery and tracking manually.</p>
+          )}
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Input label="Recipient name" required value={addr.full_name} onChange={set("full_name")} error={errs.full_name} />
             <Input label="Phone" type="tel" required value={addr.phone} onChange={set("phone")} error={errs.phone} />

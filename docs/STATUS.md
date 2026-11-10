@@ -60,6 +60,6 @@ Last updated: 10 November 2026.
 5. **Legal review** of the Terms, Privacy, Refund & Dispute, Goods Flex and guarantor consent copy. The current text is a draft written for product purposes, not legal advice. See the Goods Flex compliance checklist in SECURITY.md.
 6. Partial refunds (the model supports amounts, but the UI and dispute flow only offer full refunds today).
 7. Connect a licensed payout partner (bank transfer/PSSP) and replace `MockPayoutProvider`; sandbox-test failed-transfer retries and reconciliation.
-8. Integrate live carriers (Shipbubble first, then GIG/Fez) behind the new `DeliveryProvider` interface; verify webhooks and PIN fallback.
+8. Integrate live carriers (Shipbubble first, then GIG/Fez) behind the new `DeliveryProvider` interface; **coming soon** — until then courier deliveries are seller-arranged and tracked manually.
 9. WebSocket or SSE messaging if polling load becomes significant.
 10. Paid promotions: per-listing TOP (7 or 30 days) and Boost Premium (28 days) packages are live with one-off checkout and automatic expiry — no subscription required. Prices can be overridden via the `promotion_packages` platform setting.
