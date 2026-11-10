@@ -20,6 +20,7 @@ const ADMIN_HOSTNAME = ADMIN_URL?.hostname.toLowerCase() ?? null;
 const SECTIONS = new Set([
   "users", "sellers", "verifications", "products", "categories", "orders", "payments", "escrow", "disputes",
   "refunds", "bnpl", "subscriptions", "promotions", "reviews", "reports", "settings", "audit", "staff", "roles",
+  "live",
 ]);
 
 function stripAdmin(pathname: string) {

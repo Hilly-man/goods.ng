@@ -34,6 +34,8 @@ function visitorId(): string | null {
 
 async function ping(path: string, heartbeat = false) {
   if (optedOut()) return;
+  // The admin console should not inflate marketplace visitor numbers.
+  if (typeof window !== "undefined" && window.location.hostname.startsWith("admin.")) return;
   const id = visitorId();
   if (!id) return;
   if (!heartbeat) {

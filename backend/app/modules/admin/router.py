@@ -206,10 +206,12 @@ def _live_stats(db: DB) -> dict:
         .where(SiteVisit.created_at >= now - timedelta(hours=24))
         .group_by(hour).order_by(hour)
     ).all()
+    live_total = active["live_5m"]
+    live_signed_in = unique(now - timedelta(minutes=5), signed_in=True)
     return {
         "visitors": visitors,
-        "active": {**active, "signed_in": unique(now - timedelta(minutes=5), signed_in=True),
-                   "guests": unique(now - timedelta(minutes=5), signed_in=False)},
+        "active": {**active, "signed_in": live_signed_in,
+                   "guests": max(live_total - live_signed_in, 0)},
         "series_24h": [{"hour": h.isoformat(), "visitors": c} for h, c in rows],
         "updated_at": now.isoformat(),
     }
