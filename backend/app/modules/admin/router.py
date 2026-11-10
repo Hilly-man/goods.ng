@@ -40,6 +40,7 @@ from app.models import (
     ReviewReport,
     SellerProfile,
     SellerVerification,
+    SiteVisit,
     Subscription,
     SubscriptionPlan,
     User,
@@ -166,6 +167,51 @@ def _trends(db, days: int) -> dict:
         "orders_by_status": [{"status": s.value if hasattr(s, "value") else s, "count": n} for s, n in by_status],
         "payment_mix": {"full": mix.get(PaymentMethod.FULL, 0), "bnpl": mix.get(PaymentMethod.BNPL, 0)},
         "top_categories": [{"name": n, "count": c} for n, c in top_cats],
+    }
+
+
+# ---------------- live traffic ----------------
+@router.get("/live-stats")
+def live_stats(db: DB, admin: User = perm(P.ANALYTICS_VIEW)):
+    return cache.get_or_compute("admin:live-stats", 10, lambda: _live_stats(db))
+
+
+def _live_stats(db: DB) -> dict:
+    now = utcnow()
+
+    def unique(since, *, signed_in: bool | None = None) -> int:
+        stmt = select(func.count(func.distinct(SiteVisit.visitor_id))).where(SiteVisit.created_at >= since)
+        if signed_in is True:
+            stmt = stmt.where(SiteVisit.user_id.isnot(None))
+        elif signed_in is False:
+            stmt = stmt.where(SiteVisit.user_id.is_(None))
+        return db.scalar(stmt) or 0
+
+    visitors = {
+        "daily": unique(now - timedelta(days=1)),
+        "weekly": unique(now - timedelta(days=7)),
+        "monthly": unique(now - timedelta(days=30)),
+        "quarterly": unique(now - timedelta(days=90)),
+        "yearly": unique(now - timedelta(days=365)),
+    }
+    active = {
+        "live_5m": unique(now - timedelta(minutes=5)),
+        "active_15m": unique(now - timedelta(minutes=15)),
+        "active_60m": unique(now - timedelta(minutes=60)),
+        "active_24h": unique(now - timedelta(hours=24)),
+    }
+    hour = func.date_trunc("hour", func.timezone("Africa/Lagos", SiteVisit.created_at))
+    rows = db.execute(
+        select(hour.label("hour"), func.count(func.distinct(SiteVisit.visitor_id)))
+        .where(SiteVisit.created_at >= now - timedelta(hours=24))
+        .group_by(hour).order_by(hour)
+    ).all()
+    return {
+        "visitors": visitors,
+        "active": {**active, "signed_in": unique(now - timedelta(minutes=5), signed_in=True),
+                   "guests": unique(now - timedelta(minutes=5), signed_in=False)},
+        "series_24h": [{"hour": h.isoformat(), "visitors": c} for h, c in rows],
+        "updated_at": now.isoformat(),
     }
 
 

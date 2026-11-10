@@ -35,7 +35,7 @@ Last updated: 10 November 2026.
 | 14 | BNPL (Goods Flex): bank-statement credit limit, **mandatory guarantor**, verification tiers, **one running plan at a time** | Done against **mock lending partner and mock open-banking provider** |
 | 15 | Reviews & ratings | Done |
 | 16 | Notifications (in-app, outbox for email/SMS, preferences) | Done — **email/SMS senders are console stubs** |
-| 17 | Administration (18 sections, granular RBAC, audit logs) | Done |
+| 17 | Administration (19 sections, granular RBAC, audit logs, live traffic stats: daily/weekly/monthly/quarterly/yearly visitors + active users) | Done |
 | 18 | Testing | Done (see above) |
 | 19 | Security review | Done — see SECURITY.md findings |
 | 20 | Deployment | Dockerfiles, Compose, CI and runbook written. **Not yet deployed anywhere.** |

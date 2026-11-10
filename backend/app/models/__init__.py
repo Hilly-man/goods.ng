@@ -1,3 +1,4 @@
+from app.models.analytics import SiteVisit
 from app.models.base import Base
 from app.models.catalog import (
     Category,

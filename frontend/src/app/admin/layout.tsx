@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  BadgeCheck, Banknote, BarChart3, BookOpen, CalendarClock, ChevronDown, Crown, ExternalLink, FileWarning, Flag,
+  Activity, BadgeCheck, Banknote, BarChart3, BookOpen, CalendarClock, ChevronDown, Crown, ExternalLink, FileWarning, Flag,
   FolderTree, Gavel,
   KeyRound, Landmark, LayoutDashboard, LogOut, Megaphone, Menu, Package, Receipt, RotateCcw, Search, Settings, ShieldCheck,
   Star, Store, UserCog, UserRound, Users, X,
@@ -22,7 +22,10 @@ import { useAdminBase } from "@/lib/admin-area";
 
 type Item = { href: string; label: string; icon: React.ElementType; perm: string; exact?: boolean; count?: string; keywords?: string };
 const GROUPS: { title: string | null; items: Item[] }[] = [
-  { title: null, items: [{ href: "/admin", label: "Overview", icon: LayoutDashboard, perm: "analytics.view", exact: true, keywords: "dashboard home stats" }] },
+  { title: null, items: [
+    { href: "/admin", label: "Overview", icon: LayoutDashboard, perm: "analytics.view", exact: true, keywords: "dashboard home stats" },
+    { href: "/admin/live", label: "Live traffic", icon: Activity, perm: "analytics.view", keywords: "visitors active online traffic" },
+  ] },
   { title: "Marketplace", items: [
     { href: "/admin/users", label: "Users", icon: Users, perm: "users.manage", keywords: "customers accounts buyers" },
     { href: "/admin/sellers", label: "Sellers", icon: Store, perm: "sellers.verify", keywords: "stores suspend premium grant" },

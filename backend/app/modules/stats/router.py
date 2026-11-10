@@ -7,14 +7,16 @@ COUNT queries, not one per visitor.
 
 from datetime import timedelta
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request, Response
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.cache import cache
-from app.core.deps import DB
+from app.core.cache import cache, check_rate_limit
+from app.core.deps import DB, OptionalUser, rate_limit_identity
+from app.core.security import clean_text
 from app.core.time import utcnow
-from app.models import Category, Order, Product, SellerProfile
+from app.models import Category, Order, Product, SellerProfile, SiteVisit
 from app.models.enums import EscrowStatus, ProductStatus, VerificationLevel
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -50,3 +52,24 @@ def compute_public_stats(db: Session) -> dict:
 @router.get("/public")
 def public_stats(db: DB):
     return cache.get_or_compute(CACHE_KEY, CACHE_TTL, lambda: compute_public_stats(db))
+
+
+class VisitIn(BaseModel):
+    path: str = Field("/", max_length=300)
+
+
+@router.post("/visit", status_code=204)
+def record_visit(data: VisitIn, request: Request, db: DB, user: OptionalUser):
+    """First-party traffic ping. Anonymous visitors send the random id already used for recommendations."""
+    check_rate_limit(f"visit:{rate_limit_identity(request)}", 600, 3600)
+    visitor = request.headers.get("x-anon-id", "").strip()
+    if not (8 <= len(visitor) <= 64):
+        return Response(status_code=204)  # no anonymous id: don't guess or fingerprint
+    path = (clean_text(data.path) or "/")[:300]
+    if not path.startswith("/"):
+        path = "/" + path
+    referrer = request.headers.get("referer")
+    db.add(SiteVisit(visitor_id=visitor, user_id=user.id if user else None, path=path,
+                     referrer=referrer[:300] if referrer else None))
+    db.commit()
+    return Response(status_code=204)

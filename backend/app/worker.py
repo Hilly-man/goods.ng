@@ -8,14 +8,15 @@ import argparse
 import logging
 import time
 import zlib
+from datetime import timedelta
 
-from sqlalchemy import or_, select, text, update
+from sqlalchemy import delete, or_, select, text, update
 
 from app.core.db import SessionLocal
 from app.core.logging import configure_logging
 from app.core.time import utcnow
 from app.main import app as _app  # noqa: F401  (registers payment handlers)
-from app.models import Product, Promotion, Subscription
+from app.models import Product, Promotion, SiteVisit, Subscription
 from app.models.enums import PromotionStatus, SubscriptionStatus
 from app.modules.bnpl.service import mark_overdue_and_remind
 from app.modules.marketing.service import send_capi_purchases
@@ -28,6 +29,13 @@ from app.modules.recommendations.router import purge_old_signals
 from app.modules.wallet.service import process_due_payouts
 
 log = logging.getLogger("goodsng.worker")
+
+
+def purge_old_visits(db) -> dict:
+    """Keep a rolling year of traffic data for the yearly visitor count."""
+    n = db.execute(delete(SiteVisit).where(SiteVisit.created_at < utcnow() - timedelta(days=400))).rowcount
+    db.commit()
+    return {"site_visits": n}
 
 
 def expire_subscriptions_and_features(db) -> dict:
@@ -59,6 +67,7 @@ JOBS = {
     "refresh_promotion_bumps": (3600, bump_active_premium),
     "bnpl_reminders": (3600, mark_overdue_and_remind),
     "purge_interest_signals": (86400, purge_old_signals),
+    "purge_site_visits": (86400, purge_old_visits),
     "purge_deleted_listings": (86400, purge_deleted_listings),
     "meta_capi_purchases": (300, send_capi_purchases),
 }

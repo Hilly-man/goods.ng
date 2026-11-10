@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { ConsentBanner, TrackingScripts } from "@/components/consent";
+import { VisitorPing } from "@/components/visitor-ping";
 import { Suspense } from "react";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
@@ -163,6 +164,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </main>
             <Footer />
             <InterestCapture />
+            <Suspense>
+              <VisitorPing />
+            </Suspense>
             <Suspense>
               <ConsentBanner />
               <TrackingScripts />
