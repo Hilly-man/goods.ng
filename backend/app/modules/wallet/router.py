@@ -12,9 +12,10 @@ router = APIRouter(tags=["wallet"])
 
 
 class BankAccountIn(BaseModel):
-    bank_code: str = Field(min_length=2, max_length=10)
     bank_name: str = Field(min_length=2, max_length=80)
+    account_name: str = Field(min_length=2, max_length=120)
     account_number: str = Field(min_length=10, max_length=20)
+    bank_code: str | None = Field(None, max_length=10)
     is_default: bool = False
 
 
@@ -38,7 +39,7 @@ def bank_accounts(seller: CurrentSeller, db: DB):
 def add_bank_account(data: BankAccountIn, seller: CurrentSeller, db: DB):
     check_rate_limit(f"bank-account:{seller.id}", 10, 3600)
     return service.bank_account_out(service.add_bank_account(
-        db, seller, bank_code=data.bank_code, bank_name=data.bank_name,
+        db, seller, bank_code=data.bank_code, bank_name=data.bank_name, account_name=data.account_name,
         account_number=data.account_number, is_default=data.is_default))
 
 

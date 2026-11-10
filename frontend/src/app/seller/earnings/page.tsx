@@ -23,7 +23,7 @@ function View() {
   const { data, error, reload } = useApi<Wallet>("/seller/wallet");
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const [acct, setAcct] = useState({ bank_code: "", bank_name: "", account_number: "" });
+  const [acct, setAcct] = useState({ bank_name: "", account_name: "", account_number: "" });
   const [amount, setAmount] = useState("");
   const [bankId, setBankId] = useState("");
 
@@ -39,7 +39,7 @@ function View() {
     try {
       await http.post("/seller/bank-accounts", { ...acct, is_default: !data!.bank_accounts.length });
       toast("Bank account saved");
-      setAcct({ bank_code: "", bank_name: "", account_number: "" });
+      setAcct({ bank_name: "", account_name: "", account_number: "" });
       reload();
     } catch (err) {
       toast(errorMessage(err), "bad");
@@ -138,12 +138,11 @@ function View() {
             </ul>
           ) : <p className="text-sm text-muted">No bank account yet.</p>}
           <form onSubmit={addAccount} className="space-y-2 border-t border-line pt-3">
-            <div className="grid grid-cols-2 gap-2">
-              <Input label="Bank code" placeholder="058" value={acct.bank_code} onChange={(e) => setAcct({ ...acct, bank_code: e.target.value })} required />
-              <Input label="Bank name" placeholder="GTBank" value={acct.bank_name} onChange={(e) => setAcct({ ...acct, bank_name: e.target.value })} required />
-            </div>
+            <Input label="Bank name" placeholder="GTBank" value={acct.bank_name} onChange={(e) => setAcct({ ...acct, bank_name: e.target.value })} required />
+            <Input label="Account name" placeholder="Okafor Phones Hub" value={acct.account_name} onChange={(e) => setAcct({ ...acct, account_name: e.target.value })} required />
             <Input label="Account number" inputMode="numeric" placeholder="0123456789" value={acct.account_number} onChange={(e) => setAcct({ ...acct, account_number: e.target.value })} required />
-            <Button type="submit" variant="outline" block loading={busy} disabled={!acct.bank_code || !acct.bank_name || acct.account_number.length < 10}>
+            <p className="text-xs text-muted">The account name must be your business name, or the business owner&apos;s name exactly as shown on your verification documents.</p>
+            <Button type="submit" variant="outline" block loading={busy} disabled={!acct.bank_name || !acct.account_name || acct.account_number.length < 10}>
               Add bank account
             </Button>
           </form>

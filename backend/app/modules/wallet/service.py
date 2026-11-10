@@ -107,24 +107,33 @@ def list_bank_accounts(db: Session, seller: SellerProfile) -> list[dict]:
     return [bank_account_out(a) for a in rows]
 
 
-def add_bank_account(db: Session, seller: SellerProfile, *, bank_code: str, bank_name: str, account_number: str,
-                     is_default: bool) -> SellerBankAccount:
+def add_bank_account(db: Session, seller: SellerProfile, *, bank_code: str | None, bank_name: str,
+                     account_name: str, account_number: str, is_default: bool) -> SellerBankAccount:
     account_number = "".join(ch for ch in account_number if ch.isdigit())
     if not (10 <= len(account_number) <= 11):
         raise AppError("Enter a valid 10- or 11-digit account number", code="invalid_account_number")
-    resolved = get_payout_provider().resolve_account(bank_code=bank_code, account_number=account_number)
+    account_name = account_name.strip()
+    if len(account_name) < 2:
+        raise AppError("Enter the account name exactly as it appears at the bank", code="invalid_account_name")
+    # With a real payout partner, resolve the account and require the name the seller typed to match.
+    # The mock partner has no bank directory, so the seller's name is stored as-is.
+    if bank_code and settings.payout_provider != "mock":
+        resolved = get_payout_provider().resolve_account(bank_code=bank_code, account_number=account_number)
+        if resolved.account_name.strip().lower() != account_name.lower():
+            raise AppError("The account name does not match the bank's records", code="account_name_mismatch")
     existing = db.scalars(select(SellerBankAccount).where(
         SellerBankAccount.seller_id == seller.id, SellerBankAccount.deleted_at.is_(None))).all()
-    if any(a.bank_code == bank_code and a.account_number_last4 == account_number[-4:] for a in existing):
+    if any((a.bank_code or a.bank_name) == (bank_code or bank_name)
+           and a.account_number_last4 == account_number[-4:] for a in existing):
         raise AppError("That bank account is already saved", code="bank_account_exists")
     make_default = is_default or not existing
     if make_default:
         for a in existing:
             a.is_default = False
     acct = SellerBankAccount(
-        seller_id=seller.id, bank_code=bank_code, bank_name=bank_name,
+        seller_id=seller.id, bank_code=bank_code or "", bank_name=bank_name,
         account_number_enc=encrypt_field(account_number), account_number_last4=account_number[-4:],
-        account_name=resolved.account_name, is_default=make_default, is_verified=True, verified_at=utcnow(),
+        account_name=account_name, is_default=make_default, is_verified=True, verified_at=utcnow(),
     )
     db.add(acct)
     db.commit()

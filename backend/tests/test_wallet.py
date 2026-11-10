@@ -75,9 +75,9 @@ def test_wallet_clears_after_hold_window_and_pays_out(db, paid_order):
     assert Decimal(w["on_hold"]) == Decimal("0.00")
 
     # Within the clearing window a withdrawal is refused even though the ledger shows released funds.
-    acct = seller.post("/seller/bank-accounts", {"bank_code": "058", "bank_name": "GTBank",
+    acct = seller.post("/seller/bank-accounts", {"bank_name": "GTBank", "account_name": "Chinedu Okafor",
                                                  "account_number": "0123456789"}).json()
-    assert acct["is_default"] and acct["is_verified"]
+    assert acct["is_default"] and acct["is_verified"] and acct["account_name"] == "Chinedu Okafor"
     assert seller.post("/seller/payouts", {"amount": "1200.00", "bank_account_id": acct["id"]}).status_code == 400
 
     # Age the release past the 24h clearing window.
@@ -114,7 +114,7 @@ def test_buyer_complaint_freezes_payouts_until_admin_releases(make_admin, db, pa
     pin = _dispatch(buyer, seller, oid)
     seller.post(f"/orders/{oid}/delivered", {"evidence_urls": [], "pin": pin})
     buyer.post(f"/orders/{oid}/confirm")
-    acct = seller.post("/seller/bank-accounts", {"bank_code": "058", "bank_name": "GTBank",
+    acct = seller.post("/seller/bank-accounts", {"bank_name": "GTBank", "account_name": "Chinedu Okafor",
                                                  "account_number": "0123456789"}).json()
     assert acct
 
