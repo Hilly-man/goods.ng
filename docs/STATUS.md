@@ -35,7 +35,7 @@ Last updated: 10 November 2026.
 | 14 | BNPL (Goods Flex): 40% down + 60% over 3/6 months at 3%/month, bank-statement credit limit, **mandatory guarantor**, verification tiers, **one running plan at a time**, per-listing seller opt-in with 70/30 financing-charge share | Done against **mock lending partner and mock open-banking provider** |
 | 15 | Reviews & ratings | Done |
 | 16 | Notifications (in-app, outbox for email/SMS, preferences) | Done — **email/SMS senders are console stubs** |
-| 17 | Administration (19 sections, granular RBAC, audit logs, live traffic stats, full seller dashboard with listings and moderation, orders, verification and wallet; all-seller wallet balances; listing filter by seller; admin listing editor with photos) | Done |
+| 17 | Administration (19 sections, granular RBAC, audit logs, live traffic stats, full seller dashboard with listings and moderation, orders, verification and wallet; all-seller wallet balances; listing filter by seller; admin listing editor with category, delivery options and photos) | Done |
 | 18 | Testing | Done (see above) |
 | 19 | Security review | Done — see SECURITY.md findings |
 | 20 | Deployment | Dockerfiles, Compose, CI and runbook written. **Not yet deployed anywhere.** |

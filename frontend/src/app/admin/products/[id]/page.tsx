@@ -11,6 +11,7 @@ import { http, errorMessage } from "@/lib/api";
 import { useAdminBase } from "@/lib/admin-area";
 import { CONDITION_LABEL, date, naira, toMoneyString } from "@/lib/format";
 import { useApi } from "@/lib/hooks";
+import type { Category, DeliveryOption } from "@/lib/types";
 
 type Img = { id: string; url: string; thumb_url: string; width: number | null; height: number | null };
 type P = {
@@ -19,7 +20,7 @@ type P = {
   category: { id: string; name: string; slug: string };
   subcategory: { id: string; name: string; slug: string } | null;
   seller: { id: string; store_name: string; slug: string };
-  images: Img[]; status: string; rejection_reason: string | null; is_featured: boolean;
+  images: Img[]; delivery_options: DeliveryOption[]; status: string; rejection_reason: string | null; is_featured: boolean;
   views_count: number; enquiries_count: number; favourites_count: number;
   created_at: string; updated_at: string;
 };
@@ -33,6 +34,8 @@ export default function Page() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [f, setF] = useState<Record<string, string | boolean> | null>(null);
+  const [delivery, setDelivery] = useState<DeliveryOption[] | null>(null);
+  const { data: cats } = useApi<Category[]>("/categories");
 
   if (error) return <Alert tone="bad">{error}</Alert>;
   if (!data) return <PageLoader />;
@@ -41,7 +44,13 @@ export default function Page() {
     title: p.title, description: p.description, brand: p.brand ?? "", model: p.model ?? "",
     condition: p.condition, price: Number(p.price).toLocaleString(), quantity: String(p.quantity),
     negotiable: p.negotiable, state: p.state, city: p.city,
+    category_id: p.subcategory?.id ?? p.category.id,
   };
+  const roots = cats ?? [];
+  const selected = String(form.category_id);
+  const rootCat = roots.find((c) => c.id === selected) ?? roots.find((c) => c.children.some((ch) => ch.id === selected));
+  const subId = rootCat?.children.some((ch) => ch.id === selected) ? selected : "";
+  const deliveryRows = delivery ?? p.delivery_options;
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setF({ ...form, [k]: e.target.value });
 
@@ -55,7 +64,8 @@ export default function Page() {
       const body = {
         title: form.title, description: form.description, brand: form.brand || null, model: form.model || null,
         condition: form.condition, price, quantity: Number(form.quantity || 0), negotiable: form.negotiable,
-        state: form.state, city: form.city,
+        state: form.state, city: form.city, category_id: form.category_id,
+        delivery_options: deliveryRows.map((d) => ({ ...d, fee: toMoneyString(String(d.fee)) ?? "0.00" })),
       };
       setData(await http.patch<P>(`/admin/products/${p.id}`, body));
       toast("Listing updated");
@@ -127,6 +137,17 @@ export default function Page() {
             <Input label="Title" required minLength={5} maxLength={140} value={String(form.title)} onChange={set("title")} />
             <Textarea label="Description" required rows={8} maxLength={8000} value={String(form.description)} onChange={set("description")} hint="At least 20 characters." />
             <div className="grid gap-3 sm:grid-cols-2">
+              <Select label="Category" value={rootCat?.id ?? ""} onChange={(e) => {
+                const r = roots.find((c) => c.id === e.target.value);
+                setF({ ...form, category_id: r?.children.length ? r.children[0].id : e.target.value });
+              }} required>
+                <option value="">Select a category</option>
+                {roots.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </Select>
+              <Select label="Subcategory" value={subId} onChange={(e) => setF({ ...form, category_id: e.target.value })} required={Boolean(rootCat?.children.length)} disabled={!rootCat?.children.length}>
+                <option value="">{rootCat?.children.length ? "Select a subcategory" : "No subcategories"}</option>
+                {(rootCat?.children ?? []).map((ch) => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+              </Select>
               <Input label="Price (₦)" inputMode="numeric" required value={String(form.price)} onChange={set("price")} />
               <Input label="Quantity" type="number" min={0} value={String(form.quantity)} onChange={set("quantity")} />
               <Input label="Brand" value={String(form.brand)} onChange={set("brand")} />
@@ -138,6 +159,24 @@ export default function Page() {
             </div>
             <StateCitySelect required state={String(form.state)} city={String(form.city)}
               onChange={(v) => setF({ ...form, ...v })} />
+          </section>
+
+          <section className="card space-y-3 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-semibold">Delivery options</h2>
+              {deliveryRows.length < 5 && <Button type="button" size="sm" variant="secondary" onClick={() => setDelivery([...deliveryRows, { type: "seller_delivery", label: "I deliver", fee: "1500", eta_days: 2 }])}>Add option</Button>}
+            </div>
+            {deliveryRows.map((d, i) => (
+              <div key={i} className="grid grid-cols-2 gap-2 rounded-xl border border-line p-3 sm:grid-cols-[150px_1fr_120px_90px_auto]">
+                <Select aria-label="Delivery type" value={d.type} onChange={(e) => setDelivery(deliveryRows.map((x, j) => (j === i ? { ...x, type: e.target.value as DeliveryOption["type"] } : x)))}>
+                  <option value="pickup">Pickup</option><option value="seller_delivery">I deliver</option><option value="courier">Courier (seller-arranged)</option><option value="arrange">Arrange with buyer</option>
+                </Select>
+                <Input aria-label="Label" value={d.label} onChange={(e) => setDelivery(deliveryRows.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
+                <Input aria-label="Fee" inputMode="numeric" placeholder="Fee ₦" value={d.fee} onChange={(e) => setDelivery(deliveryRows.map((x, j) => (j === i ? { ...x, fee: e.target.value.replace(/[^\d.]/g, "") } : x)))} />
+                <Input aria-label="Days" type="number" min={0} value={d.eta_days} onChange={(e) => setDelivery(deliveryRows.map((x, j) => (j === i ? { ...x, eta_days: Number(e.target.value) } : x)))} />
+                {deliveryRows.length > 1 && <button type="button" aria-label="Remove option" onClick={() => setDelivery(deliveryRows.filter((_, j) => j !== i))} className="justify-self-end p-2 text-muted hover:text-red-600"><Trash2 className="size-4" /></button>}
+              </div>
+            ))}
           </section>
 
           <section className="card space-y-3 p-4">

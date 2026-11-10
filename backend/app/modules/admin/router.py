@@ -566,6 +566,7 @@ def admin_product_detail(product_id: uuid.UUID, db: DB, admin: User = perm(P.LIS
 
 class AdminProductUpdate(BaseModel):
     title: str | None = Field(None, min_length=5, max_length=140)
+    category_id: uuid.UUID | None = None
     description: str | None = Field(None, min_length=20, max_length=8000)
     brand: str | None = Field(None, max_length=80)
     model: str | None = Field(None, max_length=80)
@@ -592,6 +593,11 @@ def admin_edit_product(product_id: uuid.UUID, data: AdminProductUpdate, request:
     if not p:
         raise NotFound("Listing not found")
     values = data.model_dump(exclude_unset=True)
+    if values.get("category_id"):
+        cat_id, sub_id = product_service._resolve_category(db, values.pop("category_id"))
+        p.category_id, p.subcategory_id = cat_id, sub_id
+    else:
+        values.pop("category_id", None)
     for k in ("title", "description", "brand", "model"):
         if k in values and values[k] is not None:
             values[k] = clean_text(values[k])

@@ -247,7 +247,7 @@ def test_admin_products_can_filter_by_seller(make_seller, make_product, make_adm
     assert rows and all(r["seller"]["id"] == seller.seller["id"] for r in rows)
 
 
-def test_admin_can_edit_listing_fields_and_photos(make_seller, make_product, make_admin):
+def test_admin_can_edit_listing_fields_and_photos(db, make_seller, make_product, make_admin):
     from tests.conftest import png_bytes
 
     seller = make_seller()
@@ -257,9 +257,16 @@ def test_admin_can_edit_listing_fields_and_photos(make_seller, make_product, mak
     d = admin.get(f"/admin/products/{p['id']}").json()
     assert d["seller"]["store_name"] and d["title"]
 
+    from app.models import Category
+    laptops = str(db.query(Category).filter(Category.slug == "laptops").one().id)
     r = admin.patch(f"/admin/products/{p['id']}", {"title": "Admin corrected title", "price": "123456.00",
-                                                   "description": "Corrected description with enough characters to be valid."})
+                                                   "description": "Corrected description with enough characters to be valid.",
+                                                   "category_id": laptops,
+                                                   "delivery_options": [{"type": "arrange", "label": "Arrange with buyer",
+                                                                         "fee": "0.00", "eta_days": 0}]})
     assert r.status_code == 200 and r.json()["title"] == "Admin corrected title" and r.json()["price"] == "123456.00"
+    assert r.json()["subcategory"]["slug"] == "laptops"
+    assert r.json()["delivery_options"][0]["type"] == "arrange"
 
     before = len(r.json()["images"])
     upload = admin.post(f"/admin/products/{p['id']}/images", files=[("files", ("x.png", png_bytes(), "image/png"))])
