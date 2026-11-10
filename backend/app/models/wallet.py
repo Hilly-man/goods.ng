@@ -81,6 +81,9 @@ class WalletHold(UUIDPk, Timestamps, Base):
         UUID(as_uuid=True), ForeignKey("seller_profiles.id", ondelete="CASCADE"), index=True
     )
     order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("orders.id"), index=True)
+    installment_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("installments.id", ondelete="SET NULL"), index=True
+    )
     amount: Mapped[Decimal]
     reason: Mapped[str] = mapped_column(String(40))  # dispute | post_delivery_claim | manual | reserve
     note: Mapped[str | None] = mapped_column(Text)

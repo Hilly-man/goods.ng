@@ -10,6 +10,7 @@ type FlexRules = {
   max_dti: string; tier1_max: string; tier2_max: string; lender_max: string;
   first_plan_cap: string; growth_per_completed_plan: string; assessment_valid_days: string;
   max_active_guarantees: string; first_payment_rate: string; financed_rate: string; monthly_interest_rate: string;
+  seller_share_rate: string;
 };
 type Marketing = {
   feed_enabled: boolean; feed_excluded_categories: string[]; meta_pixel_id: string; ga4_id: string; google_ads_id: string;
@@ -68,6 +69,7 @@ export default function Page() {
           <Input label="First payment (% of price)" inputMode="decimal" value={pct(s.flex_rules.first_payment_rate)} onChange={(e) => setFlex("first_payment_rate", frac(e.target.value))} />
           <Input label="Financed share (% of price)" inputMode="decimal" value={pct(s.flex_rules.financed_rate)} onChange={(e) => setFlex("financed_rate", frac(e.target.value))} />
           <Input label="Interest (% of financed balance, per month)" inputMode="decimal" value={pct(s.flex_rules.monthly_interest_rate)} onChange={(e) => setFlex("monthly_interest_rate", frac(e.target.value))} />
+          <Input label="Seller share of financing charge (%)" inputMode="decimal" value={pct(s.flex_rules.seller_share_rate)} onChange={(e) => setFlex("seller_share_rate", frac(e.target.value))} />
         </div>
       </section>
       <section className="card space-y-4 p-5">

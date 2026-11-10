@@ -174,7 +174,7 @@ function View() {
           <ul className="mt-2 space-y-2 text-sm">
             {data.holds.map((h) => (
               <li key={h.id} className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
-                <span>{naira(h.amount)} · {h.reason.replace(/_/g, " ")}</span>
+                <span>{naira(h.amount)} · {h.reason === "bnpl_instalment" ? "Goods Flex instalment" : h.reason.replace(/_/g, " ")}</span>
                 <span className="text-xs text-muted">{date(h.created_at, true)}</span>
               </li>
             ))}

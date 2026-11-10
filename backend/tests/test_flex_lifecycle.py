@@ -124,3 +124,37 @@ def test_escrow_refuses_to_release_mismatched_money(db, paid_order):
 
 def test_every_escrow_status_is_in_the_transition_table():
     assert set(escrow.ALLOWED) == set(escrow.S)
+
+
+def test_bnpl_seller_principal_is_held_and_released_per_instalment(db, make_user, make_seller, make_product):
+    from app.modules.ledger import service as ledger
+
+    seller, buyer = make_seller(), make_user()
+    setup_flex(buyer)
+    p = flex_product(make_product, seller, price="200000")
+    a = apply(buyer, p).json()
+    pay = buyer.post(f"/bnpl/applications/{a['id']}/accept", {"accept_terms": True}).json()
+    simulate_payment(buyer, pay["payment_reference"])
+    ag = buyer.get("/bnpl/agreements").json()["agreements"][0]
+    oid = ag["order_id"]
+
+    seller.post(f"/orders/{oid}/accept")
+    seller.post(f"/orders/{oid}/dispatch", {"carrier": "GIG", "tracking_reference": "T1"})
+    pin = buyer.get(f"/orders/{oid}").json()["delivery"]["delivery_pin"]
+    seller.post(f"/orders/{oid}/delivered", {"evidence_urls": [], "pin": pin})
+    buyer.post(f"/orders/{oid}/confirm")
+
+    # Order total 203,000; commission 10,000; protection 3,000; seller earns 190,000.
+    # Financed share is 60%, so 114,000 is held and the 76,000 down share is available after clearing.
+    w = seller.get("/seller/wallet").json()
+    assert Decimal(w["on_hold"]) == Decimal("114000.00")
+
+    inst_id = ag["installments"][0]["id"]
+    simulate_payment(buyer, buyer.post(f"/bnpl/installments/{inst_id}/pay").json()["payment_reference"])
+    db.expire_all()
+    w = seller.get("/seller/wallet").json()
+    assert Decimal(w["on_hold"]) == Decimal("76000.00")
+    # 3% of 121,800 for 3 months = 10,962; 3,654/month; seller keeps 70% = 2,557.80.
+    assert ledger.balance(db, ledger.seller_payable(seller.seller["id"])[0]) == Decimal("192557.80")
+    assert ledger.balance(db, ledger.FLEX_SELLER_SHARE[0]) == Decimal("2557.80")
+    assert ledger.trial_balance(db)["balanced"]

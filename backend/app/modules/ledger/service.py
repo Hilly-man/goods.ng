@@ -30,6 +30,7 @@ ESCROW_OBLIGATIONS = ("liability:escrow_obligations", "Escrow obligations", Ledg
 COMMISSION = ("revenue:platform_commission", "Platform commission", LedgerAccountType.REVENUE)
 PROTECTION_FEES = ("revenue:protection_fees", "Buyer protection fees", LedgerAccountType.REVENUE)
 SUBSCRIPTION_RECEIPTS = ("asset:provider_receipts", "Provider receipts (non-escrow)", LedgerAccountType.ASSET)
+FLEX_SELLER_SHARE = ("expense:flex_seller_share", "Goods Flex seller share", LedgerAccountType.EXPENSE)
 SUBSCRIPTION_REVENUE = ("revenue:subscriptions", "Premium subscriptions", LedgerAccountType.REVENUE)
 PROMOTION_REVENUE = ("revenue:promotions", "Listing promotions", LedgerAccountType.REVENUE)
 

@@ -141,6 +141,10 @@ def release(db: Session, order: Order, esc: EscrowTransaction, *, actor_id=None,
     for item in order.items:
         db.execute(update(Product).where(Product.id == item.product_id, Product.quantity == 0,
                                          Product.status == ProductStatus.ACTIVE).values(status=ProductStatus.SOLD))
+    if order.payment_method == "bnpl":
+        from app.modules.bnpl.service import schedule_seller_holds
+
+        schedule_seller_holds(db, order, esc)
     cache.invalidate("feed:")
 
 

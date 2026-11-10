@@ -54,6 +54,7 @@ DEFAULT_RULES = {
     "first_payment_rate": "0.40",
     "financed_rate": "0.60",
     "monthly_interest_rate": "0.03",
+    "seller_share_rate": "0.70",
     "max_tenor_months": 6,
     "max_active_guarantees": 3,
 }

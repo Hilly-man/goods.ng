@@ -25,9 +25,11 @@ from app.models import (
     Repayment,
     SellerProfile,
     User,
+    WalletHold,
 )
 from app.models.enums import BnplStatus, InstallmentStatus, PaymentMethod, PaymentPurpose
 from app.modules.bnpl import lifecycle as life
+from app.modules.ledger import service as ledger
 from app.modules.notifications.service import notify
 from app.modules.orders import escrow
 from app.modules.orders import service as orders
@@ -258,6 +260,67 @@ def _down_paid(db: Session, payment: Payment) -> None:
            f"Order {order.order_number} is fully funded via Goods Flex.", link=f"/seller/orders/{order.id}")
 
 
+def seller_share_rate(db: Session) -> Decimal:
+    from app.modules.bnpl import flex
+
+    return Decimal(str(flex.rules(db)["seller_share_rate"]))
+
+
+def schedule_seller_holds(db: Session, order: Order, esc) -> None:
+    """For a Goods Flex order, hold the financed principal portion of the seller's earnings until
+    each instalment is paid. The down-payment share stays available."""
+    if order.payment_method != PaymentMethod.BNPL:
+        return
+    a = db.query(BnplApplication).filter_by(order_id=order.id).first()
+    ag = a.agreement if a else None
+    if not ag or not ag.installments:
+        return
+    principal = ag.down_payment + ag.financed_amount
+    if principal <= 0:
+        return
+    hold_total = (esc.seller_amount * ag.financed_amount / principal).quantize(Decimal("0.01"))
+    installments = sorted(ag.installments, key=lambda i: i.sequence)
+    existing = {h.installment_id for h in db.query(WalletHold).filter_by(order_id=order.id).all()}
+    if any(i.id in existing for i in installments):
+        return  # already scheduled
+    share = (hold_total / len(installments)).quantize(Decimal("0.01"))
+    allocated = Decimal("0.00")
+    for i, inst in enumerate(installments):
+        amount = hold_total - allocated if i == len(installments) - 1 else share
+        allocated += amount
+        if amount <= 0 or inst.status in (InstallmentStatus.PAID, InstallmentStatus.CANCELLED):
+            continue
+        db.add(WalletHold(seller_id=order.seller_id, order_id=order.id, installment_id=inst.id, amount=amount,
+                          reason="bnpl_instalment",
+                          note=f"Goods Flex principal held until instalment {inst.sequence} is paid"))
+
+
+def _release_bnpl_instalment(db: Session, inst: Installment, ag: FinancingAgreement) -> None:
+    """Release the principal hold for a paid instalment and credit the seller's share of that month's charge."""
+    hold = (db.query(WalletHold).filter_by(installment_id=inst.id, released_at=None)
+            .with_for_update().first())
+    released_principal = Decimal("0.00")
+    if hold:
+        hold.released_at = utcnow()
+        released_principal = hold.amount
+
+    monthly_interest = (ag.financing_charge / ag.tenor_months).quantize(Decimal("0.01"))
+    share = (monthly_interest * seller_share_rate(db)).quantize(Decimal("0.01"))
+    order = db.get(Order, ag.application.order_id)
+    if share > 0 and order:
+        ledger.post(db, key=f"bnpl:{ag.id}:share:{inst.sequence}", kind="flex_seller_share",
+                    reference=order.order_number,
+                    description=f"Goods Flex seller share for {order.order_number} instalment {inst.sequence}",
+                    legs=[ledger.debit(ledger.FLEX_SELLER_SHARE, share),
+                          ledger.credit(ledger.seller_payable(order.seller_id), share)])
+    if order:
+        seller = db.get(SellerProfile, order.seller_id)
+        if seller and (released_principal + share) > 0:
+            notify(db, seller.user_id, "funds_released", "Goods Flex instalment received",
+                   f"₦{released_principal + share:,.2f} for order {order.order_number} has been released to your wallet.",
+                   link=f"/seller/orders/{order.id}")
+
+
 def pay_installment(db: Session, user: User, installment_id) -> Payment:
     inst = db.query(Installment).filter_by(id=installment_id).with_for_update().one_or_none()
     if not inst:
@@ -293,6 +356,7 @@ def _installment_paid(db: Session, payment: Payment) -> None:
         due = Decimal("0")  # e.g. a duplicate payment that landed after the instalment was settled
     applied = min(payment.amount, due)
     excess = payment.amount - applied
+    settled = False
     if applied > 0:
         inst.amount_paid += applied
         ag.outstanding_balance = max(ag.outstanding_balance - applied, Decimal("0"))
@@ -300,9 +364,12 @@ def _installment_paid(db: Session, payment: Payment) -> None:
                          created_at=utcnow()))
         if inst.amount_paid >= inst.amount:
             life.move_instalment(inst, InstallmentStatus.PAID)
+            settled = True
     if excess > 0:
         _refund_unapplied(db, payment, excess, f"Instalment {inst.sequence} was already paid")
     db.flush()
+    if settled:
+        _release_bnpl_instalment(db, inst, ag)
     if all(i.status in (InstallmentStatus.PAID, InstallmentStatus.CANCELLED) for i in ag.installments):
         if ag.status in life.PAYABLE_PLAN:
             life.move_plan(ag, BnplStatus.COMPLETED)
