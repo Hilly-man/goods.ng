@@ -71,6 +71,7 @@ function View() {
   async function withdraw(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedBank) return toast("Add a bank account first", "bad");
+    if (!confirm("Your withdrawal will be reviewed and sent to your bank. Please allow at least 24 hours for the money to land in your account. Continue?")) return;
     setBusy(true);
     try {
       await http.post("/seller/payouts", { amount, bank_account_id: selectedBank },
@@ -124,7 +125,11 @@ function View() {
           <Button type="submit" block loading={busy} disabled={data.payouts_frozen || !data.bank_accounts.length || !amount}>
             Request withdrawal
           </Button>
-          <p className="text-xs text-muted">Each withdrawal is checked by an administrator before our licensed payout partner sends it. A rejected or failed transfer returns the funds to your available balance.</p>
+          <Alert tone="info">
+            Each withdrawal is reviewed by an administrator before our licensed payout partner sends it. After it is initiated,
+            <b> it takes at least 24 hours for the money to land in your bank account</b>. A rejected or failed transfer returns
+            the funds to your available balance.
+          </Alert>
         </form>
 
         <div className="card space-y-3 p-4">
