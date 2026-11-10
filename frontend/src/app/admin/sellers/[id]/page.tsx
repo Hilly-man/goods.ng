@@ -202,7 +202,7 @@ export default function Page() {
             <thead><tr className="border-b border-line text-left text-muted"><th className="p-2">Listing</th><th className="p-2">Price</th><th className="p-2">Status</th><th className="p-2">Views</th><th className="p-2">Actions</th></tr></thead>
             <tbody>{data.listings.map((p) => (
               <tr key={p.id} className="border-b border-line/60">
-                <td className="max-w-[240px] p-2"><Link href={`/item/${p.slug}`} className="block truncate text-brand-700 hover:underline">{p.title}</Link></td>
+                <td className="max-w-[240px] p-2"><Link href={`${base}/products/${p.id}`} className="block truncate text-brand-700 hover:underline">{p.title}</Link></td>
                 <td className="p-2">{naira(p.price)}</td><td className="p-2"><StatusBadge status={p.status} /></td><td className="p-2">{p.views_count}</td>
                 <td className="p-2"><div className="flex flex-wrap gap-1.5">
                   {p.status !== "active" && <Button size="sm" loading={busy} onClick={() => moderate(p.id, "approve")}>Approve</Button>}

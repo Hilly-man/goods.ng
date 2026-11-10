@@ -5,8 +5,8 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, Request
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_, select
 
 from app.core.cache import cache
@@ -15,6 +15,7 @@ from app.core.deps import DB, CurrentUser, client_ip, require_admin_2fa, require
 from app.core.errors import AppError, Forbidden, NotFound
 from app.core.security import clean_text, decrypt_field, mask
 from app.core.time import utcnow
+from app.integrations.storage import store_image
 from app.models import (
     AdminAuditLog,
     BnplApplication,
@@ -59,6 +60,7 @@ from app.models.enums import (
     NegotiationStatus,
     PaymentMethod,
     PaymentStatus,
+    ProductCondition,
     ProductStatus,
     RefundStatus,
     ReportStatus,
@@ -73,9 +75,12 @@ from app.modules.audit import audit
 from app.modules.auth.service import revoke_all_sessions
 from app.modules.common import PageParams, paginate
 from app.modules.ledger import service as ledger
+from app.modules.locations import canonical_city
 from app.modules.notifications.service import notify
 from app.modules.orders import service as orders
 from app.modules.orders.router import order_out
+from app.modules.products import service as product_service
+from app.modules.products.schemas import NG_STATES, DeliveryOption
 from app.modules.reviews.router import recompute_rating
 from app.modules.subscriptions.premium import active_subscription, is_premium, premium_exists_for
 from app.modules.wallet import service as wallet
@@ -525,6 +530,120 @@ def products(db: DB, status: str | None = None, q: str | None = None,
         "seller": {"id": str(p.seller_id), "store_name": p.seller.store_name}, "category": p.category.name,
         "thumb_url": p.images[0].thumb_url if p.images else None, "is_featured": p.is_featured,
         "rejection_reason": p.rejection_reason, "created_at": p.created_at})
+
+
+def _admin_product_out(db: DB, p: Product) -> dict:
+    return {
+        "id": str(p.id), "title": p.title, "slug": p.slug, "description": p.description,
+        "brand": p.brand, "model": p.model, "condition": p.condition, "price": f"{p.price:.2f}",
+        "currency": p.currency, "quantity": p.quantity, "negotiable": p.negotiable,
+        "state": p.state, "city": p.city,
+        "category": {"id": str(p.category_id), "name": p.category.name if p.category else None,
+                     "slug": p.category.slug if p.category else None},
+        "subcategory": {"id": str(p.subcategory_id), "name": p.subcategory.name if p.subcategory else None,
+                        "slug": p.subcategory.slug if p.subcategory else None} if p.subcategory_id else None,
+        "seller": {"id": str(p.seller_id), "store_name": p.seller.store_name, "slug": p.seller.slug},
+        "images": [{"id": str(i.id), "url": i.url, "thumb_url": i.thumb_url, "width": i.width,
+                    "height": i.height, "position": i.position} for i in p.images],
+        "delivery_options": p.delivery_options, "protected_checkout_enabled": p.protected_checkout_enabled,
+        "bnpl_enabled": p.bnpl_enabled, "bnpl_terms_version": p.bnpl_terms_version,
+        "status": p.status, "rejection_reason": p.rejection_reason, "is_featured": p.is_featured,
+        "featured_until": p.featured_until, "promoted_tier": p.promoted_tier,
+        "views_count": p.views_count, "enquiries_count": p.enquiries_count,
+        "contact_clicks": p.contact_clicks, "favourites_count": p.favourites_count,
+        "created_at": p.created_at, "updated_at": p.updated_at, "published_at": p.published_at,
+        "deleted_at": p.deleted_at,
+    }
+
+
+@router.get("/products/{product_id}")
+def admin_product_detail(product_id: uuid.UUID, db: DB, admin: User = perm(P.LISTINGS_MODERATE)):
+    p = db.get(Product, product_id)
+    if not p:
+        raise NotFound("Listing not found")
+    return _admin_product_out(db, p)
+
+
+class AdminProductUpdate(BaseModel):
+    title: str | None = Field(None, min_length=5, max_length=140)
+    description: str | None = Field(None, min_length=20, max_length=8000)
+    brand: str | None = Field(None, max_length=80)
+    model: str | None = Field(None, max_length=80)
+    condition: ProductCondition | None = None
+    price: Decimal | None = Field(None, gt=0, le=Decimal("10000000000"), decimal_places=2)
+    quantity: int | None = Field(None, ge=0, le=100_000)
+    negotiable: bool | None = None
+    state: str | None = None
+    city: str | None = Field(None, min_length=2, max_length=80)
+    delivery_options: list[DeliveryOption] | None = Field(None, min_length=1, max_length=5)
+
+    @field_validator("state")
+    @classmethod
+    def _state(cls, v):
+        if v is not None and v not in NG_STATES:
+            raise ValueError("Select a valid Nigerian state")
+        return v
+
+
+@router.patch("/products/{product_id}")
+def admin_edit_product(product_id: uuid.UUID, data: AdminProductUpdate, request: Request, db: DB,
+                       admin: User = perm(P.LISTINGS_MODERATE)):
+    p = db.get(Product, product_id)
+    if not p:
+        raise NotFound("Listing not found")
+    values = data.model_dump(exclude_unset=True)
+    for k in ("title", "description", "brand", "model"):
+        if k in values and values[k] is not None:
+            values[k] = clean_text(values[k])
+    if "delivery_options" in values and data.delivery_options is not None:
+        values["delivery_options"] = [o.model_dump(mode="json") for o in data.delivery_options]
+    if "state" in values or "city" in values:
+        values["city"] = canonical_city(db, values.get("state", p.state), values.get("city", p.city),
+                                         field="city")
+    for k, v in values.items():
+        setattr(p, k, v)
+    audit(db, admin, "product.edit", "product", p.id, {"fields": sorted(values)}, client_ip(request))
+    db.commit()
+    cache.invalidate("feed:")
+    cache.invalidate("categories:")
+    db.refresh(p)
+    return _admin_product_out(db, p)
+
+
+@router.post("/products/{product_id}/images")
+async def admin_add_images(product_id: uuid.UUID, db: DB, files: list[UploadFile] = File(...),
+                           admin: User = perm(P.LISTINGS_MODERATE)):
+    p = db.get(Product, product_id)
+    if not p:
+        raise NotFound("Listing not found")
+    seller = db.get(SellerProfile, p.seller_id)
+    if not seller:
+        raise NotFound("Seller not found")
+    limit = product_service.listing_image_limit(db, seller)
+    if len(files) > limit:
+        raise AppError(f"Upload at most {limit} photos at once", code="too_many_images")
+    product_service.ensure_listing_image_capacity(db, seller, product_id, len(files))
+    product_service.ensure_image_capacity(db, seller, len(files))
+    stored = [store_image(await f.read(), f"products/{product_id}", watermark=seller.store_name) for f in files]
+    product_service.add_images(db, seller, product_id, stored)
+    db.refresh(p)
+    return _admin_product_out(db, p)
+
+
+@router.delete("/products/{product_id}/images/{image_id}")
+def admin_remove_image(product_id: uuid.UUID, image_id: uuid.UUID, request: Request, db: DB,
+                       admin: User = perm(P.LISTINGS_MODERATE)):
+    p = db.get(Product, product_id)
+    if not p:
+        raise NotFound("Listing not found")
+    seller = db.get(SellerProfile, p.seller_id)
+    if not seller:
+        raise NotFound("Seller not found")
+    product_service.delete_image(db, seller, product_id, image_id)
+    audit(db, admin, "product.image_delete", "product", p.id, {"image_id": str(image_id)}, client_ip(request))
+    db.commit()
+    db.refresh(p)
+    return _admin_product_out(db, p)
 
 
 class ModerateIn(BaseModel):

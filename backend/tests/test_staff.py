@@ -245,3 +245,27 @@ def test_admin_products_can_filter_by_seller(make_seller, make_product, make_adm
     admin = make_admin(["listings.moderate"])
     rows = admin.get("/admin/products", params={"seller_id": seller.seller["id"]}).json()["items"]
     assert rows and all(r["seller"]["id"] == seller.seller["id"] for r in rows)
+
+
+def test_admin_can_edit_listing_fields_and_photos(make_seller, make_product, make_admin):
+    from tests.conftest import png_bytes
+
+    seller = make_seller()
+    p = make_product(seller)
+    admin = make_admin(["listings.moderate"])
+
+    d = admin.get(f"/admin/products/{p['id']}").json()
+    assert d["seller"]["store_name"] and d["title"]
+
+    r = admin.patch(f"/admin/products/{p['id']}", {"title": "Admin corrected title", "price": "123456.00",
+                                                   "description": "Corrected description with enough characters to be valid."})
+    assert r.status_code == 200 and r.json()["title"] == "Admin corrected title" and r.json()["price"] == "123456.00"
+
+    before = len(r.json()["images"])
+    upload = admin.post(f"/admin/products/{p['id']}/images", files=[("files", ("x.png", png_bytes(), "image/png"))])
+    assert upload.status_code == 200 and len(upload.json()["images"]) == before + 1
+    image_id = upload.json()["images"][-1]["id"]
+    removed = admin.delete(f"/admin/products/{p['id']}/images/{image_id}")
+    assert removed.status_code == 200 and len(removed.json()["images"]) == before
+
+    assert make_admin(["orders.view"]).patch(f"/admin/products/{p['id']}", {"price": "1.00"}).status_code == 403
