@@ -416,6 +416,7 @@ def admin_seller_detail(seller_id: uuid.UUID, db: DB, admin: User = perm(P.SELLE
         },
         "listings": [{"id": str(p.id), "title": p.title, "slug": p.slug, "price": f"{p.price:.2f}",
                       "status": p.status, "quantity": p.quantity, "views_count": p.views_count,
+                      "is_featured": p.is_featured, "rejection_reason": p.rejection_reason,
                       "thumb_url": p.images[0].thumb_url if p.images else None,
                       "created_at": p.created_at} for p in listings],
         "orders": [{"id": str(o.id), "order_number": o.order_number, "status": o.status,
@@ -509,11 +510,14 @@ def decide_verification(verification_id: uuid.UUID, data: VerifyDecisionIn, requ
 
 # ---------------- listings moderation ----------------
 @router.get("/products")
-def products(db: DB, status: str | None = None, q: str | None = None, params: PageParams = Depends(),
+def products(db: DB, status: str | None = None, q: str | None = None,
+             seller_id: uuid.UUID | None = None, params: PageParams = Depends(),
              admin: User = perm(P.LISTINGS_MODERATE)):
     stmt = select(Product).where(Product.deleted_at.is_(None))
     if status:
         stmt = stmt.where(Product.status == status)
+    if seller_id:
+        stmt = stmt.where(Product.seller_id == seller_id)
     if q:
         stmt = stmt.where(Product.title.ilike(f"%{q[:60]}%"))
     return paginate(db, stmt.order_by(Product.created_at.desc()), params, lambda p: {

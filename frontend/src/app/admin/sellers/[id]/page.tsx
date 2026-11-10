@@ -31,7 +31,7 @@ type D = {
   seller: Seller;
   subscription: { plan: string; plan_code: string; current_period_end: string } | null;
   stats: Record<string, number | string>;
-  listings: { id: string; title: string; slug: string; price: string; status: string; quantity: number; views_count: number; thumb_url: string | null; created_at: string }[];
+  listings: { id: string; title: string; slug: string; price: string; status: string; quantity: number; views_count: number; is_featured: boolean; rejection_reason: string | null; thumb_url: string | null; created_at: string }[];
   orders: { id: string; order_number: string; status: string; payment_method: string; total: string; seller_amount: string; created_at: string }[];
   verifications: { id: string; level_requested: string; status: string; document_type: string; business_name: string | null; created_at: string; reviewed_at: string | null }[];
   wallet: Wallet | null;
@@ -58,6 +58,19 @@ export default function Page() {
     if (!reason) return;
     setBusy(true);
     try { await http.post(`/admin/sellers/${s.id}/suspend`, { suspended: !s.is_suspended, reason }); toast("Updated"); reload(); }
+    catch (e) { toast(errorMessage(e), "bad"); } finally { setBusy(false); }
+  }
+
+  async function moderate(productId: string, action: string) {
+    const body: Record<string, unknown> = { action };
+    if (action === "reject" || action === "deactivate") {
+      const reason = await askReason(action === "reject" ? "Reject this listing?" : "Take down this listing?", 3,
+        { message: "The seller sees this reason.", confirmLabel: action === "reject" ? "Reject" : "Take down", tone: "danger" });
+      if (!reason) return;
+      body.reason = reason;
+    }
+    setBusy(true);
+    try { await http.post(`/admin/products/${productId}/moderate`, body); toast("Listing updated"); reload(); }
     catch (e) { toast(errorMessage(e), "bad"); } finally { setBusy(false); }
   }
 
@@ -181,13 +194,22 @@ export default function Page() {
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
         <section className="card overflow-x-auto p-4">
-          <h2 className="font-semibold">Recent listings</h2>
-          <table className="mt-2 w-full min-w-[420px] text-sm">
-            <thead><tr className="border-b border-line text-left text-muted"><th className="p-2">Listing</th><th className="p-2">Price</th><th className="p-2">Status</th><th className="p-2">Views</th></tr></thead>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">Recent listings</h2>
+            <Link href={`${base}/products?seller=${s.id}`} className="text-sm font-semibold text-brand-700 hover:underline">View all listings</Link>
+          </div>
+          <table className="mt-2 w-full min-w-[560px] text-sm">
+            <thead><tr className="border-b border-line text-left text-muted"><th className="p-2">Listing</th><th className="p-2">Price</th><th className="p-2">Status</th><th className="p-2">Views</th><th className="p-2">Actions</th></tr></thead>
             <tbody>{data.listings.map((p) => (
               <tr key={p.id} className="border-b border-line/60">
                 <td className="max-w-[240px] p-2"><Link href={`/item/${p.slug}`} className="block truncate text-brand-700 hover:underline">{p.title}</Link></td>
                 <td className="p-2">{naira(p.price)}</td><td className="p-2"><StatusBadge status={p.status} /></td><td className="p-2">{p.views_count}</td>
+                <td className="p-2"><div className="flex flex-wrap gap-1.5">
+                  {p.status !== "active" && <Button size="sm" loading={busy} onClick={() => moderate(p.id, "approve")}>Approve</Button>}
+                  {p.status === "pending_review" && <Button size="sm" variant="danger" loading={busy} onClick={() => moderate(p.id, "reject")}>Reject</Button>}
+                  {p.status === "active" && <Button size="sm" variant="outline" loading={busy} onClick={() => moderate(p.id, p.is_featured ? "unfeature" : "feature")}>{p.is_featured ? "Unfeature" : "Feature"}</Button>}
+                  {p.status === "active" && <Button size="sm" variant="danger" loading={busy} onClick={() => moderate(p.id, "deactivate")}>Take down</Button>}
+                </div></td>
               </tr>
             ))}</tbody>
           </table>

@@ -237,3 +237,11 @@ def test_admin_wallets_by_seller(make_seller, make_admin):
     finance = make_admin(["payments.view"]).get("/admin/wallets").json()
     assert finance["items"] and "available" in finance["items"][0]
     assert make_admin(["sellers.verify"]).get("/admin/wallets").status_code == 403
+
+
+def test_admin_products_can_filter_by_seller(make_seller, make_product, make_admin):
+    seller = make_seller()
+    make_product(seller)
+    admin = make_admin(["listings.moderate"])
+    rows = admin.get("/admin/products", params={"seller_id": seller.seller["id"]}).json()["items"]
+    assert rows and all(r["seller"]["id"] == seller.seller["id"] for r in rows)
