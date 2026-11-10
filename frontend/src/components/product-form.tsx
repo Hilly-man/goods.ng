@@ -3,17 +3,21 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ImagePlus, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
 import { http, errorMessage, ApiError } from "@/lib/api";
 import { CONDITION_LABEL, toMoneyString } from "@/lib/format";
 import { StateCitySelect } from "./state-city-select";
 import type { Category, DeliveryOption, SellerProductDetail } from "@/lib/types";
 import { Alert, Button, Checkbox, Input, Select, Textarea, useToast } from "./ui";
 
-const MAX_IMAGES = 10;
+const MAX_PREMIUM_IMAGES = 10;
+const MAX_FREE_IMAGES = 5;
 
 export function ProductForm({ existing }: { existing?: SellerProductDetail }) {
   const router = useRouter();
   const toast = useToast();
+  const { user } = useAuth();
+  const maxImages = user?.seller?.is_premium ? MAX_PREMIUM_IMAGES : MAX_FREE_IMAGES;
   const [cats, setCats] = useState<Category[]>([]);
   const [root, setRoot] = useState(existing?.category.id ?? "");
   const [f, setF] = useState({
@@ -39,7 +43,7 @@ export function ProductForm({ existing }: { existing?: SellerProductDetail }) {
     if (!list) return;
     const ok = Array.from(list).filter((x) => /^image\/(jpeg|png|webp)$/.test(x.type) && x.size <= 8 * 1024 * 1024);
     if (ok.length < list.length) toast("Some files were skipped (JPEG/PNG/WebP up to 8MB only)", "bad");
-    setFiles((cur) => [...cur, ...ok].slice(0, MAX_IMAGES - images.length));
+    setFiles((cur) => [...cur, ...ok].slice(0, maxImages - images.length));
   }
 
   async function autoTitle() {
@@ -123,14 +127,16 @@ export function ProductForm({ existing }: { existing?: SellerProductDetail }) {
               <button type="button" onClick={() => setFiles(files.filter((_, j) => j !== i))} aria-label="Remove photo" className="absolute right-1 top-1 rounded-full bg-white/90 p-0.5"><X className="size-3.5" /></button>
             </div>
           ))}
-          {images.length + files.length < MAX_IMAGES && (
+          {images.length + files.length < maxImages && (
             <label className="grid size-24 cursor-pointer place-items-center rounded-lg border-2 border-dashed border-line text-muted hover:border-brand-600 hover:text-brand-700">
               <span className="flex flex-col items-center text-xs"><ImagePlus className="size-6" />Add photos</span>
               <input type="file" multiple accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => addFiles(e.target.files)} />
             </label>
           )}
         </div>
-        <p className="text-xs text-muted">Up to {MAX_IMAGES} photos. Clear, well-lit photos sell faster. Photos are compressed for fast loading.</p>
+        <p className="text-xs text-muted">
+          Up to {maxImages} photos{user?.seller?.is_premium ? "" : " on the free plan (Premium allows 10)"}. Clear, well-lit photos sell faster. Photos are compressed for fast loading.
+        </p>
       </section>
       <section className="card grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
         <div className="sm:col-span-2">

@@ -95,6 +95,25 @@ def test_image_upload_validation(make_seller, make_product):
     assert bad.status_code == 400 and bad.json()["error"]["code"] == "invalid_image"
 
 
+def test_listing_photo_cap_free_vs_premium(db, make_seller, make_product):
+    from tests.test_ads import _premium
+
+    def files(n):
+        return [("files", (f"{i}.png", png_bytes(), "image/png")) for i in range(n)]
+
+    free = make_seller()
+    p = make_product(free)
+    over = free.post(f"/seller/products/{p['id']}/images", files=files(6))
+    assert over.status_code == 400 and over.json()["error"]["code"] == "too_many_images"
+    assert free.post(f"/seller/products/{p['id']}/images", files=files(5)).status_code == 200
+
+    premium = _premium(make_seller(), db)
+    p2 = make_product(premium)
+    assert premium.post(f"/seller/products/{p2['id']}/images", files=files(10)).status_code == 200
+    extra = premium.post(f"/seller/products/{p2['id']}/images", files=files(1))
+    assert extra.status_code == 400 and extra.json()["error"]["code"] == "too_many_images"
+
+
 def test_seller_photo_quota(make_seller, make_product, monkeypatch):
     from app.core.config import settings
 

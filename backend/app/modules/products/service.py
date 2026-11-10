@@ -29,9 +29,10 @@ from app.modules.products.schemas import (
     SellerCard,
     SellerProductRow,
 )
-from app.modules.subscriptions.premium import premium_exists_for, premium_seller_ids
+from app.modules.subscriptions.premium import is_premium, premium_exists_for, premium_seller_ids
 
-MAX_IMAGES = 10
+FREE_MAX_IMAGES = 5
+PREMIUM_MAX_IMAGES = 10
 
 # ---------------- title suggestions ----------------
 
@@ -550,10 +551,25 @@ def ensure_image_capacity(db: Session, seller: SellerProfile, count: int) -> Non
                        code="seller_image_limit", details={"used": used, "limit": limit})
 
 
-def add_images(db: Session, seller: SellerProfile, product_id, stored: list) -> Product:
+def listing_image_limit(db: Session, seller: SellerProfile) -> int:
+    return PREMIUM_MAX_IMAGES if is_premium(db, seller.id) else FREE_MAX_IMAGES
+
+
+def ensure_listing_image_capacity(db: Session, seller: SellerProfile, product_id, count: int) -> None:
     p = get_owned(db, seller, product_id)
-    if len(p.images) + len(stored) > MAX_IMAGES:
-        raise AppError(f"A listing can have at most {MAX_IMAGES} photos", code="too_many_images")
+    premium = is_premium(db, seller.id)
+    limit = PREMIUM_MAX_IMAGES if premium else FREE_MAX_IMAGES
+    if len(p.images) + count > limit:
+        message = (f"A listing can have at most {PREMIUM_MAX_IMAGES} photos" if premium else
+                   f"Free sellers can add up to {FREE_MAX_IMAGES} photos per listing. Upgrade to Premium for up to "
+                   f"{PREMIUM_MAX_IMAGES}.")
+        raise AppError(message, code="too_many_images",
+                       details={"limit": limit, "premium": premium, "used": len(p.images)})
+
+
+def add_images(db: Session, seller: SellerProfile, product_id, stored: list) -> Product:
+    ensure_listing_image_capacity(db, seller, product_id, len(stored))
+    p = get_owned(db, seller, product_id)
     ensure_image_capacity(db, seller, len(stored))
     start = len(p.images)
     for i, s in enumerate(stored):

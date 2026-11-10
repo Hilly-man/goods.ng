@@ -24,7 +24,7 @@ Last updated: 10 November 2026.
 | 1–3 | Requirements, architecture, project setup | Done |
 | 4 | Database (46 tables, constraints, partial unique indexes, integrity triggers) | Done |
 | 5 | Authentication (JWT + rotating refresh, email verification, phone OTP, lockout, reset) | Done |
-| 6 | Marketplace (categories, listings, watermarked WebP images, full-text search, filters, favourites, keyword-rich auto-title suggestions) | Done |
+| 6 | Marketplace (categories, listings, watermarked WebP images — 5 per listing free / 10 Premium, 200-photo seller cap; full-text search, filters, favourites, keyword-rich auto-title suggestions) | Done |
 | 7 | Seller management (profiles, dashboard, analytics, verification) | Done |
 | 8 | Premium subscriptions (plans, paid activation, featured credits, admin grants) and per-listing paid promotions (TOP / Boost Premium) | Done |
 | 9 | Messaging (product-linked chats, read receipts, unread counts, reports) | Done — polling, not WebSockets |

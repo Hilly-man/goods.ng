@@ -236,9 +236,11 @@ def delete_product(product_id: uuid.UUID, seller: CurrentSeller, db: DB):
 async def upload_images(product_id: uuid.UUID, seller: CurrentSeller, db: DB, files: list[UploadFile] = File(...)):
     check_rate_limit(f"listing:images:{seller.id}", 200, 3600)
     service.get_owned(db, seller, product_id)  # authorise before doing any work
-    if len(files) > service.MAX_IMAGES:
-        raise AppError(f"Upload at most {service.MAX_IMAGES} photos at once")
+    limit = service.listing_image_limit(db, seller)
+    if len(files) > limit:
+        raise AppError(f"Upload at most {limit} photos at once", code="too_many_images")
     # Check before writing files, so rejected uploads don't consume storage.
+    service.ensure_listing_image_capacity(db, seller, product_id, len(files))
     service.ensure_image_capacity(db, seller, len(files))
     stored = [store_image(await f.read(), f"products/{product_id}", watermark=seller.store_name) for f in files]
     service.add_images(db, seller, product_id, stored)
