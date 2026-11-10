@@ -61,9 +61,9 @@ Implemented in code:
 - ✅ **Transparency:** the exact down payment, financing charge, total payable and instalment schedule are shown before acceptance, with the lending partner's decision reference stored verbatim.
 - ✅ **Open-banking consent:** bank access is read-only; the privacy policy explains the purpose, the provider, withdrawal and retention. The Mono adapter is server-side only (secret key never reaches the browser).
 - ✅ **One plan at a time:** enforced in the service layer and by a partial unique index, which also limits over-indebtedness.
-- ✅ **Seller Flex consent:** Goods Flex is opt-in per listing; the seller must acknowledge the payout timing (down-payment share after delivery, financed balance monthly), the 70/30 financing-charge share and the default risk before it can be enabled.
+- ✅ **Seller Flex consent:** Goods Flex is opt-in per listing; the seller must acknowledge the payout timing (down-payment share after delivery, financed balance monthly), the 70/30 financing-charge share and the default risk before it can be enabled. The terms version and acceptance timestamp are stored on the listing.
 - ✅ **Payout controls:** payout bank details are encrypted at rest; withdrawals clear for 24 hours, require the `payouts.approve` permission and are audit-logged. Failed transfers return funds to the wallet.
-- ✅ **Goods Flex seller settlement:** the financed principal is held in the seller wallet per instalment; a paid instalment releases only its hold and credits the seller's 70% share of that month's financing charge. Defaulted instalments stay held.
+- ✅ **Goods Flex seller settlement:** the financed principal is held in the seller wallet per instalment; a paid instalment releases only its hold and credits the seller's 70% share of that month's financing charge. Defaulted instalments stay held. A refund/cancellation after release adds a recovery hold covering the down-payment share, paid instalments and credited interest share.
 - ✅ **Private analytics:** first-party traffic stats store a random browser id, path, referrer and time — never the IP address — and respect Global Privacy Control / Do Not Track. Records are purged after about 400 days.
 
 Still required before launch (owner: compliance/legal):

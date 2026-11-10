@@ -78,6 +78,9 @@ class Product(UUIDPk, Timestamps, SoftDelete, Base):
     delivery_options: Mapped[list] = mapped_column(JSONB, default=list)
     protected_checkout_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     bnpl_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Seller acknowledgement of the Goods Flex terms (versioned, for audit).
+    bnpl_terms_version: Mapped[str | None] = mapped_column(String(20))
+    bnpl_terms_accepted_at: Mapped[datetime | None]
     status: Mapped[ProductStatus] = mapped_column(StrEnum(ProductStatus), default=ProductStatus.ACTIVE)
     rejection_reason: Mapped[str | None] = mapped_column(String(300))
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, index=True)

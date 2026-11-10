@@ -20,6 +20,7 @@ from app.models.enums import ProductCondition, ProductStatus, VerificationLevel
 from app.modules.categories.router import descendant_ids
 from app.modules.locations import canonical_city
 from app.modules.products.schemas import (
+    BNPL_SELLER_TERMS_VERSION,
     CategoryRef,
     ImageOut,
     ProductCard,
@@ -468,6 +469,8 @@ def _moderation_required(db: Session) -> bool:
 
 
 def create_product(db: Session, seller: SellerProfile, data: ProductIn) -> Product:
+    if data.bnpl_enabled and not data.bnpl_terms_accepted:
+        raise AppError("Accept the Goods Flex seller terms to enable instalments", code="bnpl_terms_required")
     cat_id, sub_id = _resolve_category(db, data.category_id)
     city = canonical_city(db, data.state, clean_text(data.city))
     status = ProductStatus.PENDING_REVIEW if _moderation_required(db) else ProductStatus.ACTIVE
@@ -478,6 +481,8 @@ def create_product(db: Session, seller: SellerProfile, data: ProductIn) -> Produ
         quantity=data.quantity, state=data.state, city=city,
         delivery_options=[o.model_dump(mode="json") for o in data.delivery_options],
         protected_checkout_enabled=data.protected_checkout_enabled, bnpl_enabled=data.bnpl_enabled, status=status,
+        bnpl_terms_version=BNPL_SELLER_TERMS_VERSION if data.bnpl_enabled else None,
+        bnpl_terms_accepted_at=utcnow() if data.bnpl_enabled else None,
         published_at=utcnow() if status == ProductStatus.ACTIVE else None,
     )
     db.add(p)
@@ -499,6 +504,14 @@ def get_owned(db: Session, seller: SellerProfile, product_id) -> Product:
 def update_product(db: Session, seller: SellerProfile, product_id, data: ProductUpdate) -> Product:
     p = get_owned(db, seller, product_id)
     values = data.model_dump(exclude_unset=True)
+    accepted = bool(values.pop("bnpl_terms_accepted", False))
+    if "bnpl_enabled" in values:
+        enabling = values["bnpl_enabled"]
+        needs_terms = enabling and (not p.bnpl_enabled or p.bnpl_terms_version != BNPL_SELLER_TERMS_VERSION)
+        if needs_terms and not accepted:
+            raise AppError("Accept the Goods Flex seller terms to enable instalments", code="bnpl_terms_required")
+        if enabling and accepted:
+            p.bnpl_terms_version, p.bnpl_terms_accepted_at = BNPL_SELLER_TERMS_VERSION, utcnow()
     if "category_id" in values:
         p.category_id, p.subcategory_id = _resolve_category(db, values.pop("category_id"))
     for k in ("title", "description", "brand", "model", "city"):

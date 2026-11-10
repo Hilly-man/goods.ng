@@ -9,7 +9,7 @@ behalf of the lending partner.
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, Forbidden, InvalidState, NotFound
@@ -19,6 +19,9 @@ from app.models import (
     BnplApplication,
     FinancingAgreement,
     Installment,
+    LedgerAccount,
+    LedgerEntry,
+    LedgerTransaction,
     Order,
     Payment,
     Product,
@@ -27,7 +30,7 @@ from app.models import (
     User,
     WalletHold,
 )
-from app.models.enums import BnplStatus, InstallmentStatus, PaymentMethod, PaymentPurpose
+from app.models.enums import BnplStatus, EntryDirection, InstallmentStatus, PaymentMethod, PaymentPurpose
 from app.modules.bnpl import lifecycle as life
 from app.modules.ledger import service as ledger
 from app.modules.notifications.service import notify
@@ -407,10 +410,51 @@ def _installment_failed(db: Session, payment: Payment) -> None:
            f"Your payment for instalment {inst.sequence} did not go through. Please try again.", link="/flex")
 
 
+def _seller_share_credits(db: Session, order: Order) -> Decimal:
+    """Total financing-charge share already credited to this seller for the order."""
+    code = ledger.seller_payable(order.seller_id)[0]
+    amount = db.scalar(
+        select(func.coalesce(func.sum(LedgerEntry.amount), 0))
+        .join(LedgerTransaction, LedgerTransaction.id == LedgerEntry.transaction_id)
+        .join(LedgerAccount, LedgerAccount.id == LedgerEntry.account_id)
+        .where(LedgerTransaction.kind == "flex_seller_share",
+               LedgerTransaction.reference == order.order_number,
+               LedgerAccount.code == code, LedgerEntry.direction == EntryDirection.CREDIT)
+    )
+    return Decimal(amount or 0)
+
+
+def _recover_released_bnpl_settlement(db: Session, order: Order, reason: str) -> None:
+    """If a released Flex order is refunded/cancelled, lock the seller's proceeds in the wallet.
+
+    Open instalment holds already block the unpaid principal; this adds a recovery hold for amounts that
+    have become available (down-payment share, paid instalments, credited interest share). Already
+    withdrawn money makes the wallet balance negative, so future earnings are withheld first.
+    """
+    esc = order.escrow
+    if not esc or not esc.released_at:
+        return
+    open_total = db.scalar(select(func.coalesce(func.sum(WalletHold.amount), 0)).where(
+        WalletHold.order_id == order.id, WalletHold.released_at.is_(None))) or Decimal("0")
+    target = esc.seller_amount + _seller_share_credits(db, order)
+    recovery = (target - Decimal(open_total)).quantize(Decimal("0.01"))
+    if recovery <= 0:
+        return
+    db.add(WalletHold(seller_id=order.seller_id, order_id=order.id, amount=recovery,
+                      reason="bnpl_refund_recovery",
+                      note=f"Goods Flex refund recovery: {reason}"[:300]))
+    seller = db.get(SellerProfile, order.seller_id)
+    if seller:
+        notify(db, seller.user_id, "payout_hold", "Goods Flex payout recovered",
+               f"₦{recovery:,.2f} from order {order.order_number} is held in your wallet after a refund/cancellation.",
+               link=f"/seller/orders/{order.id}")
+
+
 def cancel_financing_for_order(db: Session, order: Order, reason: str) -> None:
     a = db.scalars(select(BnplApplication).where(BnplApplication.order_id == order.id)).first()
     if not a or a.status in (BnplStatus.CANCELLED, BnplStatus.DECLINED, BnplStatus.COMPLETED):
         return
+    _recover_released_bnpl_settlement(db, order, reason)
     get_financing_provider().cancel(application_ref=a.provider_application_ref, reason=reason)
     life.move_application(a, BnplStatus.CANCELLED)
     if a.agreement and a.agreement.status != BnplStatus.COMPLETED:

@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field, field_validator
 from app.models.enums import ProductCondition, ProductStatus, VerificationLevel
 from app.modules.common import MoneyStr, Schema
 
+BNPL_SELLER_TERMS_VERSION = "2026-11-10"
+
 NG_STATES = [
     "Abia", "Abuja", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", "Cross River",
     "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "Gombe", "Imo", "Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi",
@@ -40,6 +42,7 @@ class ProductIn(BaseModel):
     ], max_length=5)
     protected_checkout_enabled: bool = True
     bnpl_enabled: bool = False
+    bnpl_terms_accepted: bool = False
 
     @field_validator("state")
     @classmethod
@@ -71,6 +74,7 @@ class ProductUpdate(BaseModel):
     delivery_options: list[DeliveryOption] | None = Field(None, min_length=1, max_length=5)
     protected_checkout_enabled: bool | None = None
     bnpl_enabled: bool | None = None
+    bnpl_terms_accepted: bool | None = None
 
     @field_validator("state")
     @classmethod
@@ -176,3 +180,6 @@ class SellerProductDetail(ProductDetail):
     contact_clicks: int
     rejection_reason: str | None
     is_featured_until: datetime | None = None
+    bnpl_terms_version: str | None = None
+    bnpl_terms_accepted_at: datetime | None = None
+    bnpl_terms_version_current: str = BNPL_SELLER_TERMS_VERSION

@@ -542,9 +542,27 @@ def reconciliation(db: DB, admin: User = perm(P.PAYMENTS_VIEW)):
     obligations = ledger.balance(db, ledger.ESCROW_OBLIGATIONS[0])
     open_escrow = sum((e.amount for e in funded if e.status not in (S.COMPLETED, S.REFUNDED)), Decimal("0"))
     stale_webhooks = db.scalar(select(func.count()).select_from(WebhookEvent).where(WebhookEvent.processing_error.isnot(None)))
+    open_holds = db.scalars(select(WalletHold).where(WalletHold.released_at.is_(None))).all()
+    bnpl_holds = [h for h in open_holds if h.reason == "bnpl_instalment"]
+    hold_mismatches = []
+    agreements = db.scalars(select(FinancingAgreement).where(FinancingAgreement.status.in_(
+        [BnplStatus.ACTIVE, BnplStatus.DEFAULTED, BnplStatus.COMPLETED]))).all()
+    for ag in agreements:
+        order = db.get(Order, ag.application.order_id) if ag.application and ag.application.order_id else None
+        if not order or not order.escrow or not order.escrow.released_at:
+            continue
+        unpaid = sum(1 for i in ag.installments if i.status in (InstallmentStatus.SCHEDULED, InstallmentStatus.OVERDUE))
+        holds = sum(1 for h in bnpl_holds if h.order_id == order.id)
+        if holds != unpaid:
+            hold_mismatches.append({"order": order.order_number, "unpaid_instalments": unpaid, "open_holds": holds})
     tb = ledger.trial_balance(db)
     return {
         "ledger_balanced": tb["balanced"],
+        "wallet_holds_open": len(open_holds),
+        "wallet_holds_value": f"{sum((h.amount for h in open_holds), Decimal('0')):.2f}",
+        "bnpl_holds_missing_instalment": sum(1 for h in bnpl_holds if not h.installment_id),
+        "bnpl_hold_mismatches": hold_mismatches,
+        "flex_seller_share_ledger": f"{ledger.balance(db, ledger.FLEX_SELLER_SHARE[0]):.2f}",
         "escrow_obligations_ledger": f"{obligations:.2f}",
         "open_escrow_value": f"{open_escrow:.2f}",
         "obligations_match_open_escrow": obligations == open_escrow,

@@ -6,10 +6,19 @@ from decimal import Decimal
 import pytest
 
 from app.core.errors import InvalidState
-from app.models import BnplApplication, EscrowTransaction, Installment, Order, Payment, Repayment, User
+from app.models import (
+    BnplApplication,
+    EscrowTransaction,
+    Installment,
+    Order,
+    Payment,
+    Repayment,
+    User,
+    WalletHold,
+)
 from app.models.enums import BnplStatus, InstallmentStatus, PaymentPurpose
 from app.modules.bnpl import lifecycle as life
-from app.modules.bnpl.service import mark_overdue_and_remind
+from app.modules.bnpl.service import cancel_financing_for_order, mark_overdue_and_remind
 from app.modules.orders import escrow
 from app.modules.payments import service as payments
 from tests.conftest import simulate_payment
@@ -158,3 +167,29 @@ def test_bnpl_seller_principal_is_held_and_released_per_instalment(db, make_user
     assert ledger.balance(db, ledger.seller_payable(seller.seller["id"])[0]) == Decimal("192557.80")
     assert ledger.balance(db, ledger.FLEX_SELLER_SHARE[0]) == Decimal("2557.80")
     assert ledger.trial_balance(db)["balanced"]
+
+
+def test_bnpl_refund_recovery_locks_released_seller_proceeds(db, make_user, make_seller, make_product):
+    seller, buyer = make_seller(), make_user()
+    setup_flex(buyer)
+    p = flex_product(make_product, seller, price="200000")
+    a = apply(buyer, p).json()
+    pay = buyer.post(f"/bnpl/applications/{a['id']}/accept", {"accept_terms": True}).json()
+    simulate_payment(buyer, pay["payment_reference"])
+    ag = buyer.get("/bnpl/agreements").json()["agreements"][0]
+    oid = ag["order_id"]
+    seller.post(f"/orders/{oid}/accept")
+    seller.post(f"/orders/{oid}/dispatch", {"carrier": "GIG", "tracking_reference": "T1"})
+    pin = buyer.get(f"/orders/{oid}").json()["delivery"]["delivery_pin"]
+    seller.post(f"/orders/{oid}/delivered", {"evidence_urls": [], "pin": pin})
+    buyer.post(f"/orders/{oid}/confirm")
+    simulate_payment(buyer, buyer.post(f"/bnpl/installments/{ag['installments'][0]['id']}/pay")
+                     .json()["payment_reference"])
+
+    cancel_financing_for_order(db, db.get(Order, oid), "Refund after delivery")
+    db.commit()
+    holds = db.query(WalletHold).filter_by(order_id=oid, released_at=None).all()
+    # 190,000 seller principal + 2,557.80 interest share; nothing can be withdrawn until resolved.
+    assert sum((h.amount for h in holds), Decimal("0")) == Decimal("192557.80")
+    assert any(h.reason == "bnpl_refund_recovery" for h in holds)
+    assert db.get(BnplApplication, a["id"]).status == BnplStatus.CANCELLED

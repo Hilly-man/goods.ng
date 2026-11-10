@@ -15,6 +15,7 @@ from app.modules.common import Page, PageParams, paginate
 from app.modules.locations import cities_by_state
 from app.modules.products import service
 from app.modules.products.schemas import (
+    BNPL_SELLER_TERMS_VERSION,
     NG_STATES,
     ProductCard,
     ProductDetail,
@@ -31,7 +32,9 @@ router = APIRouter(tags=["products"])
 def owner_detail(db, p) -> SellerProductDetail:
     d = service.to_detail(db, p)
     return SellerProductDetail(**d.model_dump(), enquiries_count=p.enquiries_count, contact_clicks=p.contact_clicks,
-                               rejection_reason=p.rejection_reason, is_featured_until=p.featured_until)
+                               rejection_reason=p.rejection_reason, is_featured_until=p.featured_until,
+                               bnpl_terms_version=p.bnpl_terms_version, bnpl_terms_accepted_at=p.bnpl_terms_accepted_at,
+                               bnpl_terms_version_current=BNPL_SELLER_TERMS_VERSION)
 
 
 @router.get("/locations")

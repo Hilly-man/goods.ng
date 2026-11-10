@@ -83,6 +83,22 @@ def test_view_count_deduplicated(client, make_seller, make_product):
     assert s.get(f"/seller/products/{p['id']}").json()["views_count"] == 1
 
 
+def test_bnpl_seller_terms_acceptance_required(make_seller, leaf_category):
+    seller = make_seller()
+    body = {
+        "title": "Flex-eligible phone listing", "description": "A valid description that is long enough for listing.",
+        "category_id": leaf_category, "condition": "brand_new", "state": "Lagos", "city": "Ikeja",
+        "price": "200000.00", "quantity": 1, "bnpl_enabled": True,
+    }
+    r = seller.post("/seller/products", body)
+    assert r.status_code == 400 and r.json()["error"]["code"] == "bnpl_terms_required"
+    body["bnpl_terms_accepted"] = True
+    r = seller.post("/seller/products", body)
+    assert r.status_code == 201, r.text
+    d = seller.get(f"/seller/products/{r.json()['id']}").json()
+    assert d["bnpl_terms_version"] == d["bnpl_terms_version_current"] and d["bnpl_terms_accepted_at"]
+
+
 def test_image_upload_validation(make_seller, make_product):
     s = make_seller()
     p = make_product(s)

@@ -140,7 +140,7 @@ def make_product(leaf_category):
             "price": "1500000.00", "negotiable": True, "quantity": 2, "state": "Lagos", "city": "Ikeja",
             "delivery_options": [{"type": "pickup", "label": "Pickup", "fee": "0", "eta_days": 0},
                                  {"type": "courier", "label": "Courier", "fee": "3500", "eta_days": 2}],
-            "bnpl_enabled": True,
+            "bnpl_enabled": True, "bnpl_terms_accepted": True,
         }
         body.update(overrides)
         r = seller.post("/seller/products", body)

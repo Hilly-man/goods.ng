@@ -151,6 +151,9 @@ export interface SellerProductDetail extends ProductDetail {
   contact_clicks: number;
   rejection_reason: string | null;
   is_featured_until?: string | null;
+  bnpl_terms_version: string | null;
+  bnpl_terms_accepted_at: string | null;
+  bnpl_terms_version_current: string;
 }
 
 export interface SellerProductRow extends ProductCard {

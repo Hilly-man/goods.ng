@@ -28,7 +28,9 @@ export function ProductForm({ existing }: { existing?: SellerProductDetail }) {
     state: existing?.state ?? "", city: existing?.city ?? "", protected_checkout_enabled: existing?.protected_checkout_enabled ?? true, bnpl_enabled: existing?.bnpl_enabled ?? false,
   });
   const [delivery, setDelivery] = useState<DeliveryOption[]>(existing?.delivery_options ?? [{ type: "pickup", label: "Pickup from my location", fee: "0", eta_days: 0 }]);
-  const [flexAck, setFlexAck] = useState(existing?.bnpl_enabled ?? false);
+  const [flexAck, setFlexAck] = useState(
+    Boolean(existing?.bnpl_enabled && existing?.bnpl_terms_version === existing?.bnpl_terms_version_current),
+  );
   const [images, setImages] = useState(existing?.images ?? []);
   const [files, setFiles] = useState<File[]>([]);
   const [errs, setErrs] = useState<Record<string, string>>({});
@@ -81,6 +83,7 @@ export function ProductForm({ existing }: { existing?: SellerProductDetail }) {
     if (f.bnpl_enabled && !flexAck) return setErr("Accept the Goods Flex seller terms to enable instalments.");
     const body = {
       ...f, price, quantity: Number(f.quantity || 0), brand: f.brand || null, model: f.model || null,
+      bnpl_terms_accepted: f.bnpl_enabled && flexAck,
       delivery_options: delivery.map((d) => ({ ...d, fee: toMoneyString(String(d.fee)) ?? "0.00" })),
     };
     setBusy(true);
