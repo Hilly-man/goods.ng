@@ -578,7 +578,7 @@ def reject_refund(refund_id: uuid.UUID, data: RejectIn, request: Request, db: DB
 # ---------------- seller wallet & payouts ----------------
 @router.get("/payouts")
 def admin_payouts(db: DB, status: str | None = None, params: PageParams = Depends(),
-                  admin: User = perm(P.PAYMENTS_VIEW)):
+                  admin: User = perm(P.PAYOUTS_APPROVE)):
     stmt = select(Payout)
     if status:
         stmt = stmt.where(Payout.status == status)
