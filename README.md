@@ -8,6 +8,11 @@
 | Backend | FastAPI, SQLAlchemy 2, Alembic, Pydantic 2, PostgreSQL 15+, Redis |
 | Integrations | Provider interfaces for payments (Paystack and Flutterwave adapters), escrow and BNPL. **Mock providers only for escrow and BNPL** — see [docs/STATUS.md](docs/STATUS.md) |
 
+## Live
+
+- Marketplace: https://goods-ng.vercel.app
+- Admin console: https://admin-goods-ng.vercel.app
+
 ## Quick start (local development)
 
 Prerequisites: Python 3.12 with [uv](https://docs.astral.sh/uv/), Node 24 with pnpm, PostgreSQL. Redis is optional in development.
