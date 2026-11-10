@@ -325,15 +325,35 @@ def set_user_status(user_id: uuid.UUID, data: UserStatusIn, request: Request, db
 
 
 # ---------------- sellers & verification ----------------
+@router.get("/wallets")
+def admin_wallets(db: DB, q: str | None = None, params: PageParams = Depends(),
+                  admin: User = perm(P.PAYMENTS_VIEW)):
+    """Every seller's wallet position: available, clearing, escrow, holds, pending and withdrawn."""
+    stmt = select(SellerProfile)
+    if q:
+        stmt = stmt.where(SellerProfile.store_name.ilike(f"%{q[:60]}%"))
+    return paginate(db, stmt.order_by(SellerProfile.store_name), params, lambda s: {
+        "id": str(s.id), "seller_id": str(s.id), "store_name": s.store_name, "slug": s.slug, "owner_email": s.user.email,
+        "is_suspended": s.is_suspended, "payouts_frozen": s.payouts_frozen, **wallet.summary(db, s)})
+
+
 @router.get("/sellers")
 def sellers(db: DB, q: str | None = None, params: PageParams = Depends(), admin: User = perm(P.SELLERS_VERIFY)):
     stmt = select(SellerProfile)
     if q:
         stmt = stmt.where(SellerProfile.store_name.ilike(f"%{q[:60]}%"))
-    return paginate(db, stmt.order_by(SellerProfile.created_at.desc()), params, lambda s: {
-        "id": str(s.id), "store_name": s.store_name, "slug": s.slug, "verification_level": s.verification_level,
-        "is_suspended": s.is_suspended, "rating_avg": f"{s.rating_avg:.2f}", "rating_count": s.rating_count,
-        "completed_sales": s.completed_sales, "owner_email": s.user.email, "created_at": s.created_at})
+    include_money = admin.has_permission(P.PAYMENTS_VIEW)
+
+    def row(s):
+        out = {"id": str(s.id), "store_name": s.store_name, "slug": s.slug, "verification_level": s.verification_level,
+               "is_suspended": s.is_suspended, "rating_avg": f"{s.rating_avg:.2f}", "rating_count": s.rating_count,
+               "completed_sales": s.completed_sales, "owner_email": s.user.email, "created_at": s.created_at}
+        if include_money:
+            summary = wallet.summary(db, s)
+            out["wallet_available"], out["wallet_on_hold"] = summary["available"], summary["on_hold"]
+        return out
+
+    return paginate(db, stmt.order_by(SellerProfile.created_at.desc()), params, row)
 
 
 @router.get("/sellers/{seller_id}")

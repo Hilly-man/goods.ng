@@ -6,15 +6,19 @@ import Link from "next/link";
 import { useState } from "react";
 import { AdminTable, askReason } from "@/components/admin-table";
 import { useAdminBase } from "@/lib/admin-area";
+import { useApi } from "@/lib/hooks";
+import { naira } from "@/lib/format";
 import { Badge, Button, useToast } from "@/components/ui";
 import { http, errorMessage } from "@/lib/api";
 import { titleCase } from "@/lib/format";
 
-type S = { id: string; store_name: string; slug: string; verification_level: string; is_suspended: boolean; rating_avg: string; rating_count: number; completed_sales: number; owner_email: string; created_at: string };
+type S = { id: string; store_name: string; slug: string; verification_level: string; is_suspended: boolean; rating_avg: string; rating_count: number; completed_sales: number; owner_email: string; created_at: string; wallet_available?: string; wallet_on_hold?: string };
 
 export default function Page() {
   const toast = useToast();
   const base = useAdminBase();
+  const { data: me } = useApi<{ permissions: string[] }>("/admin/me");
+  const canSeeMoney = Boolean(me?.permissions?.includes("payments.view"));
   const [plan, setPlan] = useState("premium_monthly");
   return (
     <><AdminPageHeader icon={Store} title="Sellers" description="Search stores, grant Premium or suspend sellers." />
@@ -24,6 +28,7 @@ export default function Page() {
       { key: "r", label: "Rating", render: (s) => `${Number(s.rating_avg).toFixed(1)} (${s.rating_count})` },
       { key: "c", label: "Sales", render: (s) => s.completed_sales },
       { key: "st", label: "Status", render: (s) => <Badge tone={s.is_suspended ? "bad" : "good"}>{s.is_suspended ? "Suspended" : "Active"}</Badge> },
+      ...(canSeeMoney ? [{ key: "w", label: "Wallet", render: (s: S) => <><b>{naira(s.wallet_available ?? "0")}</b>{Number(s.wallet_on_hold ?? 0) > 0 && <p className="text-xs text-amber-700">{naira(s.wallet_on_hold ?? "0")} on hold</p>}</> }] : []),
     ]} actions={(s, reload) => (<>
       <Button size="sm" variant="outline" onClick={async () => {
         const reason = await askReason("Reason for granting premium (e.g. promotion, compensation):", 5); if (!reason) return;

@@ -230,3 +230,10 @@ def test_admin_seller_dashboard(make_seller, make_product, make_admin):
     assert finance["wallet"] is not None and "available" in finance["wallet"]
 
     assert make_admin(["orders.view"]).get(f"/admin/sellers/{sid}").status_code == 403
+
+
+def test_admin_wallets_by_seller(make_seller, make_admin):
+    make_seller()
+    finance = make_admin(["payments.view"]).get("/admin/wallets").json()
+    assert finance["items"] and "available" in finance["items"][0]
+    assert make_admin(["sellers.verify"]).get("/admin/wallets").status_code == 403
