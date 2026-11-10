@@ -90,7 +90,7 @@ def summary(db: Session, seller: SellerProfile) -> dict:
         "payouts_frozen": seller.payouts_frozen,
         "hold_hours": settings.seller_payout_hold_hours,
         "min_payout": f"{settings.min_payout_amount:.2f}",
-        "note": "Withdrawals are reviewed and paid to your verified bank account by our licensed payout partner. Please allow at least 24 hours after the withdrawal is initiated for the money to land in your account.",
+        "note": "Withdrawals are paid to your verified bank account by our licensed payout partner. Please allow at least 24 hours after the withdrawal is initiated for the money to land in your account.",
     }
 
 
