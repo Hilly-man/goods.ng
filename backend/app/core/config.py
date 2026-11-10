@@ -114,6 +114,8 @@ class Settings(BaseSettings):
     min_payout_amount: Decimal = Decimal("1000.00")
     payout_provider: Literal["mock"] = "mock"
     delivery_provider: Literal["mock"] = "mock"
+    # Shared secret for the /internal/cron endpoint (Vercel Cron or an external scheduler).
+    cron_secret: str | None = None
 
     rate_limit_per_minute: int = 240
     # Coarse ceiling per public IP, as a multiple of the per-user/device limit. Keeps a client

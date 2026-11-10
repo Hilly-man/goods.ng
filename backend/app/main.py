@@ -1,8 +1,9 @@
+import hmac
 import importlib
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
@@ -105,6 +106,29 @@ def create_app() -> FastAPI:
 
         app.include_router(dev_router, prefix=settings.api_prefix)
         logging.getLogger("goodsng").warning("dev_routes_enabled_mock_providers_active")
+
+    @app.api_route("/internal/cron", methods=["GET", "POST"])
+    def internal_cron(request: Request, scope: str = "frequent"):
+        """Run background jobs on hosts without a long-running worker (Vercel Cron / external scheduler)."""
+        if settings.cron_secret:
+            auth = request.headers.get("authorization", "")
+            if not hmac.compare_digest(auth, f"Bearer {settings.cron_secret}"):
+                raise HTTPException(status_code=401, detail="Invalid cron secret")
+        elif settings.environment not in ("development", "test"):
+            raise HTTPException(status_code=404, detail="Not found")
+
+        from app.worker import run_job
+
+        names = {
+            "frequent": ["process_payouts", "auto_release_escrow", "expire_unpaid_orders", "expire_negotiations"],
+            "daily": ["expire_subscriptions", "refresh_promotion_bumps", "bnpl_reminders", "purge_interest_signals",
+                      "purge_deleted_listings", "purge_site_visits", "meta_capi_purchases"],
+        }.get(scope)
+        if not names:
+            raise HTTPException(status_code=400, detail="Unknown scope")
+        for name in names:
+            run_job(name)
+        return {"scope": scope, "ran": names}
 
     if settings.storage_backend == "local":
         Path(settings.local_media_dir).mkdir(parents=True, exist_ok=True)
