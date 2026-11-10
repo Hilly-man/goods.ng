@@ -19,6 +19,7 @@ from app.models import (
     AdminAuditLog,
     BnplApplication,
     Category,
+    Conversation,
     CreditAssessment,
     Dispute,
     EscrowTransaction,
@@ -28,11 +29,13 @@ from app.models import (
     LedgerEntry,
     LedgerTransaction,
     MessageReport,
+    Negotiation,
     Order,
     Payment,
     Payout,
     PlatformSetting,
     Product,
+    ProductImage,
     Promotion,
     Refund,
     Report,
@@ -53,6 +56,7 @@ from app.models.enums import (
     DisputeStatus,
     EscrowStatus,
     InstallmentStatus,
+    NegotiationStatus,
     PaymentMethod,
     PaymentStatus,
     ProductStatus,
@@ -73,7 +77,7 @@ from app.modules.notifications.service import notify
 from app.modules.orders import service as orders
 from app.modules.orders.router import order_out
 from app.modules.reviews.router import recompute_rating
-from app.modules.subscriptions.premium import premium_exists_for
+from app.modules.subscriptions.premium import active_subscription, is_premium, premium_exists_for
 from app.modules.wallet import service as wallet
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin_2fa)])
@@ -330,6 +334,83 @@ def sellers(db: DB, q: str | None = None, params: PageParams = Depends(), admin:
         "id": str(s.id), "store_name": s.store_name, "slug": s.slug, "verification_level": s.verification_level,
         "is_suspended": s.is_suspended, "rating_avg": f"{s.rating_avg:.2f}", "rating_count": s.rating_count,
         "completed_sales": s.completed_sales, "owner_email": s.user.email, "created_at": s.created_at})
+
+
+@router.get("/sellers/{seller_id}")
+def admin_seller_detail(seller_id: uuid.UUID, db: DB, admin: User = perm(P.SELLERS_VERIFY)):
+    s = db.get(SellerProfile, seller_id)
+    if not s:
+        raise NotFound("Seller not found")
+
+    def count(stmt):
+        return db.scalar(stmt) or 0
+
+    live = (Product.seller_id == s.id) & Product.deleted_at.is_(None)
+    agg = db.execute(select(func.count(), func.coalesce(func.sum(Product.views_count), 0),
+                            func.coalesce(func.sum(Product.enquiries_count), 0),
+                            func.coalesce(func.sum(Product.contact_clicks), 0)).where(live)).one()
+    active = count(select(func.count()).select_from(Product).where(live, Product.status == ProductStatus.ACTIVE))
+    pending = count(select(func.count()).select_from(Order).where(Order.seller_id == s.id, Order.status.in_(
+        [EscrowStatus.AWAITING_SELLER, EscrowStatus.PROCESSING])))
+    in_transit = count(select(func.count()).select_from(Order).where(Order.seller_id == s.id, Order.status.in_(
+        [EscrowStatus.DISPATCHED, EscrowStatus.DELIVERED, EscrowStatus.AWAITING_BUYER_CONFIRMATION])))
+    completed = count(select(func.count()).select_from(Order).where(Order.seller_id == s.id,
+                                                                   Order.status == EscrowStatus.COMPLETED))
+    protected = count(select(func.count()).select_from(Order).where(Order.seller_id == s.id, Order.paid_at.isnot(None)))
+    revenue = db.scalar(select(func.coalesce(func.sum(Order.subtotal), 0)).where(
+        Order.seller_id == s.id, Order.status == EscrowStatus.COMPLETED))
+    open_offers = count(select(func.count()).select_from(Negotiation).where(
+        Negotiation.seller_id == s.id, Negotiation.status == NegotiationStatus.OPEN))
+    conversations = count(select(func.count()).select_from(Conversation).where(
+        Conversation.seller_user_id == s.user_id))
+    images_used = count(select(func.count()).select_from(ProductImage).join(Product).where(Product.seller_id == s.id))
+    sub = active_subscription(db, s.id)
+
+    listings = db.scalars(select(Product).where(Product.seller_id == s.id, Product.deleted_at.is_(None))
+                          .order_by(Product.created_at.desc()).limit(10)).all()
+    orders = db.scalars(select(Order).where(Order.seller_id == s.id).order_by(Order.created_at.desc()).limit(10)).all()
+    verifications = db.scalars(select(SellerVerification).where(SellerVerification.seller_id == s.id)
+                               .order_by(SellerVerification.created_at.desc()).limit(5)).all()
+
+    out = {
+        "seller": {
+            "id": str(s.id), "store_name": s.store_name, "slug": s.slug, "description": s.description,
+            "logo_url": s.logo_url, "banner_url": s.banner_url, "state": s.state, "city": s.city,
+            "address": s.address, "business_phone": s.business_phone, "whatsapp_number": s.whatsapp_number,
+            "website": s.website, "business_hours": s.business_hours,
+            "verification_level": s.verification_level, "rating_avg": f"{s.rating_avg:.2f}",
+            "rating_count": s.rating_count, "completed_sales": s.completed_sales, "is_suspended": s.is_suspended,
+            "payouts_frozen": s.payouts_frozen, "created_at": s.created_at,
+            "owner": {"full_name": s.user.full_name, "email": s.user.email, "phone": s.user.phone,
+                      "email_verified": s.user.email_verified, "phone_verified": s.user.phone_verified},
+            "is_premium": is_premium(db, s.id),
+        },
+        "subscription": {"plan": sub.plan.name, "plan_code": sub.plan.code,
+                         "current_period_end": sub.current_period_end} if sub else None,
+        "stats": {
+            "total_listings": agg[0], "active_listings": active, "product_views": int(agg[1]),
+            "enquiries": int(agg[2]), "contact_clicks": int(agg[3]), "pending_orders": pending,
+            "orders_in_transit": in_transit, "completed_orders": completed, "protected_sales": protected,
+            "revenue_completed": f"{revenue:.2f}", "open_negotiations": open_offers, "conversations": conversations,
+            "images_used": images_used, "images_limit": settings.max_images_per_seller,
+        },
+        "listings": [{"id": str(p.id), "title": p.title, "slug": p.slug, "price": f"{p.price:.2f}",
+                      "status": p.status, "quantity": p.quantity, "views_count": p.views_count,
+                      "thumb_url": p.images[0].thumb_url if p.images else None,
+                      "created_at": p.created_at} for p in listings],
+        "orders": [{"id": str(o.id), "order_number": o.order_number, "status": o.status,
+                    "payment_method": o.payment_method, "total": f"{o.total:.2f}",
+                    "seller_amount": f"{o.escrow.seller_amount:.2f}" if o.escrow else "0.00",
+                    "created_at": o.created_at} for o in orders],
+        "verifications": [{"id": str(v.id), "level_requested": v.level_requested, "status": v.status,
+                           "document_type": v.document_type, "business_name": v.business_name,
+                           "created_at": v.created_at, "reviewed_at": v.reviewed_at} for v in verifications],
+        "wallet": None,
+    }
+    if admin.has_permission(P.PAYMENTS_VIEW):
+        out["wallet"] = {**wallet.summary(db, s), "bank_accounts": wallet.list_bank_accounts(db, s),
+                         "payouts": wallet.list_payouts(db, s, limit=10), "holds": wallet.holds_out(db, s.id)}
+    return out
 
 
 class SuspendIn(BaseModel):

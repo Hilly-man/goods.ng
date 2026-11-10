@@ -5,6 +5,7 @@ import { AdminPageHeader, askValue } from "@/components/admin-ui";
 import Link from "next/link";
 import { useState } from "react";
 import { AdminTable, askReason } from "@/components/admin-table";
+import { useAdminBase } from "@/lib/admin-area";
 import { Badge, Button, useToast } from "@/components/ui";
 import { http, errorMessage } from "@/lib/api";
 import { titleCase } from "@/lib/format";
@@ -13,11 +14,12 @@ type S = { id: string; store_name: string; slug: string; verification_level: str
 
 export default function Page() {
   const toast = useToast();
+  const base = useAdminBase();
   const [plan, setPlan] = useState("premium_monthly");
   return (
     <><AdminPageHeader icon={Store} title="Sellers" description="Search stores, grant Premium or suspend sellers." />
     <AdminTable<S> path="/admin/sellers" searchable filters={<select className="input w-auto" value={plan} onChange={(e) => setPlan(e.target.value)} aria-label="Plan for grants"><option value="premium_monthly">Grant: Premium Monthly</option><option value="premium_quarterly">Grant: Premium Quarterly</option><option value="business_annual">Grant: Business Annual</option></select>} columns={[
-      { key: "n", label: "Store", render: (s) => <><Link href={`/store/${s.slug}`} className="font-medium text-brand-700">{s.store_name}</Link><p className="text-xs text-muted">{s.owner_email}</p></> },
+      { key: "n", label: "Store", render: (s) => <><Link href={`${base}/sellers/${s.id}`} className="font-medium text-brand-700">{s.store_name}</Link><p className="text-xs text-muted">{s.owner_email}</p></> },
       { key: "v", label: "Verification", render: (s) => titleCase(s.verification_level) },
       { key: "r", label: "Rating", render: (s) => `${Number(s.rating_avg).toFixed(1)} (${s.rating_count})` },
       { key: "c", label: "Sales", render: (s) => s.completed_sales },

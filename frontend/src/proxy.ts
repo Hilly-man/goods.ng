@@ -17,6 +17,8 @@ const ADMIN_URL = process.env.ADMIN_URL ? new URL(process.env.ADMIN_URL) : null;
 const ADMIN_HOSTNAME = ADMIN_URL?.hostname.toLowerCase() ?? null;
 
 // Every admin page is a single segment under /admin.
+const SELLER_DETAIL = /^\/sellers\/[0-9a-fA-F-]{36}$/;
+
 const SECTIONS = new Set([
   "users", "sellers", "verifications", "products", "categories", "orders", "payments", "escrow", "disputes",
   "refunds", "bnpl", "subscriptions", "promotions", "reviews", "reports", "settings", "audit", "staff", "roles",
@@ -40,7 +42,7 @@ export function proxy(request: NextRequest) {
       res = NextResponse.redirect(new URL(`${stripAdmin(pathname)}${search}`, ADMIN_URL), 308);
     } else if (pathname === "/") {
       res = NextResponse.rewrite(new URL(`/admin${search}`, request.url));
-    } else if (/^\/[a-z-]+$/.test(pathname) && SECTIONS.has(pathname.slice(1))) {
+    } else if ((/^\/[a-z-]+$/.test(pathname) && SECTIONS.has(pathname.slice(1))) || SELLER_DETAIL.test(pathname)) {
       res = NextResponse.rewrite(new URL(`/admin${pathname}${search}`, request.url));
     } else {
       res = NextResponse.next();

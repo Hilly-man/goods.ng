@@ -214,3 +214,19 @@ def test_overview_trends_shape_and_permission(make_admin, make_seller, make_prod
     assert {"full", "bnpl"} == set(d["payment_mix"])
     assert any(c["count"] >= 1 for c in d["top_categories"])
     assert make_admin(permissions=["disputes.resolve"]).get("/admin/overview/trends").status_code == 403
+
+
+def test_admin_seller_dashboard(make_seller, make_product, make_admin):
+    seller = make_seller()
+    make_product(seller)
+    sid = seller.seller["id"]
+
+    admin = make_admin(["sellers.verify"])
+    d = admin.get(f"/admin/sellers/{sid}").json()
+    assert d["seller"]["store_name"] and d["stats"]["active_listings"] >= 1
+    assert d["listings"] and d["wallet"] is None  # wallet needs payments.view
+
+    finance = make_admin(["sellers.verify", "payments.view"]).get(f"/admin/sellers/{sid}").json()
+    assert finance["wallet"] is not None and "available" in finance["wallet"]
+
+    assert make_admin(["orders.view"]).get(f"/admin/sellers/{sid}").status_code == 403
