@@ -83,7 +83,7 @@ def test_password_reset_template_shows_code():
                         code="123456")
     assert "123456" in html
     assert "Expires in" in html
-    assert "Copy code" in html and "gng-copy" in html
+    assert html.count("123456") >= 2  # styled box + plain body (helps Gmail detect the code)
 
 
 def test_plain_text_email_includes_contact_details():

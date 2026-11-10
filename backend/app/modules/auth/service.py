@@ -304,7 +304,7 @@ def request_email_verification(db: Session, user: User) -> str | None:
     send_direct(
         db, "email", user.email,
         f"Your Goods.ng email verification code is {code}. It expires in {settings.otp_ttl_minutes} minutes.",
-        subject="Verify your email", event_type="email_verification",
+        subject="Your Goods.ng verification code", event_type="email_verification",
         link=f"{settings.frontend_url}/account", code=code, recipient_name=user.full_name,
     )
     return code

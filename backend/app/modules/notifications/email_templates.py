@@ -101,19 +101,9 @@ def _code_box(code: str) -> str:
         f'text-transform:uppercase;color:{ACCENT_TEXT};">Your code</div>'
         f'<div style="margin:6px 0 4px;font-family:{FONT};font-size:34px;font-weight:800;'
         f'letter-spacing:.22em;color:{BRAND_DARK};">{_esc(code)}</div>'
-        f'<div style="margin-top:14px;">'
-        f'<span id="gng-copy" role="button" '
-        f'onclick="var t=\'{_esc(code)}\';'
-        f'if(navigator.clipboard){{navigator.clipboard.writeText(t).then('
-        f'function(){{document.getElementById(\'gng-copy\').textContent=\'Copied\';}},'
-        f'function(){{window.prompt(\'Copy your code:\',t);}});}}'
-        f'else{{window.prompt(\'Copy your code:\',t);}}return false;" '
-        f'style="display:inline-block;cursor:pointer;padding:9px 18px;border-radius:8px;background:{BRAND_700};'
-        f'color:#ffffff;font-family:{FONT};font-size:13px;font-weight:700;text-decoration:none;">'
-        f'Copy code</span></div>'
         f'<div style="margin-top:10px;font-family:{FONT};font-size:12px;line-height:1.5;color:{MUTED};">'
         f'Expires in {settings.otp_ttl_minutes} minutes. Never share this code. '
-        f'If the button does not work, select the code above and copy it.</div>'
+        f'Select the code above to copy it.</div>'
         f'</td></tr></table>'
     )
 
@@ -182,7 +172,9 @@ def render_email(
         f'<p style="margin:0 0 14px;font-family:{FONT};font-size:15px;line-height:1.65;color:{INK};">'
         f'Hi {_esc(first_name)},</p>' if first_name else ""
     )
-    content = _code_box(code) if code else _paragraphs(body)
+    # Keep the plain-text body as well: Gmail/Apple Mail scan it to surface their native
+    # "copy code" button (email templates cannot run the clipboard API themselves).
+    content = (_code_box(code) + _paragraphs(body)) if code else _paragraphs(body)
     button = _button(cta_label, href) if cta_label and href else ""
     preheader = _esc(title)
     return (
