@@ -51,9 +51,9 @@ DEFAULT_RULES = {
     "first_plan_cap": "500000",
     "growth_per_completed_plan": "0.5",
     "assessment_valid_days": 90,
-    "first_payment_rate": "0.70",
-    "financed_rate": "0.40",
-    "monthly_interest_rate": "0.10",
+    "first_payment_rate": "0.40",
+    "financed_rate": "0.60",
+    "monthly_interest_rate": "0.03",
     "max_tenor_months": 6,
     "max_active_guarantees": 3,
 }
