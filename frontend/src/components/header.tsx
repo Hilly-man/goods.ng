@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Bell, ChevronDown, Heart, LayoutDashboard, LogOut, MapPin, MessageCircle, Plus, Search, Shield, Store, User } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Bell, ChevronDown, Heart, LayoutDashboard, LogOut, MapPin, MessageCircle, Plus, Search, Shield, SlidersHorizontal, Store, User } from "lucide-react";
 import { Suspense, useEffect, useId, useRef, useState } from "react";
 import clsx from "clsx";
 import { Logo } from "./logo";
@@ -11,6 +11,7 @@ import { http } from "@/lib/api";
 import { usePolling } from "@/lib/hooks";
 import { useIsAdminArea } from "@/lib/admin-area";
 import { NG_STATES } from "@/lib/format";
+import { rememberSearch } from "@/lib/search-history";
 import { useLocations } from "./state-city-select";
 import { Avatar } from "./avatar";
 
@@ -33,13 +34,23 @@ export function useCounts() {
 
 function SearchBarInner({ className, autoFocus }: { className?: string; autoFocus?: boolean }) {
   const router = useRouter();
+  const pathname = usePathname();
   const sp = useSearchParams();
   const [location, setLocation] = useState({ state: sp.get("state") ?? "", city: sp.get("city") ?? "" });
+  const openMobileSearch = (event: React.PointerEvent) => {
+    if (pathname === "/search" || !window.matchMedia("(max-width: 767px)").matches) return;
+    event.preventDefault();
+    const next = new URLSearchParams();
+    if (location.state) next.set("state", location.state);
+    if (location.city) next.set("city", location.city);
+    router.push(`/search${next.size ? `?${next}` : ""}`);
+  };
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const next = new URLSearchParams();
     const q = String(fd.get("q") ?? "").trim();
+    rememberSearch(q);
     if (q) next.set("q", q);
     if (location.state) next.set("state", location.state);
     if (location.city) next.set("city", location.city);
@@ -51,6 +62,7 @@ function SearchBarInner({ className, autoFocus }: { className?: string; autoFocu
         state={location.state}
         city={location.city}
         onChange={setLocation}
+        onOpenSearch={openMobileSearch}
       />
       <input
         name="q"
@@ -60,6 +72,7 @@ function SearchBarInner({ className, autoFocus }: { className?: string; autoFocu
         placeholder="I am looking for…"
         aria-label="Search Goods.ng"
         className="min-w-0 flex-1 px-3 text-base text-ink outline-none placeholder:text-muted/80 sm:text-[15px]"
+        onPointerDown={openMobileSearch}
       />
       <button type="submit" className="grid w-12 shrink-0 place-items-center rounded-r-xl bg-accent-500 text-ink transition hover:bg-accent-400 sm:w-14" aria-label="Search">
         <Search className="size-5" />
@@ -68,10 +81,11 @@ function SearchBarInner({ className, autoFocus }: { className?: string; autoFocu
   );
 }
 
-function LocationPicker({ state, city, onChange }: {
+function LocationPicker({ state, city, onChange, onOpenSearch }: {
   state: string;
   city: string;
   onChange: (location: { state: string; city: string }) => void;
+  onOpenSearch: (event: React.PointerEvent) => void;
 }) {
   const locations = useLocations();
   const searchId = useId();
@@ -121,6 +135,7 @@ function LocationPicker({ state, city, onChange }: {
   return (
     <div ref={root} className="relative z-30 flex max-w-[42%] shrink-0 items-center border-r border-line sm:max-w-36">
       <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}
+        onPointerDown={onOpenSearch}
         aria-label={`Location: ${label}`} className="flex h-full min-w-0 items-center gap-1.5 rounded-l-xl px-2.5 text-sm font-medium text-ink hover:bg-canvas sm:px-3">
         <MapPin className="size-4 shrink-0 text-brand-700" aria-hidden />
         <span className="truncate">{label}</span>
@@ -169,6 +184,31 @@ export function SearchBar(props: { className?: string; autoFocus?: boolean }) {
     <Suspense fallback={<div className={clsx("h-11 w-full rounded-xl bg-white/90", props.className)} />}>
       <SearchBarInner {...props} />
     </Suspense>
+  );
+}
+
+function MobileSearchHeader() {
+  const router = useRouter();
+  const sp = useSearchParams();
+  const autoFocus = !sp.has("q") && sp.get("showAll") !== "1";
+  const openFilters = () => {
+    const next = new URLSearchParams(sp.toString());
+    next.set("showAll", "1");
+    next.set("openFilters", "1");
+    router.push(`/search?${next}`);
+  };
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-2 md:hidden">
+      <button type="button" onClick={() => { if (window.history.length > 1) router.back(); else router.push("/"); }}
+        aria-label="Back" className="grid size-8 shrink-0 place-items-center rounded-lg hover:bg-white/10">
+        <ArrowLeft className="size-5" />
+      </button>
+      <SearchBar className="min-w-0 flex-1" autoFocus={autoFocus} />
+      <button type="button" onClick={openFilters} aria-label="Filter results"
+        className="grid size-10 shrink-0 place-items-center rounded-lg bg-white/10 hover:bg-white/20">
+        <SlidersHorizontal className="size-5" />
+      </button>
+    </div>
   );
 }
 
@@ -229,12 +269,19 @@ export function Header() {
   const { user, loading } = useAuth();
   const counts = useCounts();
   const compact = useIsAdminArea();
+  const pathname = usePathname();
+  const searchScreen = pathname === "/search";
   return (
     <header className="site-header sticky top-0 z-40 bg-brand-800 text-white shadow-md">
       <div className="container-page flex h-14 items-center gap-3 md:h-16">
-        <Logo light />
+        {searchScreen && !compact ? (
+          <>
+            <div className="md:hidden"><MobileSearchHeader /></div>
+            <div className="hidden md:block"><Logo light /></div>
+          </>
+        ) : <Logo light />}
         {!compact && <SearchBar className="mx-auto hidden max-w-2xl md:flex" />}
-        <nav className="ml-auto flex items-center gap-1" aria-label="Account">
+        <nav className={clsx("ml-auto flex items-center gap-1", searchScreen && "hidden md:flex")} aria-label="Account">
           {!loading && user && (
             <>
 {user.account_type !== "staff" && (
@@ -271,7 +318,7 @@ export function Header() {
           </Link>}
         </nav>
       </div>
-      {!compact && (
+      {!compact && !searchScreen && (
         <div className="container-page pb-2.5 md:hidden">
           <SearchBar />
         </div>

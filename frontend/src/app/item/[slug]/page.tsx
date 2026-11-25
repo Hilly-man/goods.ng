@@ -191,7 +191,7 @@ async function Content({ params }: Params) {
   return (
     <>
       <JsonLd p={p} />
-      <TrackSignal kind="view" product_slug={p.slug} />
+      <TrackSignal kind="view" product_slug={p.slug} recentlyViewed={p} />
       <TrackEvent name="view_item" items={[{ id: p.id, price: p.price, name: p.title }]} value={Number(p.price)} />
       <nav aria-label="Breadcrumb" className="mb-2 flex flex-wrap items-center gap-1 text-xs text-muted">
         <Link href="/" className="hover:text-brand-700">Home</Link>

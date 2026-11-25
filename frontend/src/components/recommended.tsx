@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
 import { anonHeaders, captureLanding, personalisationOff, setPersonalisation, trackSignal, type Signal } from "@/lib/interest";
 import type { ProductCard } from "@/lib/types";
+import { rememberViewedProduct } from "@/lib/search-history";
 import { ProductCollection } from "./product-collection";
 import { ProductGridSkeleton } from "./product-card";
 
@@ -15,12 +16,14 @@ export function InterestCapture() {
 }
 
 /** Records a search or listing view on Goods.ng. */
-export function TrackSignal(props: Signal) {
+export function TrackSignal(props: Signal & { recentlyViewed?: ProductCard }) {
   const { kind, query, product_slug, category_slug } = props;
+  const recentlyViewed = "recentlyViewed" in props ? props.recentlyViewed : undefined;
   useEffect(() => {
     if (!query && !product_slug && !category_slug) return;
+    if (kind === "view" && recentlyViewed) rememberViewedProduct(recentlyViewed);
     void captureLanding().then(() => trackSignal({ kind, query, product_slug, category_slug }));
-  }, [kind, query, product_slug, category_slug]);
+  }, [kind, query, product_slug, category_slug, recentlyViewed]);
   return null;
 }
 

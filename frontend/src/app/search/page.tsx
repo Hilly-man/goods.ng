@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { DEFAULT_DESCRIPTION, ogImageUrl, pageMetadata } from "@/lib/seo";
 import { ListingResults, ResultsSkeleton, type SP } from "@/components/listing-results";
 import { TrackSignal } from "@/components/recommended";
+import { SearchDiscovery } from "@/components/search-discovery";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<SP> }): Promise<Metadata> {
   const sp = await searchParams;
@@ -10,7 +11,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const where = typeof sp.state === "string" ? ` in ${sp.state}` : " in Nigeria";
   const hasFilters = Object.keys(sp).some((key) => {
     const value = sp[key];
-    return key !== "page" && value !== undefined && value !== "";
+    return !["page", "showAll", "openFilters"].includes(key) && value !== undefined && value !== "";
   });
   return pageMetadata({
     title: q ? `${q} for sale${where}` : `Buy & sell${where}`,
@@ -43,12 +44,24 @@ async function Results({ searchParams }: { searchParams: Promise<SP> }) {
   );
 }
 
-export default function SearchPage({ searchParams }: { searchParams: Promise<SP> }) {
+async function SearchContent({ searchParams }: { searchParams: Promise<SP> }) {
+  const sp = await searchParams;
+  const showResults = sp.showAll === "1" || Object.entries(sp).some(([key, value]) =>
+    !["page", "showAll", "openFilters"].includes(key) && value !== undefined && value !== "");
+  if (!showResults) return <SearchDiscovery />;
   return (
     <div className="container-page py-5">
       <Suspense fallback={<ResultsSkeleton />}>
-        <Results searchParams={searchParams} />
+        <Results searchParams={Promise.resolve(sp)} />
       </Suspense>
     </div>
+  );
+}
+
+export default function SearchPage({ searchParams }: { searchParams: Promise<SP> }) {
+  return (
+    <Suspense fallback={<div className="container-page py-5"><ResultsSkeleton /></div>}>
+      <SearchContent searchParams={searchParams} />
+    </Suspense>
   );
 }

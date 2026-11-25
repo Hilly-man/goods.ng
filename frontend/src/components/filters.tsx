@@ -242,10 +242,22 @@ function FilterBody({ facets }: { facets: Facets }) {
 
 function FiltersInner({ facets }: { facets: Facets }) {
   const sp = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const requestedOpen = sp.get("openFilters") === "1";
+  const modalOpen = open || requestedOpen;
   const active = FILTER_PARAMS.filter((k) => sp.get(k)).length;
   // Re-mount the panel when the URL changes so local inputs (price boxes) reflect the applied filters.
   const k = sp.toString();
+  const closeFilters = () => {
+    setOpen(false);
+    if (!requestedOpen) return;
+    const next = new URLSearchParams(sp.toString());
+    next.delete("openFilters");
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
   return (
     <>
       <aside className="hidden h-fit lg:block" aria-label="Filters">
@@ -255,14 +267,14 @@ function FiltersInner({ facets }: { facets: Facets }) {
         <button onClick={() => setOpen(true)} className="chip w-full justify-center py-2.5 font-semibold">
           <SlidersHorizontal className="size-4" /> Filters {active > 0 && <span className="rounded-full bg-brand-700 px-1.5 text-xs text-white">{active}</span>}
         </button>
-        {open && (
+        {modalOpen && (
           <div className="fixed inset-0 z-50 flex flex-col bg-canvas" role="dialog" aria-modal="true" aria-label="Filters">
             <div className="flex items-center justify-between border-b border-line bg-white px-4 py-3">
               <h2 className="font-semibold">Filters</h2>
-              <button onClick={() => setOpen(false)} aria-label="Close filters" className="rounded-full p-1.5 hover:bg-black/5"><X className="size-5" /></button>
+              <button onClick={closeFilters} aria-label="Close filters" className="rounded-full p-1.5 hover:bg-black/5"><X className="size-5" /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-3"><FilterBody key={k} facets={facets} /></div>
-            <div className="border-t border-line bg-white p-3"><Button block onClick={() => setOpen(false)}>Show {ads(facets.total)}</Button></div>
+            <div className="border-t border-line bg-white p-3"><Button block onClick={closeFilters}>Show {ads(facets.total)}</Button></div>
           </div>
         )}
       </div>
