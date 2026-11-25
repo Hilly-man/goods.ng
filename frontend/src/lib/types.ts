@@ -80,6 +80,7 @@ export interface CategoryRef {
 
 export interface Category extends CategoryRef {
   icon: string | null;
+  image_url: string | null;
   description: string | null;
   listing_count: number;
   parent_id: string | null;

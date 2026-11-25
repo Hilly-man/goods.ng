@@ -8,10 +8,12 @@ import { ChevronRight } from "lucide-react";
 import { NotFoundError, serverGet } from "@/lib/server-api";
 import { SITE_URL, ogImageUrl, pageMetadata, truncate } from "@/lib/seo";
 import { ListingResults, ResultsSkeleton, type SP } from "@/components/listing-results";
+import { CategoryIcon } from "@/components/icons";
 
 type Cat = {
   id: string; name: string; slug: string; description: string | null;
-  parent: { name: string; slug: string } | null; children: { name: string; slug: string; listing_count: number }[];
+  parent: { name: string; slug: string } | null;
+  children: { name: string; slug: string; image_url: string; icon: string | null; listing_count: number }[];
 };
 
 async function getCategory(slug: string) {
@@ -105,11 +107,25 @@ async function Content({ params, searchParams }: { params: Promise<{ slug: strin
         {c.name} in {typeof sp.city === "string" ? `${sp.city}, ` : ""}{typeof sp.state === "string" ? sp.state : "Nigeria"}
       </h1>
       {c.children.length > 0 && (
-        <div className="scrollbar-none -mx-3 mt-3 flex gap-2 overflow-x-auto px-3 pb-1 lg:hidden">
-          {byListings(c.children).map((ch) => (
-            <Link key={ch.slug} href={`/c/${ch.slug}`} className="chip shrink-0">{ch.name}</Link>
-          ))}
-        </div>
+        <nav aria-label="Subcategories" className="scrollbar-none -mx-3 mt-3 overflow-x-auto px-3 pb-1 lg:hidden">
+          <ul className="flex gap-3">
+            {byListings(c.children).map((ch) => (
+              <li key={ch.slug} className="w-[76px] shrink-0">
+                <Link href={`/c/${ch.slug}`} className="flex flex-col items-center gap-1.5 rounded-xl p-1 text-center">
+                  <span className="grid size-16 place-items-center overflow-hidden rounded-2xl bg-[#EEF0FF] p-1.5">
+                    {ch.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={ch.image_url} alt="" loading="lazy" className="size-full rounded-[10px] bg-white object-cover" />
+                    ) : (
+                      <CategoryIcon name={ch.icon} className="size-6 text-brand-700" />
+                    )}
+                  </span>
+                  <span className="line-clamp-2 w-full text-[11.5px] font-medium leading-tight">{ch.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       )}
       <div className="mt-4">
         <ListingResults sp={sp} category={c.slug} title={`${c.name} in ${typeof sp.state === "string" ? sp.state : "Nigeria"}`} />

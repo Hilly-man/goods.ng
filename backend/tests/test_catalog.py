@@ -9,6 +9,25 @@ def test_category_tree(client):
     assert any(ch["slug"] == "mobile-phones" for ch in phones["children"])
 
 
+def test_category_images_use_each_category_slug(client):
+    tree = client.get("/api/v1/categories").json()
+    phones = next(c for c in tree if c["slug"] == "phones-tablets")
+    mobile_phones = next(c for c in phones["children"] if c["slug"] == "mobile-phones")
+    assert phones["image_url"] == "/media/categories/phones-tablets.jpg"
+    assert mobile_phones["image_url"] == "/media/categories/mobile-phones.jpg"
+
+    detail = client.get("/api/v1/categories/phones-tablets").json()
+    detail_mobile = next(c for c in detail["children"] if c["slug"] == "mobile-phones")
+    assert detail["image_url"] == phones["image_url"]
+    assert detail_mobile["image_url"] == mobile_phones["image_url"]
+
+
+def test_bundled_category_image_is_served(client):
+    response = client.get("/media/categories/phones-tablets.jpg")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+
+
 def test_buyer_cannot_create_listing_without_seller_profile(make_user, leaf_category):
     u = make_user()
     r = u.post("/seller/products", {"title": "x" * 10})

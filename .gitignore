@@ -5,7 +5,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .coverage
-backend/media/
+backend/media/*
+!backend/media/categories/
+!backend/media/categories/**
 backend/private/
 # Node
 node_modules/

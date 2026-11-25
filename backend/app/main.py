@@ -130,6 +130,11 @@ def create_app() -> FastAPI:
             run_job(name)
         return {"scope": scope, "ran": names}
 
+    category_media_dir = Path(__file__).resolve().parents[1] / "media" / "categories"
+    if not category_media_dir.is_dir():
+        raise RuntimeError(f"Bundled category media directory not found: {category_media_dir}")
+    app.mount("/media/categories", StaticFiles(directory=str(category_media_dir)), name="category-media")
+
     if settings.storage_backend == "local":
         Path(settings.local_media_dir).mkdir(parents=True, exist_ok=True)
         app.mount("/media", StaticFiles(directory=settings.local_media_dir), name="media")

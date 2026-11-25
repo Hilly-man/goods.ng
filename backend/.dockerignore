@@ -3,6 +3,8 @@ __pycache__
 .pytest_cache
 .ruff_cache
 media
+!media/categories/
+!media/categories/**
 private
 tests
 .env

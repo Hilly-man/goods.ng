@@ -14,7 +14,7 @@ from app.models.enums import AdminPermission, ProductStatus
 from app.modules.audit import audit
 
 router = APIRouter(prefix="/categories", tags=["categories"])
-CACHE_KEY = "categories:tree"
+CACHE_KEY = "categories:tree:v3"
 
 
 def category_tree(db: Session, include_inactive: bool = False) -> list[dict]:
@@ -36,6 +36,7 @@ def category_tree(db: Session, include_inactive: bool = False) -> list[dict]:
     )
     nodes = {
         c.id: {"id": str(c.id), "name": c.name, "slug": c.slug, "icon": c.icon, "description": c.description,
+               "image_url": f"/media/categories/{c.slug}.jpg",
                "sort_order": c.sort_order, "is_active": c.is_active, "parent_id": str(c.parent_id) if c.parent_id else None,
                "listing_count": counts.get(c.id, 0), "children": []}
         for c in cats
@@ -72,11 +73,15 @@ def get_category(slug: str, db: DB):
     parent = db.get(Category, c.parent_id) if c.parent_id else None
     # Live listing counts come from the cached tree (no extra queries).
     counts = {n["id"]: n["listing_count"] for root in category_tree(db) for n in [root, *root["children"]]}
+    image_url = f"/media/categories/{c.slug}.jpg"
     children = [
-        {"id": str(x.id), "name": x.name, "slug": x.slug, "icon": x.icon, "listing_count": counts.get(str(x.id), 0)}
+        {"id": str(x.id), "name": x.name, "slug": x.slug, "icon": x.icon,
+         "image_url": f"/media/categories/{x.slug}.jpg",
+         "listing_count": counts.get(str(x.id), 0)}
         for x in c.children if x.is_active
     ]
     return {"id": str(c.id), "name": c.name, "slug": c.slug, "icon": c.icon, "description": c.description,
+            "image_url": image_url,
             "parent": {"name": parent.name, "slug": parent.slug} if parent else None, "children": children}
 
 

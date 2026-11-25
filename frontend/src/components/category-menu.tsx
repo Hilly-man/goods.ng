@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import clsx from "clsx";
 import { ChevronRight } from "lucide-react";
 import type { Category } from "@/lib/types";
-import { CategoryIcon, tintFor } from "./icons";
+import { CategoryIcon } from "./icons";
 
 const ads = (n: number) => `${n.toLocaleString("en-US")} ${n === 1 ? "ad" : "ads"}`;
 
@@ -53,8 +53,13 @@ export function CategoryMenu({ categories }: { categories: Category[] }) {
                   aria-controls={isActive ? "category-flyout" : undefined}
                   className={clsx("group flex items-center gap-3 px-3 py-2.5 transition-colors", isActive ? "bg-brand-50" : "hover:bg-brand-50")}
                 >
-                  <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${tintFor(c.slug)}`}>
-                    <CategoryIcon name={c.icon} className="size-[18px]" />
+                  <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#EEF0FF] p-0.5">
+                    {c.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.image_url} alt="" loading="lazy" className="size-full rounded-[6px] bg-white object-cover" />
+                    ) : (
+                      <CategoryIcon name={c.icon} className="size-[18px] text-brand-700" />
+                    )}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className={clsx("block truncate text-sm font-medium", isActive && "text-brand-800")}>{c.name}</span>
@@ -86,8 +91,13 @@ export function CategoryMenu({ categories }: { categories: Category[] }) {
             {byListings(active.children).map((s) => (
               <li key={s.id}>
                 <Link href={`/c/${s.slug}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-50">
-                  <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${tintFor(active.slug)}`}>
-                    <CategoryIcon name={active.icon} className="size-4" />
+                  <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#EEF0FF] p-0.5">
+                    {s.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={s.image_url} alt="" loading="lazy" className="size-full rounded-[6px] bg-white object-cover" />
+                    ) : (
+                      <CategoryIcon name={active.icon} className="size-4 text-brand-700" />
+                    )}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium hover:text-brand-800">{s.name}</span>

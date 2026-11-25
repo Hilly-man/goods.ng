@@ -31,8 +31,13 @@ export function CategorySidebar({ categories }: { categories: Category[] }) {
         {byListings(categories).map((c) => (
           <li key={c.id}>
             <Link href={`/c/${c.slug}`} className="group flex items-center gap-3 px-3 py-2.5 hover:bg-brand-50">
-              <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${tintFor(c.slug)}`}>
-                <CategoryIcon name={c.icon} className="size-[18px]" />
+              <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#EEF0FF] p-0.5">
+                {c.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={c.image_url} alt="" loading="lazy" className="size-full rounded-[6px] bg-white object-cover" />
+                ) : (
+                  <CategoryIcon name={c.icon} className="size-[18px] text-brand-700" />
+                )}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium group-hover:text-brand-800">{c.name}</span>
@@ -48,14 +53,32 @@ export function CategorySidebar({ categories }: { categories: Category[] }) {
 }
 
 export function CategoryTiles({ categories }: { categories: Category[] }) {
+  // Mobile: two rows that scroll horizontally, Jiji-style, with real category photos.
   return (
-    <nav aria-label="Categories" className="grid grid-cols-4 gap-x-1 gap-y-3 sm:grid-cols-6 sm:gap-2">
+    <nav
+      aria-label="Categories"
+      className="scrollbar-none -mx-3 grid snap-x snap-mandatory grid-flow-col grid-rows-2 auto-cols-[86px] gap-x-3 gap-y-2 overflow-x-auto px-3 pb-1"
+    >
       {byListings(categories).map((c) => (
-        <Link key={c.id} href={`/c/${c.slug}`} className="flex flex-col items-center gap-1.5 rounded-xl p-1.5 text-center hover:bg-white">
-          <span className={`grid size-12 place-items-center rounded-2xl sm:size-14 ${tintFor(c.slug)}`}>
-            <CategoryIcon name={c.icon} className="size-5 sm:size-6" />
+        <Link
+          key={c.id}
+          href={`/c/${c.slug}`}
+          className="flex snap-start flex-col items-center gap-1.5 rounded-xl p-1 text-center"
+        >
+          <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl bg-[#EEF0FF] p-1.5">
+            {c.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={c.image_url}
+                alt=""
+                loading="lazy"
+                className="size-full rounded-[10px] bg-white object-cover"
+              />
+            ) : (
+              <CategoryIcon name={c.icon} className="size-6 text-brand-700" />
+            )}
           </span>
-          <span className="line-clamp-2 text-[11px] font-medium leading-tight">{c.name}</span>
+          <span className="w-full truncate text-[11.5px] font-medium leading-tight">{c.name}</span>
         </Link>
       ))}
     </nav>
