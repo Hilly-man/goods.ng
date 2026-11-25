@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SearchX } from "lucide-react";
+import clsx from "clsx";
 import { serverGet } from "@/lib/server-api";
 import type { Facets, Page, ProductCard } from "@/lib/types";
 import { ProductCollection } from "./product-collection";
@@ -38,7 +39,12 @@ async function allProducts(query: Record<string, string | string[] | undefined>)
   return { ...first, items, pages: 1 };
 }
 
-export async function ListingResults({ sp, category, title }: { sp: SP; category?: string; title: string }) {
+export async function ListingResults({ sp, category, title, hideMobileControls = false }: {
+  sp: SP;
+  category?: string;
+  title: string;
+  hideMobileControls?: boolean;
+}) {
   const query = pickQuery(sp, category ? { category } : {});
   const facetQuery: Record<string, string | string[] | undefined> = { ...query };
   ["sort", "page", "page_size"].forEach((k) => delete facetQuery[k]);
@@ -48,9 +54,9 @@ export async function ListingResults({ sp, category, title }: { sp: SP; category
   ]);
   return (
     <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
-      <Filters facets={facets} />
+      <Filters facets={facets} hideMobileButton={hideMobileControls} />
       <div className="min-w-0">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className={clsx("mb-3 flex flex-wrap items-center justify-between gap-3", hideMobileControls && "hidden md:flex")}>
           <p className="rounded-full bg-white px-3 py-1.5 text-sm text-muted shadow-sm ring-1 ring-line/60">
             <span className="font-semibold text-ink">{data.total.toLocaleString("en-US")}</span> results for{" "}
             <span className="font-semibold text-ink">{title}</span>

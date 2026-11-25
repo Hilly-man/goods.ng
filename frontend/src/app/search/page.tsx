@@ -39,7 +39,11 @@ async function Results({ searchParams }: { searchParams: Promise<SP> }) {
     <>
       {q && <TrackSignal kind="search" query={q} category_slug={typeof sp.category === "string" ? sp.category : undefined} />}
       <h1 className="mb-4 text-xl font-bold tracking-tight sm:text-2xl">{q ? `Results for “${q}”` : "All ads"}</h1>
-      <ListingResults sp={sp} title={`${q ? `“${q}”` : "all ads"} in ${typeof sp.state === "string" ? sp.state : "Nigeria"}`} />
+      <ListingResults
+        sp={sp}
+        title={`${q ? `“${q}”` : "all ads"} in ${typeof sp.state === "string" ? sp.state : "Nigeria"}`}
+        hideMobileControls
+      />
     </>
   );
 }

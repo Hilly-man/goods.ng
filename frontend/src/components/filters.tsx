@@ -240,7 +240,7 @@ function FilterBody({ facets }: { facets: Facets }) {
   );
 }
 
-function FiltersInner({ facets }: { facets: Facets }) {
+function FiltersInner({ facets, hideMobileButton = false }: { facets: Facets; hideMobileButton?: boolean }) {
   const sp = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -264,7 +264,7 @@ function FiltersInner({ facets }: { facets: Facets }) {
         <FilterBody key={k} facets={facets} />
       </aside>
       <div className="lg:hidden">
-        <button onClick={() => setOpen(true)} className="chip w-full justify-center py-2.5 font-semibold">
+        <button onClick={() => setOpen(true)} className={clsx("chip w-full justify-center py-2.5 font-semibold", hideMobileButton && "hidden md:inline-flex")}>
           <SlidersHorizontal className="size-4" /> Filters {active > 0 && <span className="rounded-full bg-brand-700 px-1.5 text-xs text-white">{active}</span>}
         </button>
         {modalOpen && (
@@ -282,10 +282,10 @@ function FiltersInner({ facets }: { facets: Facets }) {
   );
 }
 
-export function Filters({ facets }: { facets: Facets }) {
+export function Filters({ facets, hideMobileButton }: { facets: Facets; hideMobileButton?: boolean }) {
   return (
     <Suspense fallback={<div className="card hidden h-96 lg:block" />}>
-      <FiltersInner facets={facets} />
+      <FiltersInner facets={facets} hideMobileButton={hideMobileButton} />
     </Suspense>
   );
 }
