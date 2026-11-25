@@ -32,7 +32,11 @@ export function useCounts() {
   return user ? counts : { messages: 0, notifications: 0 };
 }
 
-function SearchBarInner({ className, autoFocus }: { className?: string; autoFocus?: boolean }) {
+function SearchBarInner({ className, autoFocus, iconOnlyLocation }: {
+  className?: string;
+  autoFocus?: boolean;
+  iconOnlyLocation?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -63,6 +67,7 @@ function SearchBarInner({ className, autoFocus }: { className?: string; autoFocu
         city={location.city}
         onChange={setLocation}
         onOpenSearch={openMobileSearch}
+        iconOnly={iconOnlyLocation}
       />
       <input
         name="q"
@@ -81,11 +86,12 @@ function SearchBarInner({ className, autoFocus }: { className?: string; autoFocu
   );
 }
 
-function LocationPicker({ state, city, onChange, onOpenSearch }: {
+function LocationPicker({ state, city, onChange, onOpenSearch, iconOnly = false }: {
   state: string;
   city: string;
   onChange: (location: { state: string; city: string }) => void;
   onOpenSearch: (event: React.PointerEvent) => void;
+  iconOnly?: boolean;
 }) {
   const locations = useLocations();
   const searchId = useId();
@@ -138,8 +144,8 @@ function LocationPicker({ state, city, onChange, onOpenSearch }: {
         onPointerDown={onOpenSearch}
         aria-label={`Location: ${label}`} className="flex h-full min-w-0 items-center gap-1.5 rounded-l-xl px-2.5 text-sm font-medium text-ink hover:bg-canvas sm:px-3">
         <MapPin className="size-4 shrink-0 text-brand-700" aria-hidden />
-        <span className="truncate">{label}</span>
-        <ChevronDown className="size-3.5 shrink-0 text-muted" aria-hidden />
+        {!iconOnly && <span className="truncate">{label}</span>}
+        {!iconOnly && <ChevronDown className="size-3.5 shrink-0 text-muted" aria-hidden />}
       </button>
       {open && (
         <div className="absolute left-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl bg-white text-ink shadow-[var(--shadow-pop)] ring-1 ring-line">
@@ -179,7 +185,7 @@ function LocationPicker({ state, city, onChange, onOpenSearch }: {
   );
 }
 
-export function SearchBar(props: { className?: string; autoFocus?: boolean }) {
+export function SearchBar(props: { className?: string; autoFocus?: boolean; iconOnlyLocation?: boolean }) {
   return (
     <Suspense fallback={<div className={clsx("h-11 w-full rounded-xl bg-white/90", props.className)} />}>
       <SearchBarInner {...props} />
@@ -203,7 +209,7 @@ function MobileSearchHeader() {
         aria-label="Back" className="grid size-8 shrink-0 place-items-center rounded-lg hover:bg-white/10">
         <ArrowLeft className="size-5" />
       </button>
-      <SearchBar className="min-w-0 flex-1" autoFocus={autoFocus} />
+      <SearchBar className="min-w-0 flex-1" autoFocus={autoFocus} iconOnlyLocation />
       <button type="button" onClick={openFilters} aria-label="Filter results"
         className="grid size-10 shrink-0 place-items-center rounded-lg bg-white/10 hover:bg-white/20">
         <SlidersHorizontal className="size-5" />
