@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
 import { anonHeaders, captureLanding, personalisationOff, setPersonalisation, trackSignal, type Signal } from "@/lib/interest";
@@ -68,8 +67,8 @@ export function RecommendedForYou() {
     <section aria-labelledby="for-you">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h2 id="for-you" className="flex items-center gap-2 text-lg font-bold tracking-tight sm:text-xl">
-            <Sparkles className="size-5 text-accent-500" />Recommended for you
+          <h2 id="for-you" className="text-lg font-bold tracking-tight sm:text-xl">
+            Recommended for you
           </h2>
           {!data.personalised && (
             <p className="text-sm text-muted">Popular right now — search or browse and we&apos;ll tailor this to you.</p>
