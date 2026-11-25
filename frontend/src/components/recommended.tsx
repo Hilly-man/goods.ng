@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
-import { anonHeaders, captureLanding, clearHistory, personalisationOff, setPersonalisation, trackSignal, type Signal } from "@/lib/interest";
+import { anonHeaders, captureLanding, personalisationOff, setPersonalisation, trackSignal, type Signal } from "@/lib/interest";
 import type { ProductCard } from "@/lib/types";
 import { ProductCollection } from "./product-collection";
 import { ProductGridSkeleton } from "./product-card";
@@ -25,12 +25,7 @@ export function TrackSignal(props: Signal) {
   return null;
 }
 
-type ForYou = { personalised: boolean; reasons: { text: string; source: string }[]; items: ProductCard[] };
-
-const SOURCE_DOT: Record<string, string> = {
-  google: "bg-[#4285f4]", bing: "bg-[#00809d]", facebook: "bg-[#1877f2]", instagram: "bg-[#e1306c]",
-  tiktok: "bg-black", x: "bg-black", whatsapp: "bg-[#25d366]", youtube: "bg-[#ff0000]",
-};
+type ForYou = { personalised: boolean; items: ProductCard[] };
 
 export function RecommendedForYou() {
   const { user, loading } = useAuth();
@@ -76,30 +71,10 @@ export function RecommendedForYou() {
           <h2 id="for-you" className="flex items-center gap-2 text-lg font-bold tracking-tight sm:text-xl">
             <Sparkles className="size-5 text-accent-500" />Recommended for you
           </h2>
-          {data.personalised ? (
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {data.reasons.map((r) => (
-                <span key={r.text} className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-800 ring-1 ring-brand-100">
-                  <span className={`size-1.5 rounded-full ${SOURCE_DOT[r.source] ?? "bg-brand-600"}`} />{r.text}
-                </span>
-              ))}
-            </div>
-          ) : (
+          {!data.personalised && (
             <p className="text-sm text-muted">Popular right now — search or browse and we&apos;ll tailor this to you.</p>
           )}
         </div>
-        {data.personalised && (
-          <div className="flex shrink-0 items-center gap-3 text-xs font-semibold">
-            <button type="button" className="text-muted hover:text-ink hover:underline"
-                    onClick={() => { void clearHistory().finally(() => setVersion((v) => v + 1)); }}>
-              Clear history
-            </button>
-            <button type="button" className="inline-flex items-center gap-1 text-muted hover:text-ink hover:underline"
-                    onClick={() => { void clearHistory().finally(() => { setPersonalisation(false); setVersion((v) => v + 1); }); }}>
-              <X className="size-3.5" />Turn off
-            </button>
-          </div>
-        )}
       </div>
       <ProductCollection items={data.items.slice(0, 10)} placement="for_you" />
     </section>
