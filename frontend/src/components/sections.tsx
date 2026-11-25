@@ -4,6 +4,7 @@ import { ChevronRight, Star } from "lucide-react";
 import type { Category, SellerCard } from "@/lib/types";
 import { CategoryIcon, tintFor } from "./icons";
 import { VerifiedBadge } from "./badges";
+import { AutoCarousel } from "./auto-carousel";
 
 export function SectionHeader({ title, href, sub, action }: { title: string; href?: string; sub?: string; action?: React.ReactNode }) {
   return (
@@ -53,34 +54,33 @@ export function CategorySidebar({ categories }: { categories: Category[] }) {
 }
 
 export function CategoryTiles({ categories }: { categories: Category[] }) {
-  // Mobile: two rows that scroll horizontally, Jiji-style, with real category photos.
+  // Mobile: a single row that auto-advances left and can also be swiped.
   return (
-    <nav
-      aria-label="Categories"
-      className="scrollbar-none -mx-3 grid snap-x snap-mandatory grid-flow-col grid-rows-2 auto-cols-[86px] gap-x-3 gap-y-2 overflow-x-auto px-3 pb-1"
-    >
-      {byListings(categories).map((c) => (
-        <Link
-          key={c.id}
-          href={`/c/${c.slug}`}
-          className="flex snap-start flex-col items-center gap-1.5 rounded-xl p-1 text-center"
-        >
-          <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl bg-[#EEF0FF] p-1.5">
-            {c.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={c.image_url}
-                alt=""
-                loading="lazy"
-                className="size-full rounded-[10px] bg-white object-cover"
-              />
-            ) : (
-              <CategoryIcon name={c.icon} className="size-6 text-brand-700" />
-            )}
-          </span>
-          <span className="w-full truncate text-[11.5px] font-medium leading-tight">{c.name}</span>
-        </Link>
-      ))}
+    <nav aria-label="Categories" className="-mx-3 px-3">
+      <AutoCarousel label="Categories" arrows={false} slideClassName="basis-[86px]">
+        {byListings(categories).map((c) => (
+          <Link
+            key={c.id}
+            href={`/c/${c.slug}`}
+            className="flex w-[86px] flex-col items-center gap-1.5 rounded-xl p-1 text-center"
+          >
+            <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl bg-[#EEF0FF] p-1.5">
+              {c.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={c.image_url}
+                  alt=""
+                  loading="lazy"
+                  className="size-full rounded-[10px] bg-white object-cover"
+                />
+              ) : (
+                <CategoryIcon name={c.icon} className="size-6 text-brand-700" />
+              )}
+            </span>
+            <span className="w-full truncate text-[11.5px] font-medium leading-tight">{c.name}</span>
+          </Link>
+        ))}
+      </AutoCarousel>
     </nav>
   );
 }

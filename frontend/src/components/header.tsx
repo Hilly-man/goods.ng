@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bell, ChevronDown, Heart, LayoutDashboard, LogOut, MapPin, MessageCircle, Plus, Search, Shield, Store, User } from "lucide-react";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useId, useRef, useState } from "react";
 import clsx from "clsx";
 import { Logo } from "./logo";
 import { useAuth } from "./auth-provider";
@@ -11,6 +11,7 @@ import { http } from "@/lib/api";
 import { usePolling } from "@/lib/hooks";
 import { useIsAdminArea } from "@/lib/admin-area";
 import { NG_STATES } from "@/lib/format";
+import { useLocations } from "./state-city-select";
 import { Avatar } from "./avatar";
 
 export function useCounts() {
@@ -33,29 +34,24 @@ export function useCounts() {
 function SearchBarInner({ className, autoFocus }: { className?: string; autoFocus?: boolean }) {
   const router = useRouter();
   const sp = useSearchParams();
+  const [location, setLocation] = useState({ state: sp.get("state") ?? "", city: sp.get("city") ?? "" });
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const next = new URLSearchParams();
     const q = String(fd.get("q") ?? "").trim();
-    const state = String(fd.get("state") ?? "");
     if (q) next.set("q", q);
-    if (state) next.set("state", state);
+    if (location.state) next.set("state", location.state);
+    if (location.city) next.set("city", location.city);
     router.push(`/search?${next.toString()}`);
   }
   return (
-    <form key={sp.toString()} onSubmit={submit} role="search" className={clsx("flex h-11 w-full overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5", className)}>
-      <label className="relative hidden shrink-0 items-center border-r border-line pl-3 sm:flex">
-        <MapPin className="size-4 text-brand-700" aria-hidden />
-        <span className="sr-only">Location</span>
-        <select name="state" defaultValue={sp.get("state") ?? ""} className="h-full max-w-36 appearance-none bg-transparent pl-1.5 pr-6 text-sm font-medium text-ink outline-none">
-          <option value="">All Nigeria</option>
-          {NG_STATES.map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-1.5 size-3.5 text-muted" aria-hidden />
-      </label>
+    <form key={sp.toString()} onSubmit={submit} role="search" className={clsx("relative flex h-11 w-full rounded-xl bg-white shadow-sm ring-1 ring-black/5", className)}>
+      <LocationPicker
+        state={location.state}
+        city={location.city}
+        onChange={setLocation}
+      />
       <input
         name="q"
         defaultValue={sp.get("q") ?? ""}
@@ -65,10 +61,106 @@ function SearchBarInner({ className, autoFocus }: { className?: string; autoFocu
         aria-label="Search Goods.ng"
         className="min-w-0 flex-1 px-3 text-[15px] text-ink outline-none placeholder:text-muted/80"
       />
-      <button type="submit" className="grid w-12 shrink-0 place-items-center bg-accent-500 text-ink transition hover:bg-accent-400 sm:w-14" aria-label="Search">
+      <button type="submit" className="grid w-12 shrink-0 place-items-center rounded-r-xl bg-accent-500 text-ink transition hover:bg-accent-400 sm:w-14" aria-label="Search">
         <Search className="size-5" />
       </button>
     </form>
+  );
+}
+
+function LocationPicker({ state, city, onChange }: {
+  state: string;
+  city: string;
+  onChange: (location: { state: string; city: string }) => void;
+}) {
+  const locations = useLocations();
+  const searchId = useId();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const root = useRef<HTMLDivElement>(null);
+  const search = useRef<HTMLInputElement>(null);
+  const states = (locations?.states ?? NG_STATES).filter((name) => name.toLowerCase().includes(query.trim().toLowerCase()));
+  const cities = Object.entries(locations?.cities ?? {})
+    .flatMap(([region, names]) => names.map((name) => ({ name, region })))
+    .filter(({ name, region }) => {
+      const term = query.trim().toLowerCase();
+      return term && (name.toLowerCase().includes(term) || region.toLowerCase().includes(term));
+    })
+    .slice(0, 12);
+  const label = city ? `${city}, ${state}` : state || "All Nigeria";
+
+  useEffect(() => {
+    if (open) search.current?.focus();
+  }, [open]);
+  useEffect(() => {
+    const close = (e: PointerEvent) => {
+      if (root.current && !root.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
+  const chooseRegion = (region: string) => {
+    onChange({ state: region, city: "" });
+    setOpen(false);
+    setQuery("");
+  };
+  const chooseCity = (name: string, region: string) => {
+    onChange({ state: region, city: name });
+    setOpen(false);
+    setQuery("");
+  };
+
+  return (
+    <div ref={root} className="relative z-30 flex max-w-[42%] shrink-0 items-center border-r border-line sm:max-w-36">
+      <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}
+        aria-label={`Location: ${label}`} className="flex h-full min-w-0 items-center gap-1.5 rounded-l-xl px-2.5 text-sm font-medium text-ink hover:bg-canvas sm:px-3">
+        <MapPin className="size-4 shrink-0 text-brand-700" aria-hidden />
+        <span className="truncate">{label}</span>
+        <ChevronDown className="size-3.5 shrink-0 text-muted" aria-hidden />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl bg-white text-ink shadow-[var(--shadow-pop)] ring-1 ring-line">
+          <div className="border-b border-line p-3">
+            <label htmlFor={searchId} className="mb-1.5 block text-xs font-semibold text-muted">Search by city or region</label>
+            <input ref={search} id={searchId} type="search" value={query} onChange={(e) => setQuery(e.target.value)}
+              placeholder="Enter a city or region" className="input h-10 text-sm" />
+          </div>
+          <div className="max-h-64 overflow-y-auto p-2">
+            <button type="button" onClick={() => { onChange({ state: "", city: "" }); setOpen(false); setQuery(""); }}
+              className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium hover:bg-brand-50">All Nigeria</button>
+            {states.length > 0 && (
+              <div className="mt-2">
+                <p className="px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-muted">Regions</p>
+                {states.map((region) => (
+                  <button key={region} type="button" onClick={() => chooseRegion(region)}
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-brand-50">{region}</button>
+                ))}
+              </div>
+            )}
+            {cities.length > 0 && (
+              <div className="mt-2">
+                <p className="px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-muted">Cities</p>
+                {cities.map(({ name, region }) => (
+                  <button key={`${region}-${name}`} type="button" onClick={() => chooseCity(name, region)}
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-brand-50">{name}, {region}</button>
+                ))}
+              </div>
+            )}
+            {query.trim() && states.length === 0 && cities.length === 0 && (
+              <p className="px-3 py-3 text-sm text-muted">No matching city or region</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

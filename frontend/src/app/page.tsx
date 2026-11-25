@@ -82,23 +82,28 @@ function Pill({ icon, children }: { icon: React.ReactNode; children: React.React
 }
 
 function TrustStrip() {
+  // Two banners on one row: swipeable on phones, both visible from md up. Auto-advances left.
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      <Link href="/buyer-protection" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white">
+    <AutoCarousel
+      label="Buyer protection and Goods Flex"
+      arrows={false}
+      slideClassName="basis-[86%] md:basis-[calc((100%-0.75rem)/2)]"
+    >
+      <Link href="/buyer-protection" className="group relative flex h-full flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white">
         <ShieldCheck className="absolute -right-4 -top-4 size-32 text-white/10" aria-hidden />
         <p className="text-xs font-bold uppercase tracking-wider text-accent-400">Buyer Protection</p>
         <h2 className="mt-1 text-lg font-bold sm:text-xl">Your money is safeguarded until you confirm delivery</h2>
         <p className="mt-1 max-w-md text-sm text-white/80">Pay with Goods.ng Protected Checkout. If the item doesn&apos;t arrive or isn&apos;t as described, we step in.</p>
         <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold">Learn how it works <ArrowRight className="size-4 transition group-hover:translate-x-0.5" /></span>
       </Link>
-      <Link href="/flex/about" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent-400 to-accent-500 p-5 text-ink">
+      <Link href="/flex/about" className="group relative flex h-full flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-accent-400 to-accent-500 p-5 text-ink">
         <Wallet className="absolute -right-4 -top-4 size-32 text-ink/10" aria-hidden />
         <p className="text-xs font-bold uppercase tracking-wider text-brand-800">Goods Flex</p>
         <h2 className="mt-1 text-lg font-bold sm:text-xl">Buy now, pay in 3 or 6 monthly instalments</h2>
         <p className="mt-1 max-w-md text-sm text-ink/75">Pay 40% today, then spread the 60% balance over 3 or 6 months at 3% per month. Financing by our licensed lending partner, subject to approval.</p>
         <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold">Check eligibility <ArrowRight className="size-4 transition group-hover:translate-x-0.5" /></span>
       </Link>
-    </div>
+    </AutoCarousel>
   );
 }
 
