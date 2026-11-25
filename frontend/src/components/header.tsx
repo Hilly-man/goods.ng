@@ -276,7 +276,7 @@ export function Header() {
       <div className="container-page flex h-14 items-center gap-3 md:h-16">
         {searchScreen && !compact ? (
           <>
-            <div className="md:hidden"><MobileSearchHeader /></div>
+            <div className="min-w-0 flex-1 md:hidden"><MobileSearchHeader /></div>
             <div className="hidden md:block"><Logo light /></div>
           </>
         ) : <Logo light />}
