@@ -59,7 +59,7 @@ function SearchBarInner({ className, autoFocus }: { className?: string; autoFocu
         type="search"
         placeholder="I am looking for…"
         aria-label="Search Goods.ng"
-        className="min-w-0 flex-1 px-3 text-[15px] text-ink outline-none placeholder:text-muted/80"
+        className="min-w-0 flex-1 px-3 text-base text-ink outline-none placeholder:text-muted/80 sm:text-[15px]"
       />
       <button type="submit" className="grid w-12 shrink-0 place-items-center rounded-r-xl bg-accent-500 text-ink transition hover:bg-accent-400 sm:w-14" aria-label="Search">
         <Search className="size-5" />
@@ -131,7 +131,7 @@ function LocationPicker({ state, city, onChange }: {
           <div className="border-b border-line p-3">
             <label htmlFor={searchId} className="mb-1.5 block text-xs font-semibold text-muted">Search by city or region</label>
             <input ref={search} id={searchId} type="search" value={query} onChange={(e) => setQuery(e.target.value)}
-              placeholder="Enter a city or region" className="input h-10 text-sm" />
+              placeholder="Enter a city or region" className="input h-10 text-base sm:text-sm" />
           </div>
           <div className="max-h-64 overflow-y-auto p-2">
             <button type="button" onClick={() => { onChange({ state: "", city: "" }); setOpen(false); setQuery(""); }}
